@@ -10,6 +10,21 @@ import { getAvailableYears, getCurrentAcademicYear, loadKaryawanData } from './d
 let currentView = 'dashboard';
 let viewsInitialized = { dashboard: false, presensi: false, history: false, export: false, admin: false };
 
+/* ===== Global Loading Bar ===== */
+let _loadingCount = 0;
+window.showLoading = function() {
+  _loadingCount++;
+  const bar = document.getElementById('loading-bar');
+  if (bar) bar.classList.remove('hidden');
+};
+window.hideLoading = function() {
+  _loadingCount = Math.max(0, _loadingCount - 1);
+  if (_loadingCount === 0) {
+    const bar = document.getElementById('loading-bar');
+    if (bar) bar.classList.add('hidden');
+  }
+};
+
 document.addEventListener('DOMContentLoaded', boot);
 
 async function boot() {

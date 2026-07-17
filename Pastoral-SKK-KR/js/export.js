@@ -31,6 +31,7 @@ function getExportPresensiType() {
 }
 
 async function doExport() {
+  window.showLoading();
   const startDate = document.getElementById('export-start').value;
   const endDate = document.getElementById('export-end').value;
   const academicYear = document.getElementById('export-year').value;
@@ -40,6 +41,7 @@ async function doExport() {
 
   if (!startDate || !endDate) {
     preview.innerHTML = '<p style="color:var(--red)">Pilih rentang tanggal.</p>';
+    window.hideLoading();
     return;
   }
 
@@ -101,6 +103,7 @@ async function doExport() {
 
   btn.disabled = false;
   btn.textContent = 'Export Laporan';
+  window.hideLoading();
 }
 
 export async function renderChartImages(records, startDate, endDate) {

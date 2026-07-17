@@ -115,6 +115,7 @@ function toggleMode() {
 }
 
 async function loadHistory() {
+  window.showLoading();
   const yearLabel = document.getElementById('history-year').value;
   const mode = document.querySelector('input[name="history-mode"]:checked').value;
   const employee = document.getElementById('history-employee').value;
@@ -162,6 +163,7 @@ async function loadHistory() {
   currentPage = 1;
   renderHistoryTable();
   renderHistoryChart();
+  window.hideLoading();
 }
 
 function getFilteredRecords() {

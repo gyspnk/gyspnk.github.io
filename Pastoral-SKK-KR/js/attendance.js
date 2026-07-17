@@ -206,6 +206,7 @@ function getNearestAllowedDay(d, allowedDays) {
 }
 
 async function loadPresensiData() {
+  window.showLoading();
   const yearLabel = document.getElementById('presensi-year').value;
   const date = document.getElementById('presensi-date').value;
   const years = await getAvailableYears();
@@ -216,6 +217,7 @@ async function loadPresensiData() {
   if (!date) {
     msgEl.textContent = 'Pilih tanggal terlebih dahulu.';
     msgEl.classList.remove('hidden');
+    window.hideLoading();
     return;
   }
 
@@ -240,6 +242,7 @@ async function loadPresensiData() {
     currentEmployees = await loadKaryawanData(yearObj, currentPresensiType);
   } catch (e) {
     msgEl.textContent = 'Gagal memuat data: ' + e.message;
+    window.hideLoading();
     return;
   }
 
@@ -264,6 +267,7 @@ async function loadPresensiData() {
   }
 
   renderTable();
+  window.hideLoading();
 }
 
 function getRecordedBy() {
@@ -401,6 +405,7 @@ function bulkMark(status) {
 }
 
 async function savePresensi() {
+  window.showLoading();
   const date = document.getElementById('presensi-date').value;
   const yearLabel = document.getElementById('presensi-year').value;
   const user = getCurrentUser();
@@ -409,6 +414,7 @@ async function savePresensi() {
   if (!date) {
     msgEl.textContent = 'Pilih tanggal terlebih dahulu.';
     msgEl.classList.remove('hidden');
+    window.hideLoading();
     return;
   }
 
@@ -440,6 +446,7 @@ async function savePresensi() {
   if (records.length === 0) {
     msgEl.textContent = 'Tidak ada presensi yang diisi. Tandai status minimal satu karyawan.';
     msgEl.classList.remove('hidden');
+    window.hideLoading();
     return;
   }
 

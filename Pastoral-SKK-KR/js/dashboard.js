@@ -37,6 +37,7 @@ export async function initDashboard() {
 }
 
 async function loadDashboard() {
+  window.showLoading();
   const startDate = document.getElementById('dash-start-date').value;
   const endDate = document.getElementById('dash-end-date').value;
   const academicYear = document.getElementById('dash-academic-year').value;
@@ -53,6 +54,7 @@ async function loadDashboard() {
   renderDistributionChart();
   renderTrendChart();
   renderDivisionChart();
+  window.hideLoading();
 }
 
 function updateStats() {
