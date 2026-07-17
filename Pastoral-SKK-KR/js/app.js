@@ -736,6 +736,7 @@ function initAdminKFStudents() {
   document.getElementById('kfs-load').onclick = loadAdminKFStudents;
   document.getElementById('kfs-search').oninput = renderAdminKFStudents;
   document.getElementById('kfs-filter-active').onchange = renderAdminKFStudents;
+  document.getElementById('kfs-filter-class').onchange = renderAdminKFStudents;
   document.getElementById('add-kfs-form').onsubmit = handleAddKFStudent;
   document.getElementById('kfs-import-btn').onclick = handleImportKFStudents;
   document.getElementById('kfs-import-siswa-folder').onclick = handleImportSiswaFolder;
@@ -785,10 +786,15 @@ function renderAdminKFStudents() {
   tbody.innerHTML = '';
   const search = (document.getElementById('kfs-search').value || '').toLowerCase();
   const filter = document.getElementById('kfs-filter-active').value;
+  const classFilter = document.getElementById('kfs-filter-class')?.value || 'all';
+
+  // Populate class filter dropdown from unique classes
+  populateKFSClassFilter();
 
   let students = kfsData;
   if (filter === 'active') students = students.filter(s => s.is_active != false);
   if (filter === 'inactive') students = students.filter(s => s.is_active == false);
+  if (classFilter !== 'all') students = students.filter(s => (s.class || '') === classFilter);
   if (search) students = students.filter(s => s.name.toLowerCase().includes(search) || (s.class || '').toLowerCase().includes(search) || (s.nis || '').toLowerCase().includes(search));
 
   document.getElementById('kfs-count').textContent = `(${students.length})`;
@@ -837,6 +843,23 @@ function renderAdminKFStudents() {
   if (tbody.children.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px">Tidak ada data siswa</td></tr>';
   }
+}
+
+function populateKFSClassFilter() {
+  const select = document.getElementById('kfs-filter-class');
+  if (!select) return;
+  const currentVal = select.value;
+  const classes = [...new Set(kfsData.map(s => s.class).filter(Boolean))].sort(
+    (a, b) => a.localeCompare(b, 'id', { numeric: true })
+  );
+  select.innerHTML = '<option value="all">Semua Kelas</option>';
+  classes.forEach(cls => {
+    const opt = document.createElement('option');
+    opt.value = cls;
+    opt.textContent = cls;
+    select.appendChild(opt);
+  });
+  if (currentVal && classes.includes(currentVal)) select.value = currentVal;
 }
 
 async function handleAddKFStudent(e) {
