@@ -320,6 +320,49 @@ export default {
         return json({ success: true }, 200, allowOrigin);
       }
 
+      // ===== Presensi Types =====
+      if (path === '/api/presensi-types' && request.method === 'GET') {
+        const rows = await query(env, 'SELECT * FROM presensi_types WHERE is_active = TRUE ORDER BY sort_order, id');
+        if (rows.length === 0) {
+          // Fallback to hardcoded types
+          return json([
+            { type_key: 'renungan_harian', type_label: 'Renungan Harian', category: 'guru' },
+            { type_key: 'ibadah_mingguan', type_label: 'Ibadah Mingguan (Tiap Jumat)', category: 'guru' },
+            { type_key: 'kanaan_fellowship_guru', type_label: 'Kanaan Fellowship (Sabat Ceria) - Guru', category: 'guru' },
+            { type_key: 'kanaan_fellowship_siswa', type_label: 'Kanaan Fellowship (Sabat Ceria) - Siswa', category: 'siswa' }
+          ], 200, allowOrigin);
+        }
+        return json(rows, 200, allowOrigin);
+      }
+
+      if (path === '/api/presensi-types' && request.method === 'POST') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const { typeKey, typeLabel, category } = await request.json();
+        if (!typeKey || !typeLabel) return json({ error: 'Field tidak lengkap' }, 400, allowOrigin);
+        const maxOrder = await query(env, 'SELECT MAX(sort_order) as mx FROM presensi_types');
+        const sortOrder = (maxOrder[0].mx || 0) + 1;
+        await execute(env, 'INSERT INTO presensi_types (type_key, type_label, category, sort_order) VALUES (?, ?, ?, ?)',
+          [typeKey, typeLabel, category || 'guru', sortOrder]);
+        return json({ success: true }, 201, allowOrigin);
+      }
+
+      if (path.startsWith('/api/presensi-types/') && request.method === 'PUT') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const id = parseInt(path.split('/').pop(), 10);
+        const body = await request.json();
+        if (body.is_active !== undefined) {
+          await execute(env, 'UPDATE presensi_types SET is_active = ? WHERE id = ?', [body.is_active ? 1 : 0, id]);
+        }
+        return json({ success: true }, 200, allowOrigin);
+      }
+
+      if (path.startsWith('/api/presensi-types/') && request.method === 'DELETE') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const id = parseInt(path.split('/').pop(), 10);
+        await execute(env, 'DELETE FROM presensi_types WHERE id = ?', [id]);
+        return json({ success: true }, 200, allowOrigin);
+      }
+
       // ===== Presensi Config =====
       if (path === '/api/presensi-config' && request.method === 'GET') {
         const rows = await query(env, 'SELECT * FROM presensi_config ORDER BY presensi_type');

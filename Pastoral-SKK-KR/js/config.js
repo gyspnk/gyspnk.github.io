@@ -25,10 +25,10 @@ export const CONFIG = {
   USER_KEY: 'pas_presensi_user',
   DATA_CACHE_KEY: 'pas_presensi_karyawan_cache',
   PRESENSI_TYPES: [
-    { value: 'renungan_harian', label: 'Renungan Harian', icon: '📖', group: 'Harian' },
-    { value: 'ibadah_mingguan', label: 'Ibadah Mingguan (Tiap Jumat)', icon: '⛪', group: 'Mingguan' },
-    { value: 'kanaan_fellowship_guru', label: 'Kanaan Fellowship (Sabat Ceria) - Guru', icon: '🧑‍🏫', group: 'Kanaan Fellowship' },
-    { value: 'kanaan_fellowship_siswa', label: 'Kanaan Fellowship (Sabat Ceria) - Siswa', icon: '🎓', group: 'Kanaan Fellowship' }
+    { value: 'renungan_harian', label: 'Renungan Harian', icon: '📖', group: 'Guru', category: 'guru' },
+    { value: 'ibadah_mingguan', label: 'Ibadah Mingguan (Tiap Jumat)', icon: '⛪', group: 'Guru', category: 'guru' },
+    { value: 'kanaan_fellowship_guru', label: 'Kanaan Fellowship (Sabat Ceria) - Guru', icon: '🧑‍🏫', group: 'Guru', category: 'guru' },
+    { value: 'kanaan_fellowship_siswa', label: 'Kanaan Fellowship (Sabat Ceria) - Siswa', icon: '🎓', group: 'Siswa', category: 'siswa' }
   ],
   PRESENSI_TYPE_LABELS: {
     renungan_harian: 'Renungan Harian',
@@ -36,6 +36,9 @@ export const CONFIG = {
     kanaan_fellowship_guru: 'Kanaan Fellowship (Sabat Ceria) Guru',
     kanaan_fellowship_siswa: 'Kanaan Fellowship (Sabat Ceria) Siswa'
   },
+  PRESENSI_ICONS: { guru: '👤', siswa: '🎓' },
+  // Dynamic presensi types (loaded from API, falls back to PRESENSI_TYPES)
+  _presensiTypes: null,
   IBADAH_MINGGUAN_DAY: 5, // Friday (0=Sun, 1=Mon, ..., 5=Fri, 6=Sat)
   DAY_NAMES: ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'],
   DAY_SHORT: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'],

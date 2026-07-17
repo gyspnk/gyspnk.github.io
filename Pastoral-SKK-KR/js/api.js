@@ -463,6 +463,18 @@ const realApi = {
   async importKFStudents(academicYearId, students) {
     return apiFetch('/api/kf-students/import', { method: 'POST', body: JSON.stringify({ academicYearId, students }) });
   },
+  async getPresensiTypes() {
+    return apiFetch('/api/presensi-types');
+  },
+  async addPresensiType(typeKey, typeLabel, category) {
+    return apiFetch('/api/presensi-types', { method: 'POST', body: JSON.stringify({ typeKey, typeLabel, category }) });
+  },
+  async togglePresensiType(id, isActive) {
+    return apiFetch(`/api/presensi-types/${id}`, { method: 'PUT', body: JSON.stringify({ is_active: isActive }) });
+  },
+  async deletePresensiType(id) {
+    return apiFetch(`/api/presensi-types/${id}`, { method: 'DELETE' });
+  },
   async getPresensiConfig() {
     return apiFetch('/api/presensi-config');
   },

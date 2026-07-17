@@ -343,6 +343,7 @@ async function initAdmin() {
   initAdminEmployees();
   initAdminKFStudents();
   initAdminPresensiConfig();
+  initAdminPresensiTypes();
 }
 
 function switchAdminTab(tab) {
@@ -1378,4 +1379,91 @@ function renderPresensiConfig() {
       renderPresensiConfig();
     } catch (e) { alert('Gagal: ' + e.message); loadPresensiConfig(); }
   };
+}
+
+/* ===== Presensi Types Management ===== */
+let presensiTypesData = [];
+
+async function initAdminPresensiTypes() {
+  document.getElementById('add-pt-btn').onclick = handleAddPresensiType;
+  await loadPresensiTypes();
+  // Sync CONFIG.PRESENSI_TYPES with dynamic types
+  await syncPresensiTypes();
+}
+
+async function loadPresensiTypes() {
+  try {
+    presensiTypesData = await api.getPresensiTypes();
+    renderPresensiTypesTable();
+  } catch(e) { console.error('Failed to load presensi types:', e); }
+}
+
+function renderPresensiTypesTable() {
+  const tbody = document.getElementById('presensi-types-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  presensiTypesData.forEach(pt => {
+    const tr = document.createElement('tr');
+    const catIcon = pt.category === 'siswa' ? '🎓' : '👤';
+    tr.innerHTML = `
+      <td><code>${pt.type_key}</code></td>
+      <td>${pt.type_label}</td>
+      <td>${catIcon} ${pt.category === 'siswa' ? 'Siswa' : 'Guru'}</td>
+      <td><span class="toggle-switch ${pt.is_active != false ? 'toggle-active' : 'toggle-inactive'}">${pt.is_active != false ? 'Aktif' : 'Nonaktif'}</span></td>
+      <td><button class="btn btn-danger btn-sm" data-del-pt="${pt.id}">Hapus</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('[data-del-pt]').forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm('Hapus kategori presensi ini?')) return;
+      try {
+        await api.deletePresensiType(parseInt(btn.dataset.delPt, 10));
+        await loadPresensiTypes();
+        await syncPresensiTypes();
+        await loadPresensiConfig();
+        renderPresensiConfig();
+      } catch(e) { alert('Gagal: ' + e.message); }
+    };
+  });
+}
+
+async function handleAddPresensiType() {
+  const key = document.getElementById('new-pt-key').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  const label = document.getElementById('new-pt-label').value.trim();
+  const category = document.getElementById('new-pt-category').value;
+  if (!key || !label) { alert('Isi Key dan Nama.'); return; }
+  try {
+    await api.addPresensiType(key, label, category);
+    document.getElementById('new-pt-key').value = '';
+    document.getElementById('new-pt-label').value = '';
+    await loadPresensiTypes();
+    await syncPresensiTypes();
+    await loadPresensiConfig();
+    renderPresensiConfig();
+  } catch(e) { alert('Gagal: ' + e.message); }
+}
+
+async function syncPresensiTypes() {
+  // Update CONFIG.PRESENSI_TYPES dynamically from API data
+  if (presensiTypesData.length > 0) {
+    CONFIG._presensiTypes = presensiTypesData.map(pt => ({
+      value: pt.type_key, label: pt.type_label,
+      icon: pt.category === 'siswa' ? '🎓' : '👤',
+      group: pt.category === 'siswa' ? 'Siswa' : 'Guru',
+      category: pt.category
+    }));
+    CONFIG.PRESENSI_TYPES = CONFIG._presensiTypes;
+    CONFIG.PRESENSI_TYPE_LABELS = {};
+    presensiTypesData.forEach(pt => { CONFIG.PRESENSI_TYPE_LABELS[pt.type_key] = pt.type_label; });
+    // Also update PERMISSION_DEFAULTS for new types
+    presensiTypesData.forEach(pt => {
+      if (!CONFIG.PERMISSION_DEFAULTS[pt.type_key]) {
+        // Copy defaults from an existing type
+        CONFIG.PERMISSION_DEFAULTS[pt.type_key] = pt.category === 'siswa'
+          ? { level: 'write', divisions: [], classes: [] }
+          : { level: 'write', divisions: [], classes: [] };
+      }
+    });
+  }
 }

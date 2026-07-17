@@ -605,6 +605,20 @@
           </div>
           <!-- Tab: Presensi Config -->
           <div id="admin-tab-presensi-config" class="admin-tab-content hidden">
+            <div class="admin-form-card" style="max-width:700px;margin-bottom:16px">
+              <h3>Kelola Kategori Presensi</h3>
+              <p class="muted" style="margin-bottom:12px">Tambah/hapus kategori presensi. Tandai <strong>Guru</strong> atau <strong>Siswa</strong>.</p>
+              <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:12px">
+                <div class="form-group" style="flex:1;min-width:110px"><label>Key</label><input type="text" id="new-pt-key" placeholder="contoh: retreat_guru" style="font-family:monospace" /></div>
+                <div class="form-group" style="flex:2;min-width:150px"><label>Nama</label><input type="text" id="new-pt-label" placeholder="contoh: Retreat Guru" /></div>
+                <div class="form-group" style="min-width:90px"><label>Tipe</label><select id="new-pt-category"><option value="guru">Guru</option><option value="siswa">Siswa</option></select></div>
+                <button id="add-pt-btn" class="btn btn-primary btn-sm">Tambah</button>
+              </div>
+              <div class="table-wrapper"><table>
+                <thead><tr><th>Key</th><th>Nama</th><th>Tipe</th><th>Status</th><th>Aksi</th></tr></thead>
+                <tbody id="presensi-types-tbody"></tbody>
+              </table></div>
+            </div>
             <div class="admin-form-card" style="max-width:700px">
               <h3>Konfigurasi Hari Presensi</h3>
               <p class="muted" style="margin-bottom:16px">Atur hari apa saja setiap presensi boleh diisi. Hari yang tidak dicentang akan <strong>digrey-out</strong> di kalender dan tidak bisa dipilih.</p>

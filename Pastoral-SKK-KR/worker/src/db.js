@@ -112,6 +112,15 @@ export async function initSchema(env) {
       default_permissions TEXT DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS presensi_types (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      type_key VARCHAR(50) UNIQUE NOT NULL,
+      type_label VARCHAR(100) NOT NULL,
+      category VARCHAR(10) NOT NULL DEFAULT 'guru',
+      is_active BOOLEAN DEFAULT TRUE,
+      sort_order INT DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
     `CREATE TABLE IF NOT EXISTS presensi_config (
       id INT AUTO_INCREMENT PRIMARY KEY,
       presensi_type VARCHAR(30) UNIQUE NOT NULL,
@@ -127,6 +136,11 @@ export async function initSchema(env) {
     // Migration: add columns if they don't exist (for existing installations)
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions TEXT DEFAULT NULL AFTER full_name`,
     `ALTER TABLE attendance ADD COLUMN IF NOT EXISTS presensi_type VARCHAR(30) NOT NULL DEFAULT 'renungan_harian' AFTER attendance_date`,
+    // Seed default presensi types if table is empty
+    `INSERT IGNORE INTO presensi_types (type_key, type_label, category, sort_order) VALUES ('renungan_harian', 'Renungan Harian', 'guru', 1)`,
+    `INSERT IGNORE INTO presensi_types (type_key, type_label, category, sort_order) VALUES ('ibadah_mingguan', 'Ibadah Mingguan (Tiap Jumat)', 'guru', 2)`,
+    `INSERT IGNORE INTO presensi_types (type_key, type_label, category, sort_order) VALUES ('kanaan_fellowship_guru', 'Kanaan Fellowship (Sabat Ceria) - Guru', 'guru', 3)`,
+    `INSERT IGNORE INTO presensi_types (type_key, type_label, category, sort_order) VALUES ('kanaan_fellowship_siswa', 'Kanaan Fellowship (Sabat Ceria) - Siswa', 'siswa', 4)`,
     // Seed default roles if table is empty
     `INSERT IGNORE INTO roles (role_key, role_label, default_permissions) VALUES ('admin', 'Administrator', '{"renungan_harian":{"level":"write","divisions":[],"classes":[]},"ibadah_mingguan":{"level":"write","divisions":[],"classes":[]},"kanaan_fellowship_guru":{"level":"write","divisions":[],"classes":[]},"kanaan_fellowship_siswa":{"level":"write","divisions":[],"classes":[]}}')`,
     `INSERT IGNORE INTO roles (role_key, role_label, default_permissions) VALUES ('pastoral', 'Pastoral', '{"renungan_harian":{"level":"write","divisions":[],"classes":[]},"ibadah_mingguan":{"level":"write","divisions":[],"classes":[]},"kanaan_fellowship_guru":{"level":"write","divisions":[],"classes":[]},"kanaan_fellowship_siswa":{"level":"write","divisions":[],"classes":[]}}')`,
