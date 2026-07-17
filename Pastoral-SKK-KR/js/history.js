@@ -96,6 +96,16 @@ function updateHistoryFilterLabel() {
   }
 }
 
+function updateHistoryTableHeaders() {
+  const headerRow = document.getElementById('history-table-header');
+  if (!headerRow) return;
+  const type = document.getElementById('history-type')?.value || 'renungan_harian';
+  const isSiswa = type === 'kanaan_fellowship_siswa';
+  headerRow.innerHTML = isSiswa
+    ? '<th>No</th><th>Tanggal</th><th>Nama</th><th>NIS</th><th>Kelas</th><th>Status</th><th>Keterangan</th><th>Tipe</th><th>Diisi Oleh</th>'
+    : '<th>No</th><th>Tanggal</th><th>Nama</th><th>Jabatan</th><th>Divisi</th><th>Status</th><th>Keterangan</th><th>Tipe</th><th>Diisi Oleh (Nama / Username / Role)</th>';
+}
+
 function toggleMode() {
   const mode = document.querySelector('input[name="history-mode"]:checked').value;
   const isRange = mode === 'range';
@@ -201,13 +211,14 @@ function renderHistoryTable() {
     const recorderName = user ? user.full_name : r.recorded_by || '—';
     const recorderRole = r.recorded_by_role ? (CONFIG.ROLES[r.recorded_by_role] || r.recorded_by_role) : (user ? (CONFIG.ROLES[user.role] || user.role) : '');
     const presensiTypeLabel = CONFIG.PRESENSI_TYPE_LABELS[r.presensi_type] || '';
-    const presensiTypeClass = r.presensi_type === 'ibadah_mingguan' ? 'presensi-type-im' : 'presensi-type-rh';
+    const presensiTypeClass = r.presensi_type === 'ibadah_mingguan' ? 'presensi-type-im' : r.presensi_type === 'kanaan_fellowship_siswa' ? 'presensi-type-im' : 'presensi-type-rh';
+    const isSiswa = r.presensi_type === 'kanaan_fellowship_siswa';
     tr.innerHTML = `
       <td>${startIdx + i + 1}</td>
       <td>${r.attendance_date || ''}</td>
       <td>${r.employee_name || ''}</td>
-      <td>${r.employee_position || ''}</td>
-      <td>${r.employee_division || ''}</td>
+      <td>${isSiswa ? (r.employee_status || '—') : (r.employee_position || '')}</td>
+      <td>${isSiswa ? (r.employee_division || '—') : (r.employee_division || '')}</td>
       <td>${statusCfg ? `<span class="status-badge status-${r.status}">${statusLabels[r.status]}</span>` : r.status}</td>
       <td>${r.notes || ''}</td>
       <td><span class="presensi-type-badge ${presensiTypeClass}">${presensiTypeLabel}</span></td>
@@ -215,6 +226,9 @@ function renderHistoryTable() {
     `;
     tbody.appendChild(tr);
   });
+
+  // Update table headers based on presensi type
+  updateHistoryTableHeaders();
 
   if (tbody.children.length === 0) {
     tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:20px">Tidak ada data presensi</td></tr>';

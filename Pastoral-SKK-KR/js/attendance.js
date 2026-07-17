@@ -70,6 +70,13 @@ function updatePresensiTitle() {
     const label = CONFIG.PRESENSI_TYPE_LABELS[currentPresensiType] || 'Presensi';
     titleEl.textContent = `Presensi ${label}`;
   }
+  // Update table headers
+  const headerRow = document.getElementById('presensi-table-header');
+  if (!headerRow) return;
+  const isSiswa = currentPresensiType === 'kanaan_fellowship_siswa';
+  headerRow.innerHTML = isSiswa
+    ? '<th>No</th><th>Nama</th><th>NIS</th><th>Kelas</th><th>Status</th><th>Keterangan</th>'
+    : '<th>No</th><th>Nama</th><th>Jabatan</th><th>Divisi</th><th>Status</th><th>Keterangan</th>';
 }
 
 function updatePresensiWriteUI() {
@@ -297,7 +304,8 @@ function renderTable() {
     return true;
   });
 
-  const readOnly = isReadOnly();
+  const readOnly = isReadOnly() || !canWrite(currentPresensiType);
+  const isSiswa = currentPresensiType === 'kanaan_fellowship_siswa';
 
   filtered.forEach((emp, i) => {
 
@@ -305,13 +313,16 @@ function renderTable() {
     const currentStatus = existing.status || '';
     const statusCfg = CONFIG.ATTENDANCE_STATUSES.find(s => s.value === currentStatus);
 
+    const col2 = isSiswa ? (emp.status || '—') : (emp.position || '');
+    const col3 = isSiswa ? (emp.division || '—') : (emp.division || '');
+
     const tr = document.createElement('tr');
     if (readOnly) {
       tr.innerHTML = `
         <td>${i + 1}</td>
         <td>${emp.name}</td>
-        <td>${emp.position}</td>
-        <td>${emp.division}</td>
+        <td>${col2}</td>
+        <td>${col3}</td>
         <td>${statusCfg ? `<span class="status-badge status-${currentStatus}">${statusCfg.label}</span>` : '<span class="muted">—</span>'}</td>
         <td><span class="muted">${existing.notes || ''}</span></td>
       `;
@@ -319,8 +330,8 @@ function renderTable() {
       tr.innerHTML = `
         <td>${i + 1}</td>
         <td>${emp.name}</td>
-        <td>${emp.position}</td>
-        <td>${emp.division}</td>
+        <td>${col2}</td>
+        <td>${col3}</td>
         <td>
           <div class="status-cell" data-employee="${emp.name}">
             ${CONFIG.ATTENDANCE_STATUSES.map(s => `
