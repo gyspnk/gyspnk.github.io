@@ -91,10 +91,6 @@ function btoaUrl(buffer) {
 }
 
 function atob(str) {
-  return Uint8Array.from(atobRaw(str), c => c.charCodeAt(0));
-}
-
-function atobRaw(str) {
   str = str.replace(/-/g, '+').replace(/_/g, '/');
   while (str.length % 4) str += '=';
   return globalThis.atob(str);
