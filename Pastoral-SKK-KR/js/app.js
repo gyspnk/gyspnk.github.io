@@ -255,7 +255,7 @@ async function loadDashboardRefresh() {
 }
 
 /* ===== Admin ===== */
-let adminData = { years: [], employees: [], divisions: [] };
+let adminData = { years: [], employees: [], divisions: [], roles: [] };
 
 async function initAdmin() {
   document.querySelectorAll('.admin-tab').forEach(tab => {
@@ -270,6 +270,13 @@ async function initAdmin() {
     renderUsers(users);
   } catch (e) {
     console.error('Failed to load users:', e);
+  }
+
+  try {
+    adminData.roles = await api.getRoles();
+    populateRoleDropdowns();
+  } catch (e) {
+    console.error('Failed to load roles:', e);
   }
 
   initAdminYears();
@@ -698,6 +705,98 @@ async function handleImportEmployees() {
   }
 }
 
+function getRoleLabel(roleKey) {
+  const role = adminData.roles.find(r => r.role_key === roleKey);
+  if (role) return role.role_label;
+  return CONFIG.ROLES[roleKey] || roleKey;
+}
+
+function populateRoleDropdowns() {
+  const roleSelect = document.getElementById('new-user-role');
+  if (roleSelect) {
+    const currentVal = roleSelect.value;
+    roleSelect.innerHTML = '';
+    adminData.roles.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.role_key;
+      opt.textContent = r.role_label;
+      roleSelect.appendChild(opt);
+    });
+    if (currentVal && adminData.roles.find(r => r.role_key === currentVal)) {
+      roleSelect.value = currentVal;
+    }
+  }
+  renderRoles();
+}
+
+function renderRoles() {
+  const tbody = document.getElementById('roles-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  adminData.roles.forEach(r => {
+    let perms = {};
+    try { perms = typeof r.default_permissions === 'string' ? JSON.parse(r.default_permissions) : (r.default_permissions || {}); } catch(e) {}
+    const permSummary = CONFIG.PRESENSI_TYPES.map(t => {
+      const level = perms[t.value] || 'none';
+      const icon = level === 'write' ? '✏️' : level === 'view' ? '👁️' : '—';
+      return `<span title="${t.label}: ${CONFIG.PERMISSION_LABELS[level]}" style="font-size:13px">${icon}</span>`;
+    }).join(' ');
+    const isSystem = ['admin','pastoral','guru_agama','kepala_sekolah','gereja'].includes(r.role_key);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><code>${r.role_key}</code></td>
+      <td>${r.role_label}</td>
+      <td>${permSummary}</td>
+      <td>
+        <div class="action-cell">
+          <button class="btn btn-sm btn-info" data-edit-role-perms="${r.id}" data-role-key="${r.role_key}" data-role-label="${r.role_label}" data-perms='${JSON.stringify(perms)}'>Izin</button>
+          ${isSystem ? '<span class="muted" style="font-size:11px">sistem</span>' : `<button class="btn btn-danger btn-sm" data-del-role="${r.id}">Hapus</button>`}
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Add role button
+  document.getElementById('add-role-btn').onclick = async () => {
+    const key = document.getElementById('new-role-key').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const label = document.getElementById('new-role-label').value.trim();
+    if (!key || !label) { alert('Isi Role Key dan Nama Role.'); return; }
+    if (adminData.roles.find(r => r.role_key === key)) { alert('Role key sudah ada.'); return; }
+    try {
+      await api.addRole(key, label, {});
+      document.getElementById('new-role-key').value = '';
+      document.getElementById('new-role-label').value = '';
+      adminData.roles = await api.getRoles();
+      populateRoleDropdowns();
+      renderRoles();
+    } catch (e) { alert('Gagal: ' + e.message); }
+  };
+
+  // Delete role buttons
+  tbody.querySelectorAll('[data-del-role]').forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm('Hapus role ini? Role hanya bisa dihapus jika tidak ada user yang menggunakannya.')) return;
+      try {
+        await api.deleteRole(parseInt(btn.dataset.delRole, 10));
+        adminData.roles = await api.getRoles();
+        populateRoleDropdowns();
+        renderRoles();
+      } catch (e) { alert('Gagal: ' + e.message); }
+    };
+  });
+
+  // Edit role default permissions
+  tbody.querySelectorAll('[data-edit-role-perms]').forEach(btn => {
+    btn.onclick = () => {
+      const id = parseInt(btn.dataset.editRolePerms, 10);
+      let perms = {};
+      try { perms = JSON.parse(btn.dataset.perms); } catch(e) {}
+      showPermissionModal(id, btn.dataset.roleLabel, perms, true);
+    };
+  });
+}
+
 function renderUsers(users) {
   const tbody = document.getElementById('users-tbody');
   tbody.innerHTML = '';
@@ -706,9 +805,9 @@ function renderUsers(users) {
     const tr = document.createElement('tr');
     let perms = {};
     try { perms = (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) || {}; } catch(e) {}
-    // Fall back to role defaults for display
-    if (Object.keys(perms).length === 0 && CONFIG.PERMISSION_DEFAULTS[u.role]) {
-      perms = {...CONFIG.PERMISSION_DEFAULTS[u.role]};
+    const roleObj = adminData.roles.find(r => r.role_key === u.role);
+    if (Object.keys(perms).length === 0 && roleObj && roleObj.default_permissions) {
+      try { perms = typeof roleObj.default_permissions === 'string' ? JSON.parse(roleObj.default_permissions) : roleObj.default_permissions; } catch(e) {}
     }
     const permSummary = CONFIG.PRESENSI_TYPES.map(t => {
       const level = perms[t.value] || 'none';
@@ -719,7 +818,7 @@ function renderUsers(users) {
     tr.innerHTML = `
       <td>${u.username}</td>
       <td>${u.full_name}</td>
-      <td><span class="status-badge" style="background:var(--primary);font-size:11px">${CONFIG.ROLES[u.role] || u.role}</span></td>
+      <td><span class="status-badge" style="background:var(--primary);font-size:11px">${getRoleLabel(u.role)}</span></td>
       <td>${permSummary}</td>
       <td>${u.id === currentUserObj.id ? '<span class="muted">—</span>' : `
         <div class="action-cell">
@@ -754,14 +853,14 @@ function renderUsers(users) {
   });
 }
 
-function showPermissionModal(userId, username, currentPerms) {
+function showPermissionModal(targetId, targetName, currentPerms, isRole = false) {
   const types = CONFIG.PRESENSI_TYPES;
   const levels = CONFIG.PERMISSION_LEVELS;
   const labels = CONFIG.PERMISSION_LABELS;
 
   let html = `<div style="width:100%;max-width:600px">
-    <h3 style="margin-bottom:4px">Izin Akses</h3>
-    <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">${username}</p>
+    <h3 style="margin-bottom:4px">${isRole ? 'Default Izin Role' : 'Izin Akses'}</h3>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">${targetName}</p>
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;font-size:13px">
     <thead><tr>
@@ -810,14 +909,19 @@ function showPermissionModal(userId, username, currentPerms) {
     msgEl.classList.remove('hidden');
     msgEl.style.background = '#dbeafe'; msgEl.style.color = '#1e40af';
     try {
-      await api.updateUser(userId, { permissions: newPerms });
-      msgEl.textContent = '✅ Izin berhasil disimpan.';
-      msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';
-      setTimeout(async () => {
-        overlay.remove();
+      if (isRole) {
+        await api.updateRolePermissions(targetId, newPerms);
+        adminData.roles = await api.getRoles();
+        populateRoleDropdowns();
+        renderRoles();
+      } else {
+        await api.updateUser(targetId, { permissions: newPerms });
         const users = await api.getUsers();
         renderUsers(users);
-      }, 600);
+      }
+      msgEl.textContent = '✅ Izin berhasil disimpan.';
+      msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';
+      setTimeout(() => overlay.remove(), 600);
     } catch (e) {
       msgEl.textContent = 'Gagal: ' + e.message;
       msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
@@ -834,7 +938,11 @@ async function handleAddUser(e) {
   const role = document.getElementById('new-user-role').value;
 
   try {
-    const defaultPerms = CONFIG.PERMISSION_DEFAULTS[role] || {};
+    const roleObj = adminData.roles.find(r => r.role_key === role);
+    let defaultPerms = {};
+    if (roleObj && roleObj.default_permissions) {
+      try { defaultPerms = typeof roleObj.default_permissions === 'string' ? JSON.parse(roleObj.default_permissions) : roleObj.default_permissions; } catch(e) {}
+    }
     await api.addUser(username, fullName, password, role, defaultPerms);
     document.getElementById('new-user-username').value = '';
     document.getElementById('new-user-fullname').value = '';

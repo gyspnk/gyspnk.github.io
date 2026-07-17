@@ -288,6 +288,44 @@ const demoApi = {
     else config.push({ presensi_type: presensiType, allowed_days: allowedDays });
     dbSet('pas_presensi_config', config);
     return { success: true };
+  },
+  async getRoles() {
+    let roles = dbGet('pas_presensi_roles');
+    if (roles.length === 0) {
+      roles = [
+        { id: 1, role_key: 'admin', role_label: 'Administrator', default_permissions: '{"renungan_harian":"write","ibadah_mingguan":"write","kanaan_fellowship_guru":"write","kanaan_fellowship_siswa":"write"}' },
+        { id: 2, role_key: 'pastoral', role_label: 'Pastoral', default_permissions: '{"renungan_harian":"write","ibadah_mingguan":"write","kanaan_fellowship_guru":"write","kanaan_fellowship_siswa":"write"}' },
+        { id: 3, role_key: 'guru_agama', role_label: 'Guru Agama', default_permissions: '{"renungan_harian":"write","ibadah_mingguan":"view","kanaan_fellowship_guru":"view","kanaan_fellowship_siswa":"view"}' },
+        { id: 4, role_key: 'kepala_sekolah', role_label: 'Kepala Sekolah', default_permissions: '{"renungan_harian":"view","ibadah_mingguan":"view","kanaan_fellowship_guru":"view","kanaan_fellowship_siswa":"view"}' },
+        { id: 5, role_key: 'gereja', role_label: 'Gereja', default_permissions: '{"renungan_harian":"view","ibadah_mingguan":"view","kanaan_fellowship_guru":"view","kanaan_fellowship_siswa":"view"}' }
+      ];
+      dbSet('pas_presensi_roles', roles);
+    }
+    return roles;
+  },
+  async addRole(roleKey, roleLabel, defaultPermissions) {
+    const roles = dbGet('pas_presensi_roles');
+    if (roles.find(r => r.role_key === roleKey)) throw new Error('Role key sudah ada');
+    const id = roles.length ? Math.max(...roles.map(r => r.id)) + 1 : 1;
+    roles.push({ id, role_key: roleKey, role_label: roleLabel, default_permissions: JSON.stringify(defaultPermissions || {}) });
+    dbSet('pas_presensi_roles', roles);
+    return { success: true };
+  },
+  async updateRolePermissions(id, defaultPermissions) {
+    const roles = dbGet('pas_presensi_roles');
+    const idx = roles.findIndex(r => r.id === id);
+    if (idx >= 0) roles[idx].default_permissions = JSON.stringify(defaultPermissions || {});
+    dbSet('pas_presensi_roles', roles);
+    return { success: true };
+  },
+  async deleteRole(id) {
+    const roles = dbGet('pas_presensi_roles');
+    const role = roles.find(r => r.id === id);
+    if (!role) throw new Error('Role tidak ditemukan');
+    const users = dbGet('pas_presensi_users');
+    if (users.find(u => u.role === role.role_key)) throw new Error('Masih ada user dengan role ini');
+    dbSet('pas_presensi_roles', roles.filter(r => r.id !== id));
+    return { success: true };
   }
 };
 
@@ -395,6 +433,18 @@ const realApi = {
   },
   async updatePresensiConfig(presensiType, allowedDays) {
     return apiFetch('/api/presensi-config', { method: 'PUT', body: JSON.stringify({ presensiType, allowedDays }) });
+  },
+  async getRoles() {
+    return apiFetch('/api/roles');
+  },
+  async addRole(roleKey, roleLabel, defaultPermissions) {
+    return apiFetch('/api/roles', { method: 'POST', body: JSON.stringify({ roleKey, roleLabel, defaultPermissions }) });
+  },
+  async updateRolePermissions(id, defaultPermissions) {
+    return apiFetch(`/api/roles/${id}`, { method: 'PUT', body: JSON.stringify({ defaultPermissions }) });
+  },
+  async deleteRole(id) {
+    return apiFetch(`/api/roles/${id}`, { method: 'DELETE' });
   }
 };
 

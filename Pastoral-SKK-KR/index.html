@@ -379,6 +379,24 @@
                     <tbody id="users-tbody"></tbody>
                   </table>
                 </div>
+                <h3 style="margin-top:24px">Kelola Role</h3>
+                <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:12px">
+                  <div class="form-group" style="flex:1;min-width:100px">
+                    <label>Role Key</label>
+                    <input type="text" id="new-role-key" placeholder="contoh: bendahara" style="font-family:monospace" />
+                  </div>
+                  <div class="form-group" style="flex:2;min-width:130px">
+                    <label>Nama Role</label>
+                    <input type="text" id="new-role-label" placeholder="contoh: Bendahara" />
+                  </div>
+                  <button id="add-role-btn" class="btn btn-primary btn-sm">Tambah Role</button>
+                </div>
+                <div class="table-wrapper">
+                  <table>
+                    <thead><tr><th>Role Key</th><th>Nama</th><th>Default Izin</th><th>Aksi</th></tr></thead>
+                    <tbody id="roles-tbody"></tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>

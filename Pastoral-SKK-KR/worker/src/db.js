@@ -91,6 +91,13 @@ export async function initSchema(env) {
       INDEX idx_class (class),
       UNIQUE KEY uq_kf_student (name, class, academic_year_id)
     )`,
+    `CREATE TABLE IF NOT EXISTS roles (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      role_key VARCHAR(50) UNIQUE NOT NULL,
+      role_label VARCHAR(100) NOT NULL,
+      default_permissions TEXT DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
     `CREATE TABLE IF NOT EXISTS presensi_config (
       id INT AUTO_INCREMENT PRIMARY KEY,
       presensi_type VARCHAR(30) UNIQUE NOT NULL,
@@ -106,6 +113,12 @@ export async function initSchema(env) {
     // Migration: add columns if they don't exist (for existing installations)
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions TEXT DEFAULT NULL AFTER full_name`,
     `ALTER TABLE attendance ADD COLUMN IF NOT EXISTS presensi_type VARCHAR(30) NOT NULL DEFAULT 'renungan_harian' AFTER attendance_date`,
+    // Seed default roles if table is empty
+    `INSERT IGNORE INTO roles (role_key, role_label, default_permissions) VALUES ('admin', 'Administrator', '{"renungan_harian":"write","ibadah_mingguan":"write","kanaan_fellowship_guru":"write","kanaan_fellowship_siswa":"write"}')`,
+    `INSERT IGNORE INTO roles (role_key, role_label, default_permissions) VALUES ('pastoral', 'Pastoral', '{"renungan_harian":"write","ibadah_mingguan":"write","kanaan_fellowship_guru":"write","kanaan_fellowship_siswa":"write"}')`,
+    `INSERT IGNORE INTO roles (role_key, role_label, default_permissions) VALUES ('guru_agama', 'Guru Agama', '{"renungan_harian":"write","ibadah_mingguan":"view","kanaan_fellowship_guru":"view","kanaan_fellowship_siswa":"view"}')`,
+    `INSERT IGNORE INTO roles (role_key, role_label, default_permissions) VALUES ('kepala_sekolah', 'Kepala Sekolah', '{"renungan_harian":"view","ibadah_mingguan":"view","kanaan_fellowship_guru":"view","kanaan_fellowship_siswa":"view"}')`,
+    `INSERT IGNORE INTO roles (role_key, role_label, default_permissions) VALUES ('gereja', 'Gereja', '{"renungan_harian":"view","ibadah_mingguan":"view","kanaan_fellowship_guru":"view","kanaan_fellowship_siswa":"view"}')`,
     `ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_active_rh BOOLEAN DEFAULT TRUE AFTER employment_status`,
     `ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_active_im BOOLEAN DEFAULT TRUE AFTER is_active_rh`,
     `ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_active_kf BOOLEAN DEFAULT TRUE AFTER is_active_im`,

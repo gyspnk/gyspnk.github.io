@@ -280,6 +280,45 @@ export default {
         return json({ success: true, count }, 200, allowOrigin);
       }
 
+      // ===== Roles =====
+      if (path === '/api/roles' && request.method === 'GET') {
+        const rows = await query(env, 'SELECT * FROM roles ORDER BY id');
+        return json(rows, 200, allowOrigin);
+      }
+
+      if (path === '/api/roles' && request.method === 'POST') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const { roleKey, roleLabel, defaultPermissions } = await request.json();
+        if (!roleKey || !roleLabel) return json({ error: 'Field tidak lengkap' }, 400, allowOrigin);
+        const permsJson = defaultPermissions ? JSON.stringify(defaultPermissions) : null;
+        await execute(env, 'INSERT INTO roles (role_key, role_label, default_permissions) VALUES (?, ?, ?)',
+          [roleKey, roleLabel, permsJson]);
+        return json({ success: true }, 201, allowOrigin);
+      }
+
+      if (path.startsWith('/api/roles/') && request.method === 'DELETE') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const id = parseInt(path.split('/').pop(), 10);
+        // Don't allow deleting if users with this role exist
+        const role = await query(env, 'SELECT role_key FROM roles WHERE id = ?', [id]);
+        if (role.length === 0) return json({ error: 'Role tidak ditemukan' }, 404, allowOrigin);
+        const userCount = await query(env, 'SELECT COUNT(*) as cnt FROM users WHERE role = ?', [role[0].role_key]);
+        if (userCount[0].cnt > 0) return json({ error: `Masih ada ${userCount[0].cnt} user dengan role ini` }, 400, allowOrigin);
+        await execute(env, 'DELETE FROM roles WHERE id = ?', [id]);
+        return json({ success: true }, 200, allowOrigin);
+      }
+
+      if (path.startsWith('/api/roles/') && request.method === 'PUT') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const id = parseInt(path.split('/').pop(), 10);
+        const body = await request.json();
+        if (body.defaultPermissions !== undefined) {
+          const permsJson = body.defaultPermissions ? JSON.stringify(body.defaultPermissions) : null;
+          await execute(env, 'UPDATE roles SET default_permissions = ? WHERE id = ?', [permsJson, id]);
+        }
+        return json({ success: true }, 200, allowOrigin);
+      }
+
       // ===== Presensi Config =====
       if (path === '/api/presensi-config' && request.method === 'GET') {
         const rows = await query(env, 'SELECT * FROM presensi_config ORDER BY presensi_type');
