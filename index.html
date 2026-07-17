@@ -1,586 +1,501 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" type="image/png" href="./LogoSKK.png" />
-  <title>Pastoral Hub SKKKR</title>
-  <link rel="stylesheet" href="./css/style.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sekolah Minggu Gereja Yesus Sejati Pontianak</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Work+Sans:wght@400;500;600&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"/>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <div id="app">
-    <!-- Login View -->
-    <div id="login-view" class="login-container">
-      <div class="login-card">
-        <div class="login-logo">
-          <img src="./LogoSKK.png" alt="Logo SKK" width="140" height="140" />
+
+  <!-- === NAVBAR === -->
+  <nav id="navbar" class="navbar">
+    <div class="navbar_inner container">
+
+      <a href="#home" class="navbar_brand">
+        <div class="navbar_logo">
+          <img src="Folder Gambar Sekolah Minggu/transparan_tjc_logo_indonesia_color (1).png" alt="Logo Gereja Yesus Sejati"/>
         </div>
-        <h1>Pastoral Hub SKKKR</h1>
-        <p class="login-subtitle">Sekolah Kristen Kanaan Kubu Raya</p>
-        <p class="login-subtitle">Renungan Harian & Ibadah Mingguan</p>
-        <form id="login-form" class="login-form">
-          <div class="form-group">
-            <label for="login-username">Username</label>
-            <input type="text" id="login-username" required autocomplete="username" placeholder="Masukkan username" />
-          </div>
-          <div class="form-group">
-            <label for="login-password">Password</label>
-            <input type="password" id="login-password" required autocomplete="current-password" placeholder="Masukkan password" />
-          </div>
-          <div id="login-error" class="error-msg hidden"></div>
-          <button type="submit" class="btn btn-primary btn-block">Login</button>
-        </form>
-        <div id="demo-setup" class="demo-setup hidden">
-          <p class="demo-hint">Demo Mode — belum ada akun. Buat akun admin pertama:</p>
-          <form id="setup-form" class="login-form">
-            <input type="text" id="setup-username" placeholder="Username admin" required />
-            <input type="text" id="setup-fullname" placeholder="Nama lengkap" required />
-            <input type="password" id="setup-password" placeholder="Password" required />
-            <button type="submit" class="btn btn-secondary btn-block">Buat Akun Admin</button>
-          </form>
+      </a>
+
+      <ul class="navbar_links">
+        <li class="navbar_item"><a href="#home"    class="navbar_link">Beranda</a></li>
+        <li class="navbar_item"><a href="#tentang" class="navbar_link">Tentang</a></li>
+
+        <!-- Dropdown: Jenjang -->
+        <li class="navbar_item">
+          <a href="#jenjang" class="navbar_link navbar_jenjang_dropdown-link">Jenjang</a>
+          <ul class="navbar_dropdown">
+            <li><a href="#jenjang" class="navbar_dropdown-link">Kelas Indria</a></li>
+            <li><a href="#jenjang" class="navbar_dropdown-link">Kelas Pratama</a></li>
+            <li><a href="#jenjang" class="navbar_dropdown-link">Kelas Madya</a></li>
+            <li><a href="#jenjang" class="navbar_dropdown-link">Kelas Tunas Muda</a></li>
+            <li><a href="#jenjang" class="navbar_dropdown-link">Kelas Remaja</a></li>
+          </ul>
+        </li>
+
+        <li class="navbar_item"><a href="#jadwal"  class="navbar_link">Jadwal</a></li>
+        <li class="navbar_item"><a href="#galeri"  class="navbar_link">Galeri</a></li>
+        <li class="navbar_item"><a href="#kontak"  class="navbar_link">Kontak</a></li>
+      </ul>
+
+      <a href="#kontak" class="btn btn--navy btn--pill btn--sm">Daftar</a>
+
+      <button id="hamburger" class="navbar_hamburger" aria-label="Buka menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Mobile Drawer -->
+  <div id="drawer" class="drawer" aria-hidden="true">
+    <ul class="drawer_links">
+      <li><a href="#home"    class="drawer_link">Beranda</a></li>
+      <li><a href="#tentang" class="drawer_link">Tentang</a></li>
+      <li><a href="#jenjang" class="drawer_link">Jenjang</a></li>
+      <li><a href="#jadwal"  class="drawer_link">Jadwal</a></li>
+      <li><a href="#galeri"  class="drawer_link">Galeri</a></li>
+      <li><a href="#kontak"  class="drawer_link">Kontak</a></li>
+    </ul>
+  </div>
+
+
+  <!-- === HERO === -->
+  <section id="home" class="hero">
+
+    <!-- Carousel -->
+    <div class="hero_carousel" id="carousel">
+      <div class="hero_slide hero_slide--active">
+        <img src="Folder Gambar Sekolah Minggu/gambar depan gereja.jpeg" alt="Gereja Yesus Sejati Pontianak"/>
+      </div>
+      <div class="hero_slide">
+        <img src="Folder Gambar Sekolah Minggu/Tahun baru anak (2).jpg (1).jpeg" alt="Tahun baru anak"/>
+      </div>
+      <div class="hero_slide">
+       <img src="Folder Gambar Sekolah Minggu/Kelas remaja 2025.jpg.jpeg" alt="Kelas remaja 2025"/>
+      </div>
+      <div class="hero_overlay"></div>
+    </div>
+
+    <!-- Arrow Preview -->
+    <button class="hero_arrow hero_arrow--prev" id="heroPrev" aria-label="Slide sebelumnya">&#8249;</button>
+    <!-- Arrow Next -->
+    <button class="hero_arrow hero_arrow--next" id="heroNext" aria-label="Slide berikutnya">&#8250;</button>
+
+    <!-- Content -->
+    <div class="hero_content container">
+      <div class="hero_text">
+        <h1 class="hero_title anim-fade-up">
+          Sekolah Minggu<br />Gereja Yesus Sejati<br />Pontianak
+        </h1>
+        <p class="hero_desc anim-fade-up" style="animation-delay:.15s">
+          Membimbing anak untuk mengenal Tuhan, bertumbuh dalam iman, dan hidup dalam pimpinan Roh Kudus.
+        </p>
+
+        <blockquote class="hero_quote anim-fade-up" style="animation-delay:.3s">
+          <span class="material-symbols-outlined hero_quote-icon">format_quote</span>
+          <p>"Biarkanlah anak-anak itu, janganlah menghalang-halangi mereka datang kepada-Ku; sebab orang-orang yang seperti itulah yang empunya Kerajaan Sorga."
+          <cite>— Matius 19:14</cite></p>
+        </blockquote>
+
+        <div class="hero_actions anim-fade-up" style="animation-delay:.45s">
+          <a href="#kontak" class="btn btn--sky">Daftar Sekarang</a>
+          <a href="#jenjang" class="btn btn--ghost">Lihat Kelas</a>
         </div>
       </div>
     </div>
 
-    <!-- Main App -->
-    <div id="main-app" class="main-app hidden">
-      <nav class="sidebar">
-        <div class="sidebar-header">
-          <img src="./LogoSKK.png" alt="SKK" width="42" height="42" style="border-radius:6px" />
-          <span>Pastoral Hub SKKKR</span>
-        </div>
-        <ul class="sidebar-menu">
-          <li><a href="#dashboard" data-view="dashboard" class="nav-link active">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-            Dashboard
-          </a></li>
-          <li><a href="#presensi" data-view="presensi" class="nav-link">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-            Presensi
-          </a></li>
-          <li><a href="#history" data-view="history" class="nav-link">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
-            Lihat Presensi
-          </a></li>
-          <li><a href="#export" data-view="export" class="nav-link">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export Laporan
-          </a></li>
-          <li><a href="#admin" data-view="admin" class="nav-link" id="admin-nav">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            Manajemen User
-          </a></li>
-        </ul>
-        <div class="sidebar-footer">
-          <div class="user-info">
-            <span id="user-display-name">—</span>
-            <span id="user-display-role" class="user-role">—</span>
-          </div>
-          <button id="logout-btn" class="btn btn-text">Logout</button>
-        </div>
-      </nav>
-
-      <main class="content">
-        <div class="mobile-topbar">
-          <button id="mobile-menu-btn" class="mobile-menu-btn" title="Menu">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-          </button>
-          <div class="mobile-topbar-brand">
-            <img src="./LogoSKK.png" alt="SKK" width="28" height="28" style="border-radius:4px" />
-            <span>Pastoral Hub</span>
-          </div>
-        </div>
-        <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
-        <div id="demo-banner" class="demo-banner hidden">
-          <strong>Demo Mode:</strong> Backend belum dikonfigurasi. Data disimpan di browser (localStorage). Set API_BASE_URL di <code>js/config.js</code> untuk mengaktifkan database TiDB.
-        </div>
-
-        <!-- Dashboard View -->
-        <section id="view-dashboard" class="view">
-          <div class="page-header">
-            <h2>Dashboard</h2>
-            <div class="date-filter">
-              <label>Kategori: <select id="dash-presensi-type">
-                <option value="renungan_harian">📖 Renungan Harian</option>
-                <option value="ibadah_mingguan">⛪ Ibadah Mingguan</option>
-                <option value="kanaan_fellowship_guru">🧑‍🏫 KF - Guru</option>
-                <option value="kanaan_fellowship_siswa">🎓 KF - Siswa</option>
-              </select></label>
-              <label>Dari: <input type="date" id="dash-start-date" /></label>
-              <label>Sampai: <input type="date" id="dash-end-date" /></label>
-              <select id="dash-academic-year"></select>
-              <button id="dash-refresh" class="btn btn-secondary btn-sm">Refresh</button>
-            </div>
-          </div>
-          <div class="stats-grid" id="stats-cards">
-            <div class="stat-card stat-hadir"><div class="stat-value" id="stat-hadir">0</div><div class="stat-label">Hadir</div></div>
-            <div class="stat-card stat-terlambat"><div class="stat-value" id="stat-terlambat">0</div><div class="stat-label">Terlambat</div></div>
-            <div class="stat-card stat-izin"><div class="stat-value" id="stat-izin">0</div><div class="stat-label">Izin</div></div>
-            <div class="stat-card stat-sakit"><div class="stat-value" id="stat-sakit">0</div><div class="stat-label">Sakit</div></div>
-            <div class="stat-card stat-tk"><div class="stat-value" id="stat-tk">0</div><div class="stat-label">Tidak Hadir</div></div>
-            <div class="stat-card stat-total"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Total Record</div></div>
-          </div>
-          <div class="chart-grid">
-            <div class="chart-card">
-              <h3>Distribusi Kehadiran</h3>
-              <canvas id="chart-distribution"></canvas>
-            </div>
-            <div class="chart-card">
-              <h3>Tren Kehadiran Harian</h3>
-              <canvas id="chart-trend" style="min-height:260px"></canvas>
-            </div>
-          </div>
-          <div class="chart-card" style="margin-top: 20px">
-            <h3>Persentase Kehadiran per Divisi</h3>
-            <canvas id="chart-division"></canvas>
-          </div>
-        </section>
-
-        <!-- Presensi View -->
-        <section id="view-presensi" class="view hidden">
-          <div class="page-header">
-            <h2>Presensi Renungan Harian</h2>
-          </div>
-          <div class="presensi-controls">
-            <div class="form-group">
-              <label for="presensi-type">Kategori</label>
-              <select id="presensi-type">
-                <option value="renungan_harian">📖 Renungan Harian</option>
-                <option value="ibadah_mingguan">⛪ Ibadah Mingguan (Jumat)</option>
-                <option value="kanaan_fellowship_guru">🧑‍🏫 KF - Guru</option>
-                <option value="kanaan_fellowship_siswa">🎓 KF - Siswa</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="presensi-date">Tanggal</label>
-              <input type="date" id="presensi-date" required />
-            </div>
-            <div class="form-group">
-              <label for="presensi-year">Tahun Ajaran</label>
-              <select id="presensi-year"></select>
-            </div>
-            <div class="form-group">
-              <label for="presensi-division-filter">Divisi</label>
-              <select id="presensi-division-filter"><option value="all">Semua Divisi</option></select>
-            </div>
-            <div class="form-group">
-              <label for="presensi-search">Cari</label>
-              <input type="text" id="presensi-search" placeholder="Cari nama..." />
-            </div>
-            <button id="presensi-save" class="btn btn-primary">Simpan</button>
-          </div>
-          <div id="presensi-status-msg" class="info-msg hidden"></div>
-          <div class="presensi-toolbar">
-            <span class="quick-label">Tandai Semua:</span>
-            <button class="btn btn-sm btn-success" data-bulk="hadir">Hadir</button>
-            <button class="btn btn-sm btn-warn" data-bulk="terlambat">Terlambat</button>
-            <button class="btn btn-sm btn-info" data-bulk="izin">Izin</button>
-            <button class="btn btn-sm btn-purple" data-bulk="sakit">Sakit</button>
-            <button class="btn btn-sm btn-danger" data-bulk="tidak_hadir_tk">Tidak Hadir</button>
-          </div>
-          <div class="table-wrapper">
-            <table id="presensi-table">
-              <thead>
-                <tr>
-                  <th>No</th>
-                  <th>Nama</th>
-                  <th>Jabatan</th>
-                  <th>Divisi</th>
-                  <th>Status</th>
-                  <th>Keterangan</th>
-                </tr>
-              </thead>
-              <tbody id="presensi-tbody"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <!-- History View -->
-        <section id="view-history" class="view hidden">
-          <div class="page-header">
-            <h2>Lihat Presensi</h2>
-          </div>
-          <div class="history-controls">
-            <div class="form-group">
-              <label for="history-type">Kategori</label>
-              <select id="history-type">
-                <option value="renungan_harian">📖 Renungan Harian</option>
-                <option value="ibadah_mingguan">⛪ Ibadah Mingguan</option>
-                <option value="kanaan_fellowship_guru">🧑‍🏫 KF - Guru</option>
-                <option value="kanaan_fellowship_siswa">🎓 KF - Siswa</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Mode</label>
-              <div class="radio-group">
-                <label class="radio-label"><input type="radio" name="history-mode" value="range" checked /> Rentang</label>
-                <label class="radio-label"><input type="radio" name="history-mode" value="single" /> 1 Hari</label>
-              </div>
-            </div>
-            <div class="form-group" id="history-range-group">
-              <label for="history-start">Dari</label>
-              <input type="date" id="history-start" />
-            </div>
-            <div class="form-group" id="history-range-group-end">
-              <label for="history-end">Sampai</label>
-              <input type="date" id="history-end" />
-            </div>
-            <div class="form-group hidden" id="history-single-date-group">
-              <label for="history-single-date">Tanggal</label>
-              <input type="date" id="history-single-date" />
-            </div>
-            <div class="form-group">
-              <label for="history-year">Thn Ajaran</label>
-              <select id="history-year"></select>
-            </div>
-            <div class="form-group">
-              <label for="history-employee">Karyawan</label>
-              <select id="history-employee"><option value="all">Semua</option></select>
-            </div>
-            <button id="history-load" class="btn btn-secondary">Muat</button>
-            <button id="history-export" class="btn btn-primary">Export</button>
-          </div>
-          <div id="history-status-msg" class="info-msg hidden"></div>
-          <div class="history-toolbar">
-            <div class="form-group" style="min-width:200px;flex:1">
-              <label for="history-search">Cari dalam hasil</label>
-              <input type="text" id="history-search" placeholder="Cari nama/keterangan..." />
-            </div>
-            <div class="form-group">
-              <label for="history-per-page">Per Halaman</label>
-              <select id="history-per-page">
-                <option value="10" selected>10</option>
-                <option value="25">25</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-                <option value="9999">Semua</option>
-              </select>
-            </div>
-            <span id="history-status" class="muted" style="align-self:end;padding-bottom:8px"></span>
-          </div>
-          <div class="chart-card" style="margin-bottom:16px">
-            <h3>Grafik Kehadiran</h3>
-            <canvas id="history-chart"></canvas>
-          </div>
-          <div class="table-wrapper">
-            <table id="history-table">
-              <thead>
-                <tr>
-                  <th>No</th>
-                  <th>Tanggal</th>
-                  <th>Nama</th>
-                  <th>Jabatan</th>
-                  <th>Divisi</th>
-                  <th>Status</th>
-                  <th>Keterangan</th>
-                  <th>Tipe</th>
-                  <th>Diisi Oleh (Nama / Username / Role)</th>
-                </tr>
-              </thead>
-              <tbody id="history-tbody"></tbody>
-            </table>
-          </div>
-          <div id="history-pagination" class="pagination-controls"></div>
-        </section>
-        <section id="view-export" class="view hidden">
-          <div class="page-header">
-            <h2>Export Laporan</h2>
-          </div>
-          <div class="export-card">
-            <div class="export-form">
-              <div class="form-group">
-                <label for="export-type">Kategori</label>
-                <select id="export-type">
-                  <option value="renungan_harian">📖 Renungan Harian</option>
-                  <option value="ibadah_mingguan">⛪ Ibadah Mingguan</option>
-                  <option value="kanaan_fellowship_guru">🧑‍🏫 KF - Guru</option>
-                  <option value="kanaan_fellowship_siswa">🎓 KF - Siswa</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="export-start">Dari</label>
-                <input type="date" id="export-start" required />
-              </div>
-              <div class="form-group">
-                <label for="export-end">Sampai</label>
-                <input type="date" id="export-end" required />
-              </div>
-              <div class="form-group">
-                <label for="export-year">Thn Ajaran</label>
-                <select id="export-year"></select>
-              </div>
-              <div class="form-group">
-                <label for="export-format">Format</label>
-                <select id="export-format">
-                  <option value="xlsx">Excel (.xlsx)</option>
-                </select>
-              </div>
-              <button id="export-btn" class="btn btn-primary">Export</button>
-            </div>
-            <div class="export-preview" id="export-preview">
-              <p class="muted">Pilih rentang tanggal dan klik Export untuk mengunduh laporan Excel lengkap dengan grafik.</p>
-            </div>
-          </div>
-        </section>
-
-        <!-- Admin View -->
-        <section id="view-admin" class="view hidden">
-          <div class="page-header">
-            <h2>Manajemen</h2>
-            <div class="admin-tabs">
-              <button class="btn btn-sm btn-secondary admin-tab active" data-admin-tab="users">User</button>
-              <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="years">Thn Ajaran</button>
-              <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="divisions">Divisi</button>
-              <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="employees">Karyawan</button>
-              <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="kf-students">KF - Siswa</button>
-            </div>
-          </div>
-
-          <!-- Tab: Users -->
-          <div id="admin-tab-users" class="admin-tab-content">
-            <div class="admin-grid">
-              <div class="admin-form-card">
-                <h3>Tambah User</h3>
-                <form id="add-user-form">
-                  <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" id="new-user-username" required />
-                  </div>
-                  <div class="form-group">
-                    <label>Nama Lengkap</label>
-                    <input type="text" id="new-user-fullname" required />
-                  </div>
-                  <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="new-user-password" required />
-                  </div>
-                  <div class="form-group">
-                    <label>Role</label>
-                    <select id="new-user-role">
-                    <option value="pastoral">Pastoral</option>
-                    <option value="guru_agama">Guru Agama</option>
-                    <option value="kepala_sekolah">Kepala Sekolah</option>
-                    <option value="gereja">Gereja (Read-Only)</option>
-                    <option value="admin">Administrator</option>
-                    </select>
-                  </div>
-                  <button type="submit" class="btn btn-primary btn-block">Tambah</button>
-                </form>
-              </div>
-              <div class="admin-list-card">
-                <h3>Daftar User</h3>
-                <div class="table-wrapper">
-                  <table>
-                    <thead><tr><th>Username</th><th>Nama</th><th>Role</th><th>Aksi</th></tr></thead>
-                    <tbody id="users-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tab: Academic Years -->
-          <div id="admin-tab-years" class="admin-tab-content hidden">
-            <div class="admin-grid">
-              <div class="admin-form-card">
-                <h3>Tambah Tahun Ajaran</h3>
-                <form id="add-year-form">
-                  <div class="form-group">
-                    <label>Kode Tahun Ajaran</label>
-                    <input type="text" id="new-year-code" placeholder="AY2728" required pattern="AY\d{4}" title="Format: AY2728 (untuk 2027-2028)" />
-                  </div>
-                  <div class="form-group">
-                    <label>Label Tahun Ajaran</label>
-                    <input type="text" id="new-year-label" placeholder="2027-2028" required />
-                  </div>
-                  <button type="submit" class="btn btn-primary btn-block">Tambah Tahun Ajaran</button>
-                </form>
-                <p class="muted" style="margin-top:12px">Format kode: AY + 2 digit tahun mulai + 2 digit tahun selesai. Contoh: AY2728 untuk 2027-2028.</p>
-              </div>
-              <div class="admin-list-card">
-                <h3>Daftar Tahun Ajaran</h3>
-                <div class="table-wrapper">
-                  <table>
-                    <thead><tr><th>Kode</th><th>Label</th><th>Status</th><th>Karyawan</th><th>Aksi</th></tr></thead>
-                    <tbody id="years-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tab: Divisions -->
-          <div id="admin-tab-divisions" class="admin-tab-content hidden">
-            <div class="admin-grid">
-              <div class="admin-form-card">
-                <h3>Tambah Divisi</h3>
-                <form id="add-division-form">
-                  <div class="form-group">
-                    <label>Nama Divisi</label>
-                    <input type="text" id="new-division-name" placeholder="Contoh: Primary" required />
-                  </div>
-                  <button type="submit" class="btn btn-primary btn-block">Tambah Divisi</button>
-                </form>
-              </div>
-              <div class="admin-list-card">
-                <h3>Daftar Divisi</h3>
-                <div class="table-wrapper">
-                  <table>
-                    <thead><tr><th>Nama Divisi</th><th>Karyawan Aktif</th><th>Aksi</th></tr></thead>
-                    <tbody id="divisions-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tab: Employees -->
-          <div id="admin-tab-employees" class="admin-tab-content hidden">
-            <div class="admin-toolbar">
-              <div class="form-group">
-                <label for="emp-year-select">Thn Ajaran</label>
-                <select id="emp-year-select"></select>
-              </div>
-              <div class="form-group">
-                <label for="emp-search">Cari</label>
-                <input type="text" id="emp-search" placeholder="Cari nama..." />
-              </div>
-              <div class="form-group">
-                <label for="emp-filter-active">Status</label>
-                <select id="emp-filter-active">
-                  <option value="all">Semua</option>
-                  <option value="active">Aktif</option>
-                  <option value="inactive">Nonaktif</option>
-                </select>
-              </div>
-              <button id="emp-load" class="btn btn-secondary">Muat</button>
-            </div>
-
-            <div class="admin-emp-grid">
-              <div class="admin-form-card">
-                <h3>Tambah Karyawan</h3>
-                <form id="add-employee-form">
-                  <div class="form-group">
-                    <label>Nama</label>
-                    <input type="text" id="new-emp-name" required />
-                  </div>
-                  <div class="form-group">
-                    <label>Jabatan</label>
-                    <input type="text" id="new-emp-position" />
-                  </div>
-                  <div class="form-group">
-                    <label>Divisi</label>
-                    <div class="input-with-btn">
-                      <select id="new-emp-division"><option value="">Pilih...</option></select>
-                      <button type="button" id="quick-add-division" class="btn btn-sm btn-secondary" title="Tambah divisi baru">+</button>
-                    </div>
-                  </div>
-                  <div class="form-group">
-                    <label>Status Karyawan</label>
-                    <input type="text" id="new-emp-status" placeholder="Part Timer / Pension / kosong" />
-                  </div>
-                  <button type="submit" class="btn btn-primary btn-block">Tambah</button>
-                </form>
-
-                <h3 style="margin-top:24px">Import dari Excel</h3>
-                <div class="import-section">
-                  <p class="muted">Format Excel: kolom A=Nama, B=Jabatan, C=Divisi, D=Status. Tanpa header row.</p>
-                  <input type="file" id="emp-import-file" accept=".xlsx,.xls" />
-                  <button id="emp-import-btn" class="btn btn-secondary btn-block" style="margin-top:8px">Import Data</button>
-                  <div id="emp-import-msg" class="info-msg hidden" style="margin-top:8px"></div>
-                </div>
-              </div>
-
-              <div class="admin-list-card">
-                <h3>Daftar Karyawan <span id="emp-count" class="muted"></span></h3>
-                <div class="table-wrapper">
-                  <table>
-                    <thead><tr><th>Nama</th><th>Jabatan</th><th>Divisi</th><th>Status</th><th>RH</th><th>IM</th><th>KF</th><th>Aksi</th></tr></thead>
-                    <tbody id="employees-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- Tab: KF Students -->
-          <div id="admin-tab-kf-students" class="admin-tab-content hidden">
-            <div class="admin-toolbar">
-              <div class="form-group">
-                <label for="kfs-year-select">Thn Ajaran</label>
-                <select id="kfs-year-select"></select>
-              </div>
-              <div class="form-group">
-                <label for="kfs-search">Cari</label>
-                <input type="text" id="kfs-search" placeholder="Cari nama..." />
-              </div>
-              <div class="form-group">
-                <label for="kfs-filter-active">Status</label>
-                <select id="kfs-filter-active">
-                  <option value="all">Semua</option>
-                  <option value="active">Aktif</option>
-                  <option value="inactive">Nonaktif</option>
-                </select>
-              </div>
-              <button id="kfs-load" class="btn btn-secondary">Muat</button>
-            </div>
-            <div class="admin-emp-grid">
-              <div class="admin-form-card">
-                <h3>Tambah Siswa</h3>
-                <form id="add-kfs-form">
-                  <div class="form-group">
-                    <label>Nama</label>
-                    <input type="text" id="new-kfs-name" required />
-                  </div>
-                  <div class="form-group">
-                    <label>NIS</label>
-                    <input type="text" id="new-kfs-nis" />
-                  </div>
-                  <div class="form-group">
-                    <label>Kelas</label>
-                    <input type="text" id="new-kfs-class" placeholder="TK A / 1 SD / 7 SMP ..." />
-                  </div>
-                  <div class="form-group">
-                    <label>Gender</label>
-                    <select id="new-kfs-gender"><option value="">—</option><option value="L">L</option><option value="P">P</option></select>
-                  </div>
-                  <div class="form-group">
-                    <label>Agama</label>
-                    <input type="text" id="new-kfs-religion" placeholder="KRISTEN / KATOLIK / ..." />
-                  </div>
-                  <button type="submit" class="btn btn-primary btn-block">Tambah</button>
-                </form>
-                <h3 style="margin-top:24px">Import dari Excel</h3>
-                <div class="import-section">
-                  <p class="muted">Format: kolom A=NIS, B=Nama, C=Kelas, D=Gender, E=Agama. Baris pertama = header.</p>
-                  <input type="file" id="kfs-import-file" accept=".xlsx,.xls" />
-                  <button id="kfs-import-btn" class="btn btn-secondary btn-block" style="margin-top:8px">Import Data</button>
-                  <p class="muted" style="margin-top:6px">Atau impor langsung dari folder Siswa:</p>
-                  <button id="kfs-import-siswa-folder" class="btn btn-info btn-block" style="margin-top:4px">📥 Impor Semua File Siswa (AY2627)</button>
-                  <div id="kfs-import-msg" class="info-msg hidden" style="margin-top:8px"></div>
-                </div>
-              </div>
-              <div class="admin-list-card">
-                <h3>Daftar Siswa <span id="kfs-count" class="muted"></span></h3>
-                <div class="table-wrapper">
-                  <table>
-                    <thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Gender</th><th>Agama</th><th>Aktif</th><th>Aksi</th></tr></thead>
-                    <tbody id="kfs-tbody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
+    <!-- Dots -->
+    <div class="hero_dots" id="carousel-dots">
+      <button class="hero_dot hero_dot--active" aria-label="Slide 1"></button>
+      <button class="hero_dot" aria-label="Slide 2"></button>
+      <button class="hero_dot" aria-label="Slide 3"></button>
     </div>
-  </div>
+  </section>
 
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-  <script type="module" src="./js/app.js"></script>
+
+  <!-- === TENTANG === -->
+  <section id="tentang" class="section">
+    <div class="container">
+
+      <div class="section_label reveal">Visi &amp; Misi</div>
+      <h2 class="section_title reveal">Membangun Fondasi Iman</h2>
+      <p class="section_description reveal">
+        Sekolah Minggu Gereja Yesus Sejati Pontianak membantu anak-anak berkembang 
+        dalam iman melalui firman Tuhan, pujian, doa, dan tindakan kasih, sehingga mereka dapat 
+        membentuk karakter dan menjadi berkat bagi sesama.
+      </p>
+
+      <div class="visi-misi-grid">
+
+        <div class="vm-card reveal">
+          <div class="vm-card_icon">
+            <span class="material-symbols-outlined">visibility</span>
+          </div>
+          <h3 class="vm-card_title">Visi Kami</h3>
+          <p class="vm-card_body">Membentuk generasi muda yang berakar dalam kebenaran firman Tuhan, dipimpin oleh Roh Kudus, bertumbuh dalam iman yang hidup, dan menjadi pelaku firman Tuhan dalam setiap aspek kehidupan mereka.</p>
+        </div>
+
+        <div class="vm-card reveal">
+          <div class="vm-card_icon">
+            <span class="material-symbols-outlined">flag</span>
+          </div>
+          <h3 class="vm-card_title">Misi Kami</h3>
+          <ul class="vm-card_list">
+            <li>Mengajarkan firman Tuhan sebagai dasar iman dan hidup.</li>
+            <li>Membimbing anak mengenal Tuhan dan hidup dalam Roh Kudus.</li>
+            <li>Membentuk karakter kasih, kebenaran, dan hidup Kristus.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- === JENJANG KELAS === -->
+  <section id="jenjang" class="section section--lilac">
+    <div class="container">
+
+      <div class="section_label reveal">Pembelajaran</div>
+      <h2 class="section_title reveal">Jenjang Kelas Sekolah Minggu</h2>
+      <div class="kelas-grid">
+        <article class="kelas-card reveal">
+          <div class="kelas-card_img-wrap">
+            <img src="Folder Gambar Sekolah Minggu/Indria.jpg.jpeg" alt="Kelas Indria"/>
+            <span class="kelas-card_badge">3–5 th</span>
+          </div>
+          <div class="kelas-card_body">
+            <h3 class="kelas-card_name">Kelas Indria</h3>
+            <p class="kelas-card_desc">Kelas Indria adalah jenjang awal bagi anak usia dini untuk mengenal kasih Tuhan melalui kegiatan sederhana dan menyenangkan seperti bernyanyi, bermain, dan membaca cerita dari Alkitab. Ini juga membentuk karakter dasar sebagai fondasi iman sejak dini.</p>
+            <div class="kelas-card_tag">
+              <span class="material-symbols-outlined">child_care</span>
+              Materi Dasar
+            </div>
+          </div>
+        </article>
+
+        <article class="kelas-card reveal">
+          <div class="kelas-card_img-wrap">
+            <img src="Folder Gambar Sekolah Minggu/Kelas Pratama.jpg.jpeg" alt="Kelas Pratama"/>
+            <span class="kelas-card_badge">6–8 th</span>
+          </div>
+          <div class="kelas-card_body">
+            <h3 class="kelas-card_name">Kelas Pratama</h3>
+            <p class="kelas-card_desc">Melalui kegiatan interaktif yang mendorong partisipasi, kelas pratama membantu anak memahami firman Tuhan secara lebih nyata. Mereka juga membangun karakter yang jujur, disiplin, dan bertanggung jawab sebagai bagian dari pertumbuhan iman mereka.</p>
+            <div class="kelas-card_tag">
+              <span class="material-symbols-outlined">menu_book</span>
+              Nilai Karakter
+            </div>
+          </div>
+        </article>
+
+        <article class="kelas-card reveal">
+          <div class="kelas-card_img-wrap">
+            <img src="Folder Gambar Sekolah Minggu/Kelas Madya (3).jpg.jpeg" alt="Kelas Madya"/>
+            <span class="kelas-card_badge">9–11 th</span>
+          </div>
+          <div class="kelas-card_body">
+            <h3 class="kelas-card_name">Kelas Madya</h3>
+            <p class="kelas-card_desc">Kelas Madya membimbing anak memahami firman Tuhan secara lebih mendalam dan menerapkannya dalam kehidupan sehari-hari melalui diskusi dan pembelajaran yang aktif. Serta anak didorong untuk berpikir, bertanya, dan memahami iman dengan lebih matang.</p>
+            <div class="kelas-card_tag">
+              <span class="material-symbols-outlined">history_edu</span>
+              Pendalaman
+            </div>
+          </div>
+        </article>
+
+        <article class="kelas-card reveal">
+          <div class="kelas-card_img-wrap">
+            <img src="Folder Gambar Sekolah Minggu/kelas tunas muda.jpeg" alt="Kelas Tunas Muda"/>
+            <span class="kelas-card_badge">12–14 th</span>
+          </div>
+          <div class="kelas-card_body">
+            <h3 class="kelas-card_name">Kelas Tunas Muda</h3>
+            <p class="kelas-card_desc">Melalui pembelajaran yang relevan, Kelas Tunas Muda membantu anak praremaja memperdalam iman mereka. Melalui aktivitas dan diskusi interaktif, mereka didorong untuk memahami firman Tuhan, membangun karakter yang baik, dan belajar membuat keputusan yang bijaksana untuk mempersiapkan mereka untuk masa remaja.</p>
+            <div class="kelas-card_tag">
+              <span class="material-symbols-outlined">school</span>
+              Identitas Iman
+            </div>
+          </div>
+        </article>
+
+        <article class="kelas-card reveal">
+          <div class="kelas-card_img-wrap">
+            <img src="Folder Gambar Sekolah Minggu/Kelas Remaja (1).jpg.jpeg" alt="Kelas Remaja"/>
+            <span class="kelas-card_badge">15–17 th</span>
+          </div>
+          <div class="kelas-card_body">
+            <h3 class="kelas-card_name">Kelas Remaja</h3>
+            <p class="kelas-card_desc">Kelas Remaja membantu remaja memperdalam iman mereka secara kritis dan relevan dalam menghadapi kehidupan melalui diskusi dan pembelajaran interaktif. Kelas ini juga mendorong mereka untuk membangun pemahaman iman mereka sendiri, membentuk karakter dewasa, dan memiliki jalan hidup yang jelas yang didasarkan pada kebenaran.</p>
+            <div class="kelas-card_tag">
+              <span class="material-symbols-outlined">emoji_people</span>
+              Kepemimpinan
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- === JADWAL === -->
+  <section id="jadwal" class="section">
+    <div class="container">
+      <div class="jadwal-card reveal">
+        <div class="jadwal-card_deco"></div>
+
+        <div class="jadwal-card_left">
+          <span class="jadwal-card_label">Waktu Ibadah</span>
+          <h2 class="jadwal-card_title">Jadwal Sekolah Minggu Rutin</h2>
+
+          <div class="jadwal-card_info-list">
+            <div class="jadwal-info">
+              <div class="jadwal-info_icon">
+                <span class="material-symbols-outlined">calendar_today</span>
+              </div>
+              <div>
+                <p class="jadwal-info_sub">Hari</p>
+                <p class="jadwal-info_val">Setiap Minggu</p>
+              </div>
+            </div>
+            <div class="jadwal-info">
+              <div class="jadwal-info_icon">
+                <span class="material-symbols-outlined">schedule</span>
+              </div>
+              <div>
+                <p class="jadwal-info_sub">Jam</p>
+                <p class="jadwal-info_val">08:15 – 10:00 WIB</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="jadwal-card_right">
+          <p class="jadwal-card_loc-label">Lokasi Beribadah</p>
+          <h3 class="jadwal-card_loc-name">Gedung Yesus Sejati Pontianak</h3>
+          <a href="https://maps.app.goo.gl/x7PoHS57rVJK69bv6" target="_blank" class="jadwal-card_map-link">
+            Petunjuk Arah <span class="material-symbols-outlined">arrow_forward</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- === GALERI === -->
+  <section id="galeri" class="section section--plum">
+    <div class="container">
+
+      <div class="section_label reveal">Momen Berharga</div>
+      <h2 class="section_title reveal">Galeri Aktivitas</h2>
+
+      <div class="galeri-grid">
+        <div class="galeri-item reveal"><img src="Folder Gambar Sekolah Minggu/pentas seni anugerah teridah.jpeg" alt="Aktivitas 1"/></div>
+         <div class="galeri-item reveal"><img src="Folder Gambar Sekolah Minggu/tahun baru anak 2025.jpg" alt="Aktivitas 2"/></div>
+        <div class="galeri-item reveal"><img src="Folder Gambar Sekolah Minggu/penampilan anak-anak.jpeg" alt="Aktivitas 3"/></div>
+        <div class="galeri-item reveal"><img src="Folder Gambar Sekolah Minggu/Kebaktian padang madya 2025.jpg.jpeg" alt="Aktivitas 4"/></div>
+        <div class="galeri-item reveal"><img src="Folder Gambar Sekolah Minggu/anak anak free time.jpeg" alt="Aktivitas 5"/></div>
+        <div class="galeri-item reveal"><img src="Folder Gambar Sekolah Minggu/sesi games.jpg.jpeg" alt="Aktivitas 6"/></div>
+
+      </div>
+    </div>
+  </section>
+
+
+  <!-- === KONTAK === -->
+  <section id="kontak" class="section">
+    <div class="container">
+      <div class="kontak-grid">
+
+        <div class="kontak-info">
+          <h2 class="kontak-info_title reveal">Mari Bergabung Bersama Kami</h2>
+          <p class="kontak-info_desc reveal">
+            Punya pertanyaan seputar kurikulum, pendaftaran, atau ingin berkunjung untuk melihat suasana kelas? Silakan hubungi kami.
+          </p>
+
+          <ul class="kontak-list">
+            <li class="kontak-item reveal">
+              <div class="kontak-item_icon"><span class="material-symbols-outlined">location_on</span></div>
+              <div>
+                <h4 class="kontak-item_label">Alamat</h4>
+                <p class="kontak-item_val">Jl. H. Abbas 1 No.27,  Benua Melayu Darat, Kec. Pontianak Sel. Kota Pontianak, Kalimantan Barat 78243</p>
+              </div>
+            </li>
+            <li class="kontak-item reveal">
+              <div class="kontak-item_icon"><span class="material-symbols-outlined">mail</span></div>
+              <div>
+                <h4 class="kontak-item_label">Email</h4>
+                <p class="kontak-item_val">pontianak@gys.or.id</p>
+              </div>
+            </li>
+            <li class="kontak-item reveal">
+              <div class="kontak-item_icon"><span class="material-symbols-outlined">phone_iphone</span></div>
+              <div>
+                <h4 class="kontak-item_label">WhatsApp</h4>
+                <p class="kontak-item_val">+62 813-4565-6929</p>
+              </div>
+            </li>
+          </ul>
+
+          <div class="kontak-map reveal">
+            <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3989.8177385569925!2d109.3397224749645!3d-0.03094159996875033!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e1d5851e37e8f51%3A0xbe2f8f03517f20d9!2sGereja%20Yesus%20Sejati%20(GYS)%20Pontianak!5e0!3m2!1sid!2sid!4v1777989106393!5m2!1sid!2sid" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          </div>
+        </div>
+
+       <div class="kontak-form-wrap reveal">
+  <h3 class="kontak-form-wrap_title">Kirim Pesan</h3>
+  <form id="contactForm" class="kontak-form" novalidate>
+
+    <!-- Nama -->
+    <div class="form-group">
+      <label class="form-label" for="name">Nama Lengkap</label>
+      <input class="form-input" type="text" id="name" placeholder="Masukkan nama Anda" required/>
+    </div>
+
+    <!-- Usia -->
+    <div class="form-group">
+      <label class="form-label" for="age">Usia</label>
+      <input class="form-input" type="number" id="age" placeholder="Contoh: 8" min="3" max="17" required/>
+    </div>
+
+    <!-- Jenis Kelamin -->
+    <div class="form-group">
+      <label class="form-label" for="gender">Jenis Kelamin</label>
+      <select class="form-input" id="gender" required>
+        <option value="">Pilih jenis kelamin</option>
+        <option value="Laki-laki">Laki-laki</option>
+        <option value="Perempuan">Perempuan</option>
+      </select>
+    </div>
+
+    <!-- Orang Tua -->
+    <div class="form-group">
+      <label class="form-label" for="guardian">Nama Orang Tua / Wali</label>
+      <input class="form-input" type="text" id="guardian" placeholder="Masukkan nama orang tua / wali" required/>
+    </div>
+
+    <!-- WhatsApp -->
+    <div class="form-group">
+      <label class="form-label" for="whatsapp">Nomor WhatsApp</label>
+      <input class="form-input" type="tel" id="whatsapp"
+        placeholder="Contoh: 081234567890" required/>
+    </div>
+
+    <!-- Alamat -->
+    <div class="form-group">
+      <label class="form-label" for="address">Alamat Tempat Tinggal</label>
+      <textarea class="form-textarea" id="address" rows="3" placeholder="Masukkan alamat tempat tinggal" required></textarea>
+    </div>
+
+    <!-- Pesan -->
+    <div class="form-group">
+      <label class="form-label" for="message">Pesan Anda</label>
+      <textarea class="form-textarea" id="message" rows="4" placeholder="Tuliskan pertanyaan Anda..." required></textarea>
+    </div>
+
+    <button type="submit" class="btn btn--sky btn--full btn--lg">Kirim ke WhatsApp
+      <span class="material-symbols-outlined">send</span>
+    </button>
+  </form>
+</div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- === FOOTER === -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer_top">
+
+        <!-- Kolom 1: Brand & deskripsi -->
+        <div class="footer_brand-wrap">
+          <div class="footer_brand">
+            <div class="footer_brand-logo">
+              <img src="Folder Gambar Sekolah Minggu/burung_merpati_logo-removebg-preview.png" alt="Logo Sekolah Minggu" /></div>
+            <div>
+              <span class="footer_brand-name">Sekolah Minggu</span><br />
+              <span class="footer_brand-name" style="font-weight:600;font-size:.88rem;color:var(--color-muted)">Gereja Yesus Sejati Pontianak</span>
+            </div>
+          </div>
+          <p class="footer_tagline">
+            Membina generasi muda yang takut akan Tuhan, memiliki akar iman yang kuat, dan berkarakter mulia dalam kehidupan sehari-hari.
+          </p>
+          <div class="footer_socials">
+
+      <a href="https://www.instagram.com/gys.pontianak?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" class="footer_social" title="Instagram" aria-label="Instagram"> <i class="fa-brands fa-instagram"></i></a>
+      <a href="https://youtube.com/@gyspontianak?si=K86qAZSJ0i5pJw8A" class="footer_social" title="YouTube" aria-label="YouTube" ><i class="fa-brands fa-youtube"></i></a>
+       <a href="https://www.tiktok.com/@gys_pontianak?_r=1&_t=ZS-968ZvgxfXlv" class="footer_social" title="TikTok" aria-label="TikTok"><i class="fa-brands fa-tiktok"></i></a>
+
+</div>
+        </div>
+
+        <!-- Kolom 2: Navigasi -->
+        <div>
+          <span class="footer_col-heading">Navigasi</span>
+          <ul>
+            <li><a href="#home"    class="footer_nav-link">Beranda</a></li>
+            <li><a href="#tentang" class="footer_nav-link">Tentang Kami</a></li>
+            <li><a href="#jadwal"  class="footer_nav-link">Jadwal Rutin</a></li>
+            <li><a href="#galeri"  class="footer_nav-link">Galeri</a></li>
+            <li><a href="#kontak"  class="footer_nav-link">Kontak</a></li>
+          </ul>
+        </div>
+
+        <!-- Kolom 3: Jenjang Kelas -->
+        <div>
+          <span class="footer_col-heading">Jenjang Kelas</span>
+          <ul>
+            <li><a href="#jenjang" class="footer_nav-link">Kelas Indria </a></li>
+            <li><a href="#jenjang" class="footer_nav-link">Kelas Pratama </a></li>
+            <li><a href="#jenjang" class="footer_nav-link">Kelas Madya </a></li>
+            <li><a href="#jenjang" class="footer_nav-link">Kelas Tunas Muda </a></li>
+            <li><a href="#jenjang" class="footer_nav-link">Kelas Remaja </a></li>
+          </ul>
+        </div>
+
+        <!-- Kolom 4: Kontak -->
+        <div>
+          <span class="footer_col-heading">Kontak</span>
+          <div class="footer_contact-item">
+            <span class="material-symbols-outlined">location_on</span>
+            <span>Jl. H. Abbas 1 No.27,  Benua Melayu Darat, Kec. Pontianak Sel. Kota Pontianak, Kalimantan Barat 78243</span>
+          </div>
+          <div class="footer_contact-item">
+            <span class="material-symbols-outlined">schedule</span>
+            <span>Setiap Minggu, 08:15 – 10:00 WIB</span>
+          </div>
+          <div class="footer_contact-item">
+            <span class="material-symbols-outlined">mail</span>
+            <span>pontianak@gys.or.id</span>
+          </div>
+          <div class="footer_contact-item">
+            <span class="material-symbols-outlined">phone_iphone</span>
+            <span>+62 813-4565-6929</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer_bottom">
+        © 2026 Gereja Yesus Sejati Pontianak. All rights reserved.
+      </div>
+    </div>
+  </footer>
+
+  <button id="backToTop" class="back-to-top" aria-label="Kembali ke atas"> ↑ </button>
+
+  <div id="lightbox" class="lightbox">
+  <button id="lightboxClose" class="lightbox_close" aria-label="Tutup gambar"> × </button>
+
+  <img id="lightboxImage" class="lightbox_image" alt="Preview gambar" /> </div>
+
+  <div id="toast" class="toast"></div>
+
+ <script src="script.js"></script>
 </body>
 </html>
