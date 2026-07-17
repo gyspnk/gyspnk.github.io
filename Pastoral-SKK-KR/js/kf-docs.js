@@ -94,20 +94,16 @@ async function handleUpload() {
     // Convert to base64
     const base64 = await fileToBase64(file);
     document.getElementById('kfd-progress-bar').style.width = '30%';
+    document.getElementById('kfd-progress-text').textContent = 'Upload ke server...';
 
-    // Upload to Google Drive via our proxy
-    const folderPath = `Kanaan Fellowship/${currentYearLabel}/${classGroup}`;
-    const result = await uploadToGoogleDrive(file.name, base64, folderPath);
-
-    document.getElementById('kfd-progress-bar').style.width = '80%';
-
-    // Save metadata to database
-    await api.addKFDoc({
+    // Upload via worker (server-side Google Drive upload using service account)
+    const result = await api.uploadKFDoc({
       eventDate, academicYear: currentYearLabel, classGroup,
-      fileName: file.name,
-      driveFileId: result.fileId,
-      driveUrl: result.webViewLink || `https://drive.google.com/file/d/${result.fileId}/view`
+      fileName: file.name, fileData: base64, mimeType: file.type
     });
+
+    document.getElementById('kfd-progress-bar').style.width = '100%';
+    document.getElementById('kfd-progress-text').textContent = 'Selesai!';
 
     document.getElementById('kfd-progress-bar').style.width = '100%';
     document.getElementById('kfd-progress-text').textContent = 'Selesai!';
@@ -135,123 +131,6 @@ function fileToBase64(file) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-}
-
-async function uploadToGoogleDrive(fileName, base64Data, folderPath) {
-  // Use the Firebase token (Google OAuth) to access Drive API
-  // The user has already authenticated with Google via Firebase Auth
-  const token = await getGoogleAccessToken();
-  if (!token) throw new Error('Perlu login ulang dengan Google. Buka aplikasi dan login kembali.');
-
-  // Step 1: Create/get folder structure
-  const folderId = await getOrCreateFolderPath(token, folderPath);
-
-  // Step 2: Upload file
-  const metadata = {
-    name: fileName,
-    parents: [folderId],
-    mimeType: 'image/jpeg'
-  };
-
-  const boundary = '-------314159265358979323846';
-  const body = [
-    `--${boundary}`,
-    'Content-Type: application/json; charset=UTF-8',
-    '',
-    JSON.stringify(metadata),
-    `--${boundary}`,
-    'Content-Type: image/jpeg',
-    'Content-Transfer-Encoding: base64',
-    '',
-    base64Data,
-    `--${boundary}--`
-  ].join('\r\n');
-
-  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': `multipart/related; boundary=${boundary}`
-    },
-    body
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Drive API error: ${res.status}`);
-  }
-
-  const fileData = await res.json();
-
-  // Make file publicly readable
-  await fetch(`https://www.googleapis.com/drive/v3/files/${fileData.id}/permissions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ role: 'reader', type: 'anyone' })
-  });
-
-  return { fileId: fileData.id, webViewLink: fileData.webViewLink };
-}
-
-async function getGoogleAccessToken() {
-  // Try to get token from Firebase Auth
-  return new Promise((resolve) => {
-    // The Firebase Auth token can be exchanged for Google API access
-    // Check if there's a stored Google credential
-    try {
-      const authData = JSON.parse(localStorage.getItem('kf_google_token') || 'null');
-      if (authData && authData.expires_at > Date.now()) {
-        resolve(authData.access_token);
-        return;
-      }
-    } catch(e) {}
-
-    // Fallback: try to get from Firebase current user
-    // This will trigger Google sign-in if needed
-    resolve(null);
-  });
-}
-
-async function getOrCreateFolderPath(token, folderPath) {
-  const parts = folderPath.split('/').filter(Boolean);
-  let parentId = 'root';
-
-  for (const folderName of parts) {
-    // Search for existing folder
-    const query = encodeURIComponent(
-      `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and '${parentId}' in parents and trashed=false`
-    );
-    const searchRes = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`,
-      { headers: { 'Authorization': `Bearer ${token}` } }
-    );
-    const searchData = await searchRes.json();
-
-    if (searchData.files && searchData.files.length > 0) {
-      parentId = searchData.files[0].id;
-    } else {
-      // Create folder
-      const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: folderName,
-          mimeType: 'application/vnd.google-apps.folder',
-          parents: [parentId]
-        })
-      });
-      const createData = await createRes.json();
-      parentId = createData.id;
-    }
-  }
-
-  return parentId;
 }
 
 function renderKFGallery() {

@@ -478,6 +478,9 @@ const realApi = {
   async addKFDoc(data) {
     return apiFetch('/api/kf-docs', { method: 'POST', body: JSON.stringify(data) });
   },
+  async uploadKFDoc(data) {
+    return apiFetch('/api/kf-docs/upload', { method: 'POST', body: JSON.stringify(data) });
+  },
   async deleteKFDoc(id) {
     return apiFetch(`/api/kf-docs/${id}`, { method: 'DELETE' });
   }

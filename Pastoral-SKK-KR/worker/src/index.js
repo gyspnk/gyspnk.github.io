@@ -1,5 +1,6 @@
 import { query, execute, initSchema } from './db.js';
 import { hashPassword, verifyPassword, createJWT, verifyJWT } from './auth.js';
+import { uploadToDrive } from './google-drive.js';
 
 let _schemaReady = false;
 async function ensureSchema(env) {
@@ -371,6 +372,22 @@ export default {
           'INSERT INTO kf_documentation (event_date, academic_year, class_group, file_name, drive_file_id, drive_url, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [eventDate, academicYear, classGroup, fileName || '', driveFileId, driveUrl || '', payload.username]);
         return json({ success: true }, 201, allowOrigin);
+      }
+
+      if (path === '/api/kf-docs/upload' && request.method === 'POST') {
+        const { eventDate, academicYear, classGroup, fileName, fileData, mimeType } = await request.json();
+        if (!eventDate || !classGroup || !fileData) return json({ error: 'Data tidak lengkap' }, 400, allowOrigin);
+        try {
+          const folderPath = `Kanaan Fellowship/${academicYear}/${classGroup}`;
+          const result = await uploadToDrive(env, fileName, fileData, mimeType || 'image/jpeg', folderPath);
+          // Save metadata
+          await execute(env,
+            'INSERT INTO kf_documentation (event_date, academic_year, class_group, file_name, drive_file_id, drive_url, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [eventDate, academicYear, classGroup, fileName, result.fileId, result.webViewLink, payload.username]);
+          return json({ success: true, fileId: result.fileId, url: result.webViewLink }, 201, allowOrigin);
+        } catch (e) {
+          return json({ error: 'Drive upload gagal: ' + e.message }, 500, allowOrigin);
+        }
       }
 
       if (path.startsWith('/api/kf-docs/') && request.method === 'DELETE') {
