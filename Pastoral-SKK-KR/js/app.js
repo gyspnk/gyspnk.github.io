@@ -224,12 +224,9 @@ function updateSidebarPermissions() {
   if (historyLink) historyLink.parentElement.style.display = hasAnyAccess ? '' : 'none';
   if (exportLink) exportLink.parentElement.style.display = hasAnyAccess ? '' : 'none';
 
-  // KF Docs: visible for all except gereja (read-only)
-  const kfDocsLink = document.getElementById('kf-docs-nav');
-  if (kfDocsLink) {
-    const user = getCurrentUser();
-    kfDocsLink.parentElement.style.display = (user && user.role !== 'gereja') ? '' : 'none';
-  }
+  // KF Docs: hidden until Drive delegation ready
+  // const kfDocsLink = document.getElementById('kf-docs-nav');
+  // if (kfDocsLink) { ... }
 }
 
 function filterPresensiTypeSelectors() {
@@ -301,10 +298,8 @@ function switchView(view) {
     initExport();
   }
 
-  if (view === 'kf-docs' && !viewsInitialized['kf-docs']) {
-    viewsInitialized['kf-docs'] = true;
-    try { initKFDocs(); } catch(e) { console.error('KF Docs init error:', e); }
-  }
+  // KF Docs disabled until Drive delegation is set up
+  // if (view === 'kf-docs' && !viewsInitialized['kf-docs']) { ... }
 
   if (view === 'admin' && hasRole('admin')) {
     initAdmin();
