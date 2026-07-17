@@ -336,6 +336,7 @@
               <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="divisions">Divisi</button>
               <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="employees">Karyawan</button>
               <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="kf-students">KF - Siswa</button>
+              <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="presensi-config">Presensi</button>
             </div>
           </div>
 
@@ -577,6 +578,14 @@
                   </table>
                 </div>
               </div>
+            </div>
+          </div>
+          <!-- Tab: Presensi Config -->
+          <div id="admin-tab-presensi-config" class="admin-tab-content hidden">
+            <div class="admin-form-card" style="max-width:700px">
+              <h3>Konfigurasi Hari Presensi</h3>
+              <p class="muted" style="margin-bottom:16px">Atur hari apa saja setiap presensi boleh diisi. Hari yang tidak dicentang akan <strong>digrey-out</strong> di kalender dan tidak bisa dipilih.</p>
+              <div id="presensi-config-list"></div>
             </div>
           </div>
         </section>

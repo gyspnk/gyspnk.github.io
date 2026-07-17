@@ -267,6 +267,27 @@ const demoApi = {
     }
     dbSet('pas_presensi_kf_students', existing);
     return { success: true, count };
+  },
+  async getPresensiConfig() {
+    let config = dbGet('pas_presensi_config');
+    if (config.length === 0) {
+      config = [
+        { presensi_type: 'renungan_harian', allowed_days: '1,2,3,4,5' },
+        { presensi_type: 'ibadah_mingguan', allowed_days: '5' },
+        { presensi_type: 'kanaan_fellowship_guru', allowed_days: '1,2,3,4,5' },
+        { presensi_type: 'kanaan_fellowship_siswa', allowed_days: '1,2,3,4,5' }
+      ];
+      dbSet('pas_presensi_config', config);
+    }
+    return config;
+  },
+  async updatePresensiConfig(presensiType, allowedDays) {
+    const config = dbGet('pas_presensi_config');
+    const idx = config.findIndex(c => c.presensi_type === presensiType);
+    if (idx >= 0) config[idx].allowed_days = allowedDays;
+    else config.push({ presensi_type: presensiType, allowed_days: allowedDays });
+    dbSet('pas_presensi_config', config);
+    return { success: true };
   }
 };
 
@@ -368,6 +389,12 @@ const realApi = {
   },
   async importKFStudents(academicYearId, students) {
     return apiFetch('/api/kf-students/import', { method: 'POST', body: JSON.stringify({ academicYearId, students }) });
+  },
+  async getPresensiConfig() {
+    return apiFetch('/api/presensi-config');
+  },
+  async updatePresensiConfig(presensiType, allowedDays) {
+    return apiFetch('/api/presensi-config', { method: 'PUT', body: JSON.stringify({ presensiType, allowedDays }) });
   }
 };
 

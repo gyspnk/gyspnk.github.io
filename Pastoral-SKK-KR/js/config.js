@@ -37,6 +37,8 @@ export const CONFIG = {
     kanaan_fellowship_siswa: 'Kanaan Fellowship Siswa'
   },
   IBADAH_MINGGUAN_DAY: 5, // Friday (0=Sun, 1=Mon, ..., 5=Fri, 6=Sat)
+  DAY_NAMES: ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'],
+  DAY_SHORT: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'],
   PERMISSION_LEVELS: ['none', 'view', 'write'],
   PERMISSION_LABELS: { none: 'Tidak Ada', view: 'Lihat', write: 'Tulis' },
   PERMISSION_DEFAULTS: {

@@ -10,6 +10,7 @@ let divisionFilter = 'all';
 let currentPresensiType = 'renungan_harian';
 
 export async function initPresensi() {
+  await loadPresensiDayConfig();
   const years = await getAvailableYears();
   const currentAY = getCurrentAcademicYear(years);
   currentYearObj = currentAY;
@@ -92,49 +93,109 @@ function updatePresensiWriteUI() {
   }
 }
 
+let presensiAllowedDays = {}; // populated from API
+
+async function loadPresensiDayConfig() {
+  try {
+    const config = await api.getPresensiConfig();
+    presensiAllowedDays = {};
+    config.forEach(c => { presensiAllowedDays[c.presensi_type] = (c.allowed_days || '').split(',').map(Number).filter(n => !isNaN(n)); });
+  } catch(e) { presensiAllowedDays = {}; }
+}
+
+function getAllowedDays() {
+  // Fallback to defaults if not loaded
+  if (!presensiAllowedDays[currentPresensiType]) {
+    return currentPresensiType === 'ibadah_mingguan' ? [5] : [1,2,3,4,5];
+  }
+  return presensiAllowedDays[currentPresensiType];
+}
+
 function enforceDateRestriction() {
   const dateInput = document.getElementById('presensi-date');
   if (!dateInput) return;
-  if (currentPresensiType === 'ibadah_mingguan') {
-    // Only allow Fridays (day 5)
-    const currentVal = dateInput.value;
-    if (currentVal) {
-      const d = new Date(currentVal + 'T00:00:00');
-      if (d.getDay() !== CONFIG.IBADAH_MINGGUAN_DAY) {
-        // Auto-adjust to nearest Friday
-        dateInput.value = getNearestFriday(d);
-      }
-    }
-    dateInput.addEventListener('change', validateFriday);
-    const msgEl = document.getElementById('presensi-status-msg');
-    if (msgEl && msgEl.style.background !== '#fee2e2' && msgEl.style.background !== 'rgb(254, 226, 226)') {
-      msgEl.textContent = '⛪ Ibadah Mingguan hanya dapat diisi untuk hari Jumat.';
-      msgEl.classList.remove('hidden');
-    }
-  } else {
-    dateInput.removeEventListener('change', validateFriday);
+  const allowedDays = getAllowedDays();
+
+  // Grey out disallowed days in the date picker
+  dateInput.addEventListener('input', validateDayAllowed);
+  dateInput.addEventListener('change', validateDayPopup);
+
+  const msgEl = document.getElementById('presensi-status-msg');
+  const dayNames = CONFIG.DAY_NAMES;
+  const allowedNames = allowedDays.map(d => dayNames[d]).join(', ');
+  if (msgEl && msgEl.style.background !== '#fee2e2') {
+    msgEl.textContent = `📅 Hari yang diperbolehkan: ${allowedNames}.`;
+    msgEl.classList.remove('hidden');
+    msgEl.style.background = '#dbeafe'; msgEl.style.color = '#1e40af';
   }
+
+  // Validate current date
+  validateCurrentDate();
 }
 
-function validateFriday() {
+function validateCurrentDate() {
   const dateInput = document.getElementById('presensi-date');
-  if (!dateInput || currentPresensiType !== 'ibadah_mingguan') return;
+  if (!dateInput) return;
   const val = dateInput.value;
-  if (val) {
-    const d = new Date(val + 'T00:00:00');
-    if (d.getDay() !== CONFIG.IBADAH_MINGGUAN_DAY) {
-      dateInput.value = getNearestFriday(d);
-    }
+  if (!val) return;
+  const d = new Date(val + 'T00:00:00');
+  const allowedDays = getAllowedDays();
+  if (!allowedDays.includes(d.getDay())) {
+    // Find nearest allowed day
+    const nearest = getNearestAllowedDay(d, allowedDays);
+    dateInput.value = nearest;
   }
 }
 
-function getNearestFriday(d) {
-  const day = d.getDay();
-  const target = CONFIG.IBADAH_MINGGUAN_DAY; // 5 = Friday
-  const diff = target - day;
-  const friday = new Date(d);
-  friday.setDate(d.getDate() + diff);
-  return `${friday.getFullYear()}-${String(friday.getMonth()+1).padStart(2,'0')}-${String(friday.getDate()).padStart(2,'0')}`;
+function validateDayAllowed() {
+  const dateInput = document.getElementById('presensi-date');
+  if (!dateInput) return;
+  const val = dateInput.value;
+  if (!val) return;
+  const d = new Date(val + 'T00:00:00');
+  const allowedDays = getAllowedDays();
+  // Visual only: grey out in supported browsers
+  if (!allowedDays.includes(d.getDay())) {
+    dateInput.style.borderColor = 'var(--red)';
+    dateInput.style.background = '#fef2f2';
+  } else {
+    dateInput.style.borderColor = '';
+    dateInput.style.background = '';
+  }
+}
+
+function validateDayPopup() {
+  const dateInput = document.getElementById('presensi-date');
+  if (!dateInput) return;
+  const val = dateInput.value;
+  if (!val) return;
+  const d = new Date(val + 'T00:00:00');
+  const allowedDays = getAllowedDays();
+  if (!allowedDays.includes(d.getDay())) {
+    const dayNames = CONFIG.DAY_NAMES;
+    const allowedNames = allowedDays.map(d => dayNames[d]).join(', ');
+    const previousVal = dateInput.dataset.previousDate || '';
+    alert(`⚠️ Hari ${dayNames[d.getDay()]} tidak diperbolehkan untuk presensi ini.\n\nHari yang diperbolehkan: ${allowedNames}\n\nTanggal akan dikembalikan.`);
+    dateInput.value = previousVal || getNearestAllowedDay(d, allowedDays);
+    dateInput.style.borderColor = '';
+    dateInput.style.background = '';
+  } else {
+    dateInput.dataset.previousDate = val;
+    dateInput.style.borderColor = '';
+    dateInput.style.background = '';
+  }
+}
+
+function getNearestAllowedDay(d, allowedDays) {
+  // Find closest allowed day (forward first)
+  for (let i = 0; i < 7; i++) {
+    const check = new Date(d);
+    check.setDate(d.getDate() + i);
+    if (allowedDays.includes(check.getDay())) {
+      return `${check.getFullYear()}-${String(check.getMonth()+1).padStart(2,'0')}-${String(check.getDate()).padStart(2,'0')}`;
+    }
+  }
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 async function loadPresensiData() {
@@ -340,16 +401,17 @@ async function savePresensi() {
     return;
   }
 
-  // Validate Friday for ibadah mingguan
-  if (currentPresensiType === 'ibadah_mingguan') {
-    const d = new Date(date + 'T00:00:00');
-    if (d.getDay() !== CONFIG.IBADAH_MINGGUAN_DAY) {
-      msgEl.textContent = '⛪ Ibadah Mingguan hanya dapat diisi untuk hari Jumat.';
-      msgEl.classList.remove('hidden');
-      msgEl.style.background = '#fee2e2';
-      msgEl.style.color = '#991b1b';
-      return;
-    }
+  // Validate day based on presensi config
+  const allowedDays = getAllowedDays();
+  const d = new Date(date + 'T00:00:00');
+  if (!allowedDays.includes(d.getDay())) {
+    const dayName = CONFIG.DAY_NAMES[d.getDay()];
+    const allowedNames = allowedDays.map(dn => CONFIG.DAY_NAMES[dn]).join(', ');
+    msgEl.textContent = `⚠️ Hari ${dayName} tidak diperbolehkan. Hari yang bisa: ${allowedNames}.`;
+    msgEl.classList.remove('hidden');
+    msgEl.style.background = '#fee2e2';
+    msgEl.style.color = '#991b1b';
+    return;
   }
 
   const records = currentEmployees

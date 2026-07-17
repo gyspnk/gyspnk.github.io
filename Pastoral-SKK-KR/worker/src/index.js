@@ -280,6 +280,38 @@ export default {
         return json({ success: true, count }, 200, allowOrigin);
       }
 
+      // ===== Presensi Config =====
+      if (path === '/api/presensi-config' && request.method === 'GET') {
+        const rows = await query(env, 'SELECT * FROM presensi_config ORDER BY presensi_type');
+        // If table is empty, return defaults
+        if (rows.length === 0) {
+          const defaults = [
+            { presensi_type: 'renungan_harian', allowed_days: '1,2,3,4,5' },
+            { presensi_type: 'ibadah_mingguan', allowed_days: '5' },
+            { presensi_type: 'kanaan_fellowship_guru', allowed_days: '1,2,3,4,5' },
+            { presensi_type: 'kanaan_fellowship_siswa', allowed_days: '1,2,3,4,5' }
+          ];
+          // Auto-insert defaults
+          for (const d of defaults) {
+            await execute(env,
+              'INSERT IGNORE INTO presensi_config (presensi_type, allowed_days) VALUES (?, ?)',
+              [d.presensi_type, d.allowed_days]);
+          }
+          return json(defaults, 200, allowOrigin);
+        }
+        return json(rows, 200, allowOrigin);
+      }
+
+      if (path === '/api/presensi-config' && request.method === 'PUT') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const { presensiType, allowedDays } = await request.json();
+        if (!presensiType) return json({ error: 'Field tidak lengkap' }, 400, allowOrigin);
+        await execute(env,
+          'INSERT INTO presensi_config (presensi_type, allowed_days) VALUES (?, ?) ON DUPLICATE KEY UPDATE allowed_days = VALUES(allowed_days)',
+          [presensiType, allowedDays]);
+        return json({ success: true }, 200, allowOrigin);
+      }
+
       // ===== Kanaan Fellowship Students =====
       if (path === '/api/kf-students' && request.method === 'GET') {
         const params = url.searchParams;

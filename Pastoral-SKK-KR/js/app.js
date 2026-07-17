@@ -276,6 +276,7 @@ async function initAdmin() {
   initAdminDivisions();
   initAdminEmployees();
   initAdminKFStudents();
+  initAdminPresensiConfig();
 }
 
 function switchAdminTab(tab) {
@@ -758,28 +759,34 @@ function showPermissionModal(userId, username, currentPerms) {
   const levels = CONFIG.PERMISSION_LEVELS;
   const labels = CONFIG.PERMISSION_LABELS;
 
-  let html = `<div style="max-width:500px">
-    <h3 style="margin-bottom:12px">Izin Akses: ${username}</h3>
-    <table style="width:100%;margin-bottom:16px">
-    <thead><tr><th>Presensi</th>${levels.map(l => `<th style="text-align:center">${labels[l]}</th>`).join('')}</tr></thead>
+  let html = `<div style="width:100%;max-width:600px">
+    <h3 style="margin-bottom:4px">Izin Akses</h3>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">${username}</p>
+    <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr>
+      <th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Presensi</th>
+      ${levels.map(l => `<th style="text-align:center;padding:8px 12px;border-bottom:2px solid var(--border);font-size:12px;font-weight:600">${labels[l]}</th>`).join('')}
+    </tr></thead>
     <tbody>`;
 
-  types.forEach(t => {
+  types.forEach((t, idx) => {
     const current = currentPerms[t.value] || 'none';
-    html += `<tr>
-      <td style="padding:6px 8px">${t.icon} ${t.label}</td>
+    const bg = idx % 2 === 0 ? '#f8fafc' : 'transparent';
+    html += `<tr style="background:${bg}">
+      <td style="padding:8px;font-weight:500;white-space:nowrap">${t.icon} ${t.label}</td>
       ${levels.map(l => `
-        <td style="text-align:center;padding:6px 4px">
-          <label style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:2px">
-            <input type="radio" name="perm_${t.value}" value="${l}" ${current === l ? 'checked' : ''} style="accent-color:var(--primary)" />
+        <td style="text-align:center;padding:8px">
+          <label style="cursor:pointer;display:flex;align-items:center;justify-content:center">
+            <input type="radio" name="perm_${t.value}" value="${l}" ${current === l ? 'checked' : ''} style="accent-color:var(--primary);width:16px;height:16px" />
           </label>
         </td>
       `).join('')}
     </tr>`;
   });
 
-  html += `</tbody></table>
-    <div style="display:flex;gap:8px;justify-content:flex-end">
+  html += `</tbody></table></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
       <button id="perm-cancel" class="btn btn-secondary btn-sm">Batal</button>
       <button id="perm-save" class="btn btn-primary btn-sm">Simpan</button>
     </div>
@@ -788,7 +795,7 @@ function showPermissionModal(userId, username, currentPerms) {
 
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px';
-  overlay.innerHTML = `<div style="background:var(--card-bg);border-radius:12px;padding:24px;max-width:95vw">${html}</div>`;
+  overlay.innerHTML = `<div style="background:var(--card-bg);border-radius:12px;padding:24px;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">${html}</div>`;
   document.body.appendChild(overlay);
 
   overlay.querySelector('#perm-cancel').onclick = () => overlay.remove();
@@ -801,6 +808,7 @@ function showPermissionModal(userId, username, currentPerms) {
     const msgEl = overlay.querySelector('#perm-msg');
     msgEl.textContent = 'Menyimpan...';
     msgEl.classList.remove('hidden');
+    msgEl.style.background = '#dbeafe'; msgEl.style.color = '#1e40af';
     try {
       await api.updateUser(userId, { permissions: newPerms });
       msgEl.textContent = '✅ Izin berhasil disimpan.';
@@ -809,7 +817,7 @@ function showPermissionModal(userId, username, currentPerms) {
         overlay.remove();
         const users = await api.getUsers();
         renderUsers(users);
-      }, 800);
+      }, 600);
     } catch (e) {
       msgEl.textContent = 'Gagal: ' + e.message;
       msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
@@ -1070,4 +1078,65 @@ async function handleImportSiswaFolder() {
     msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';
     await loadAdminKFStudents();
   } catch (e) { msgEl.textContent = 'Gagal: ' + e.message; msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b'; }
+}
+
+/* ===== Presensi Config Management ===== */
+let presensiConfigData = {};
+
+async function initAdminPresensiConfig() {
+  await loadPresensiConfig();
+}
+
+async function loadPresensiConfig() {
+  try {
+    presensiConfigData = {};
+    const config = await api.getPresensiConfig();
+    config.forEach(c => { presensiConfigData[c.presensi_type] = c.allowed_days; });
+    renderPresensiConfig();
+  } catch (e) {
+    console.error('Failed to load presensi config:', e);
+  }
+}
+
+function renderPresensiConfig() {
+  const container = document.getElementById('presensi-config-list');
+  if (!container) return;
+  const dayShort = CONFIG.DAY_SHORT;
+  const dayNames = CONFIG.DAY_NAMES;
+
+  let html = '';
+  CONFIG.PRESENSI_TYPES.forEach(t => {
+    const allowed = (presensiConfigData[t.value] || '').split(',').map(Number).filter(n => !isNaN(n));
+    html += `<div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:10px">
+      <div style="font-weight:600;margin-bottom:8px">${t.icon} ${t.label}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" data-config-type="${t.value}">`;
+
+    dayNames.forEach((day, i) => {
+      const checked = allowed.includes(i);
+      html += `<label style="display:flex;align-items:center;gap:4px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:13px;${checked ? 'background:#dbeafe;border-color:var(--primary);font-weight:600' : ''}">
+        <input type="checkbox" value="${i}" ${checked ? 'checked' : ''} onchange="window._updatePresensiDay('${t.value}')" style="accent-color:var(--primary)" />
+        ${dayShort[i]}
+      </label>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  container.innerHTML = html;
+
+  window._updatePresensiDay = async function(type) {
+    const dayDiv = document.querySelector(`[data-config-type="${type}"]`);
+    if (!dayDiv) return;
+    const checked = [...dayDiv.querySelectorAll('input:checked')].map(cb => parseInt(cb.value));
+    if (checked.length === 0) {
+      alert('Minimal satu hari harus dipilih.');
+      loadPresensiConfig(); return;
+    }
+    const allowedDays = checked.sort((a, b) => a - b).join(',');
+    try {
+      await api.updatePresensiConfig(type, allowedDays);
+      presensiConfigData[type] = allowedDays;
+      renderPresensiConfig();
+    } catch (e) { alert('Gagal: ' + e.message); loadPresensiConfig(); }
+  };
 }

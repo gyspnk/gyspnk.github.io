@@ -91,6 +91,12 @@ export async function initSchema(env) {
       INDEX idx_class (class),
       UNIQUE KEY uq_kf_student (name, class, academic_year_id)
     )`,
+    `CREATE TABLE IF NOT EXISTS presensi_config (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      presensi_type VARCHAR(30) UNIQUE NOT NULL,
+      allowed_days VARCHAR(30) NOT NULL DEFAULT '1,2,3,4,5',
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )`,
     `CREATE TABLE IF NOT EXISTS divisions (
       id INT AUTO_INCREMENT PRIMARY KEY,
       name VARCHAR(100) UNIQUE NOT NULL,
