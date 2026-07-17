@@ -5,6 +5,7 @@ import { exportRecords } from './export.js';
 
 let allRecords = [];
 let allEmployees = [];
+let allStudents = [];
 let userMap = {};
 let historyChart = null;
 let currentPage = 1;
@@ -24,9 +25,12 @@ export async function initHistory() {
     yearSelect.appendChild(opt);
   });
 
-  // Presensi type selector
+  // Presensi type selector — update filter when changed
   const typeSelect = document.getElementById('history-type');
-  typeSelect.onchange = loadHistory;
+  typeSelect.onchange = () => {
+    updateHistoryFilterLabel();
+    loadHistory();
+  };
 
   const now = new Date();
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -47,10 +51,11 @@ export async function initHistory() {
 
   try {
     allEmployees = await loadKaryawanData(currentAY);
+    // Also load KF students for the dropdown
+    allStudents = await api.getKFStudents({ academicYear: currentAY.label, active: 'true' });
   } catch (e) {
-    console.error('Failed to load employees for history:', e);
+    console.error('Failed to load data for history:', e);
   }
-  populateEmployeeSelect();
 
   try {
     const users = await api.getUsers();
@@ -60,7 +65,35 @@ export async function initHistory() {
     console.error('Failed to load users for history:', e);
   }
 
+  updateHistoryFilterLabel();
   loadHistory();
+}
+
+function updateHistoryFilterLabel() {
+  const type = document.getElementById('history-type')?.value || 'renungan_harian';
+  const label = document.getElementById('history-employee-label');
+  const select = document.getElementById('history-employee');
+
+  if (type === 'kanaan_fellowship_siswa') {
+    if (label) label.textContent = 'Kelas';
+    select.innerHTML = '<option value="all">Semua Kelas</option>';
+    const classes = [...new Set(allStudents.map(s => s.class).filter(Boolean))].sort((a,b) => a.localeCompare(b,'id',{numeric:true}));
+    classes.forEach(cls => {
+      const opt = document.createElement('option');
+      opt.value = cls;
+      opt.textContent = cls;
+      select.appendChild(opt);
+    });
+  } else {
+    if (label) label.textContent = 'Karyawan';
+    select.innerHTML = '<option value="all">Semua</option>';
+    allEmployees.forEach(emp => {
+      const opt = document.createElement('option');
+      opt.value = emp.name;
+      opt.textContent = `${emp.name} (${emp.division})`;
+      select.appendChild(opt);
+    });
+  }
 }
 
 function toggleMode() {
@@ -69,17 +102,6 @@ function toggleMode() {
   document.getElementById('history-single-date-group').classList.toggle('hidden', isRange);
   document.getElementById('history-range-group').classList.toggle('hidden', !isRange);
   document.getElementById('history-range-group-end').classList.toggle('hidden', !isRange);
-}
-
-function populateEmployeeSelect() {
-  const select = document.getElementById('history-employee');
-  select.innerHTML = '<option value="all">Semua</option>';
-  allEmployees.forEach(emp => {
-    const opt = document.createElement('option');
-    opt.value = emp.name;
-    opt.textContent = `${emp.name} (${emp.division})`;
-    select.appendChild(opt);
-  });
 }
 
 async function loadHistory() {
@@ -124,7 +146,9 @@ async function loadHistory() {
 
   const typeLabel = CONFIG.PRESENSI_TYPE_LABELS[presensiType] || '';
   const count = allRecords.length;
-  statusMsg.textContent = `${count} record ${typeLabel} ditemukan untuk ${employee === 'all' ? 'semua karyawan' : employee}.`;
+  const isSiswa = presensiType === 'kanaan_fellowship_siswa';
+  const filterLabel = employee === 'all' ? (isSiswa ? 'semua kelas' : 'semua karyawan') : employee;
+  statusMsg.textContent = `${count} record ${typeLabel} ditemukan untuk ${filterLabel}.`;
   currentPage = 1;
   renderHistoryTable();
   renderHistoryChart();
@@ -133,15 +157,23 @@ async function loadHistory() {
 function getFilteredRecords() {
   const employee = document.getElementById('history-employee').value;
   const searchTerm = (document.getElementById('history-search').value || '').toLowerCase();
+  const presensiType = document.getElementById('history-type')?.value || 'renungan_harian';
+
   return allRecords.filter(r => {
-    if (employee !== 'all' && r.employee_name !== employee) return false;
+    // For KF-Siswa, filter by class; for others, filter by employee name
+    if (presensiType === 'kanaan_fellowship_siswa') {
+      if (employee !== 'all' && r.employee_division !== employee) return false;
+    } else {
+      if (employee !== 'all' && r.employee_name !== employee) return false;
+    }
     if (searchTerm) {
       const user = userMap[r.recorded_by];
       const recorderName = user ? user.full_name : '';
       if (!r.employee_name.toLowerCase().includes(searchTerm) &&
           !(r.notes || '').toLowerCase().includes(searchTerm) &&
           !(r.recorded_by || '').toLowerCase().includes(searchTerm) &&
-          !recorderName.toLowerCase().includes(searchTerm)) return false;
+          !recorderName.toLowerCase().includes(searchTerm) &&
+          !(r.employee_division || '').toLowerCase().includes(searchTerm)) return false;
     }
     return true;
   });
@@ -320,11 +352,12 @@ async function exportHistory() {
     const presensiType = document.getElementById('history-type').value;
     const typeLabel = CONFIG.PRESENSI_TYPE_LABELS[presensiType] || 'Presensi';
     const typeSlug = presensiType === 'ibadah_mingguan' ? 'Ibadah_Mingguan' : 'Renungan_Harian';
+    const isSiswa = presensiType === 'kanaan_fellowship_siswa';
     const meta = {
       startDate,
       endDate,
       academicYear: document.getElementById('history-year').value,
-      employee: employee === 'all' ? 'Semua Karyawan' : employee,
+      employee: employee === 'all' ? (isSiswa ? 'Semua Kelas' : 'Semua Karyawan') : employee,
       presensiType,
       userMap
     };
