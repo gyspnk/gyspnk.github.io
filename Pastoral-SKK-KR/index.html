@@ -1,1 +1,586 @@
-<html><head><meta http-equiv='refresh' content='0;url=https://gyspnk.github.io/Pastoral-SKK-KR/'></head><body>Loading...</body></html>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="./LogoSKK.png" />
+  <title>Pastoral Hub SKKKR</title>
+  <link rel="stylesheet" href="./css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="app">
+    <!-- Login View -->
+    <div id="login-view" class="login-container">
+      <div class="login-card">
+        <div class="login-logo">
+          <img src="./LogoSKK.png" alt="Logo SKK" width="140" height="140" />
+        </div>
+        <h1>Pastoral Hub SKKKR</h1>
+        <p class="login-subtitle">Sekolah Kristen Kanaan Kubu Raya</p>
+        <p class="login-subtitle">Renungan Harian & Ibadah Mingguan</p>
+        <form id="login-form" class="login-form">
+          <div class="form-group">
+            <label for="login-username">Username</label>
+            <input type="text" id="login-username" required autocomplete="username" placeholder="Masukkan username" />
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" required autocomplete="current-password" placeholder="Masukkan password" />
+          </div>
+          <div id="login-error" class="error-msg hidden"></div>
+          <button type="submit" class="btn btn-primary btn-block">Login</button>
+        </form>
+        <div id="demo-setup" class="demo-setup hidden">
+          <p class="demo-hint">Demo Mode — belum ada akun. Buat akun admin pertama:</p>
+          <form id="setup-form" class="login-form">
+            <input type="text" id="setup-username" placeholder="Username admin" required />
+            <input type="text" id="setup-fullname" placeholder="Nama lengkap" required />
+            <input type="password" id="setup-password" placeholder="Password" required />
+            <button type="submit" class="btn btn-secondary btn-block">Buat Akun Admin</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-app" class="main-app hidden">
+      <nav class="sidebar">
+        <div class="sidebar-header">
+          <img src="./LogoSKK.png" alt="SKK" width="42" height="42" style="border-radius:6px" />
+          <span>Pastoral Hub SKKKR</span>
+        </div>
+        <ul class="sidebar-menu">
+          <li><a href="#dashboard" data-view="dashboard" class="nav-link active">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Dashboard
+          </a></li>
+          <li><a href="#presensi" data-view="presensi" class="nav-link">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Presensi
+          </a></li>
+          <li><a href="#history" data-view="history" class="nav-link">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+            Lihat Presensi
+          </a></li>
+          <li><a href="#export" data-view="export" class="nav-link">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export Laporan
+          </a></li>
+          <li><a href="#admin" data-view="admin" class="nav-link" id="admin-nav">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Manajemen User
+          </a></li>
+        </ul>
+        <div class="sidebar-footer">
+          <div class="user-info">
+            <span id="user-display-name">—</span>
+            <span id="user-display-role" class="user-role">—</span>
+          </div>
+          <button id="logout-btn" class="btn btn-text">Logout</button>
+        </div>
+      </nav>
+
+      <main class="content">
+        <div class="mobile-topbar">
+          <button id="mobile-menu-btn" class="mobile-menu-btn" title="Menu">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <div class="mobile-topbar-brand">
+            <img src="./LogoSKK.png" alt="SKK" width="28" height="28" style="border-radius:4px" />
+            <span>Pastoral Hub</span>
+          </div>
+        </div>
+        <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
+        <div id="demo-banner" class="demo-banner hidden">
+          <strong>Demo Mode:</strong> Backend belum dikonfigurasi. Data disimpan di browser (localStorage). Set API_BASE_URL di <code>js/config.js</code> untuk mengaktifkan database TiDB.
+        </div>
+
+        <!-- Dashboard View -->
+        <section id="view-dashboard" class="view">
+          <div class="page-header">
+            <h2>Dashboard</h2>
+            <div class="date-filter">
+              <label>Kategori: <select id="dash-presensi-type">
+                <option value="renungan_harian">📖 Renungan Harian</option>
+                <option value="ibadah_mingguan">⛪ Ibadah Mingguan</option>
+                <option value="kanaan_fellowship_guru">🧑‍🏫 KF - Guru</option>
+                <option value="kanaan_fellowship_siswa">🎓 KF - Siswa</option>
+              </select></label>
+              <label>Dari: <input type="date" id="dash-start-date" /></label>
+              <label>Sampai: <input type="date" id="dash-end-date" /></label>
+              <select id="dash-academic-year"></select>
+              <button id="dash-refresh" class="btn btn-secondary btn-sm">Refresh</button>
+            </div>
+          </div>
+          <div class="stats-grid" id="stats-cards">
+            <div class="stat-card stat-hadir"><div class="stat-value" id="stat-hadir">0</div><div class="stat-label">Hadir</div></div>
+            <div class="stat-card stat-terlambat"><div class="stat-value" id="stat-terlambat">0</div><div class="stat-label">Terlambat</div></div>
+            <div class="stat-card stat-izin"><div class="stat-value" id="stat-izin">0</div><div class="stat-label">Izin</div></div>
+            <div class="stat-card stat-sakit"><div class="stat-value" id="stat-sakit">0</div><div class="stat-label">Sakit</div></div>
+            <div class="stat-card stat-tk"><div class="stat-value" id="stat-tk">0</div><div class="stat-label">Tidak Hadir</div></div>
+            <div class="stat-card stat-total"><div class="stat-value" id="stat-total">0</div><div class="stat-label">Total Record</div></div>
+          </div>
+          <div class="chart-grid">
+            <div class="chart-card">
+              <h3>Distribusi Kehadiran</h3>
+              <canvas id="chart-distribution"></canvas>
+            </div>
+            <div class="chart-card">
+              <h3>Tren Kehadiran Harian</h3>
+              <canvas id="chart-trend" style="min-height:260px"></canvas>
+            </div>
+          </div>
+          <div class="chart-card" style="margin-top: 20px">
+            <h3>Persentase Kehadiran per Divisi</h3>
+            <canvas id="chart-division"></canvas>
+          </div>
+        </section>
+
+        <!-- Presensi View -->
+        <section id="view-presensi" class="view hidden">
+          <div class="page-header">
+            <h2>Presensi Renungan Harian</h2>
+          </div>
+          <div class="presensi-controls">
+            <div class="form-group">
+              <label for="presensi-type">Kategori</label>
+              <select id="presensi-type">
+                <option value="renungan_harian">📖 Renungan Harian</option>
+                <option value="ibadah_mingguan">⛪ Ibadah Mingguan (Jumat)</option>
+                <option value="kanaan_fellowship_guru">🧑‍🏫 KF - Guru</option>
+                <option value="kanaan_fellowship_siswa">🎓 KF - Siswa</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="presensi-date">Tanggal</label>
+              <input type="date" id="presensi-date" required />
+            </div>
+            <div class="form-group">
+              <label for="presensi-year">Tahun Ajaran</label>
+              <select id="presensi-year"></select>
+            </div>
+            <div class="form-group">
+              <label for="presensi-division-filter">Divisi</label>
+              <select id="presensi-division-filter"><option value="all">Semua Divisi</option></select>
+            </div>
+            <div class="form-group">
+              <label for="presensi-search">Cari</label>
+              <input type="text" id="presensi-search" placeholder="Cari nama..." />
+            </div>
+            <button id="presensi-save" class="btn btn-primary">Simpan</button>
+          </div>
+          <div id="presensi-status-msg" class="info-msg hidden"></div>
+          <div class="presensi-toolbar">
+            <span class="quick-label">Tandai Semua:</span>
+            <button class="btn btn-sm btn-success" data-bulk="hadir">Hadir</button>
+            <button class="btn btn-sm btn-warn" data-bulk="terlambat">Terlambat</button>
+            <button class="btn btn-sm btn-info" data-bulk="izin">Izin</button>
+            <button class="btn btn-sm btn-purple" data-bulk="sakit">Sakit</button>
+            <button class="btn btn-sm btn-danger" data-bulk="tidak_hadir_tk">Tidak Hadir</button>
+          </div>
+          <div class="table-wrapper">
+            <table id="presensi-table">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Nama</th>
+                  <th>Jabatan</th>
+                  <th>Divisi</th>
+                  <th>Status</th>
+                  <th>Keterangan</th>
+                </tr>
+              </thead>
+              <tbody id="presensi-tbody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- History View -->
+        <section id="view-history" class="view hidden">
+          <div class="page-header">
+            <h2>Lihat Presensi</h2>
+          </div>
+          <div class="history-controls">
+            <div class="form-group">
+              <label for="history-type">Kategori</label>
+              <select id="history-type">
+                <option value="renungan_harian">📖 Renungan Harian</option>
+                <option value="ibadah_mingguan">⛪ Ibadah Mingguan</option>
+                <option value="kanaan_fellowship_guru">🧑‍🏫 KF - Guru</option>
+                <option value="kanaan_fellowship_siswa">🎓 KF - Siswa</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Mode</label>
+              <div class="radio-group">
+                <label class="radio-label"><input type="radio" name="history-mode" value="range" checked /> Rentang</label>
+                <label class="radio-label"><input type="radio" name="history-mode" value="single" /> 1 Hari</label>
+              </div>
+            </div>
+            <div class="form-group" id="history-range-group">
+              <label for="history-start">Dari</label>
+              <input type="date" id="history-start" />
+            </div>
+            <div class="form-group" id="history-range-group-end">
+              <label for="history-end">Sampai</label>
+              <input type="date" id="history-end" />
+            </div>
+            <div class="form-group hidden" id="history-single-date-group">
+              <label for="history-single-date">Tanggal</label>
+              <input type="date" id="history-single-date" />
+            </div>
+            <div class="form-group">
+              <label for="history-year">Thn Ajaran</label>
+              <select id="history-year"></select>
+            </div>
+            <div class="form-group">
+              <label for="history-employee">Karyawan</label>
+              <select id="history-employee"><option value="all">Semua</option></select>
+            </div>
+            <button id="history-load" class="btn btn-secondary">Muat</button>
+            <button id="history-export" class="btn btn-primary">Export</button>
+          </div>
+          <div id="history-status-msg" class="info-msg hidden"></div>
+          <div class="history-toolbar">
+            <div class="form-group" style="min-width:200px;flex:1">
+              <label for="history-search">Cari dalam hasil</label>
+              <input type="text" id="history-search" placeholder="Cari nama/keterangan..." />
+            </div>
+            <div class="form-group">
+              <label for="history-per-page">Per Halaman</label>
+              <select id="history-per-page">
+                <option value="10" selected>10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="9999">Semua</option>
+              </select>
+            </div>
+            <span id="history-status" class="muted" style="align-self:end;padding-bottom:8px"></span>
+          </div>
+          <div class="chart-card" style="margin-bottom:16px">
+            <h3>Grafik Kehadiran</h3>
+            <canvas id="history-chart"></canvas>
+          </div>
+          <div class="table-wrapper">
+            <table id="history-table">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Tanggal</th>
+                  <th>Nama</th>
+                  <th>Jabatan</th>
+                  <th>Divisi</th>
+                  <th>Status</th>
+                  <th>Keterangan</th>
+                  <th>Tipe</th>
+                  <th>Diisi Oleh (Nama / Username / Role)</th>
+                </tr>
+              </thead>
+              <tbody id="history-tbody"></tbody>
+            </table>
+          </div>
+          <div id="history-pagination" class="pagination-controls"></div>
+        </section>
+        <section id="view-export" class="view hidden">
+          <div class="page-header">
+            <h2>Export Laporan</h2>
+          </div>
+          <div class="export-card">
+            <div class="export-form">
+              <div class="form-group">
+                <label for="export-type">Kategori</label>
+                <select id="export-type">
+                  <option value="renungan_harian">📖 Renungan Harian</option>
+                  <option value="ibadah_mingguan">⛪ Ibadah Mingguan</option>
+                  <option value="kanaan_fellowship_guru">🧑‍🏫 KF - Guru</option>
+                  <option value="kanaan_fellowship_siswa">🎓 KF - Siswa</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="export-start">Dari</label>
+                <input type="date" id="export-start" required />
+              </div>
+              <div class="form-group">
+                <label for="export-end">Sampai</label>
+                <input type="date" id="export-end" required />
+              </div>
+              <div class="form-group">
+                <label for="export-year">Thn Ajaran</label>
+                <select id="export-year"></select>
+              </div>
+              <div class="form-group">
+                <label for="export-format">Format</label>
+                <select id="export-format">
+                  <option value="xlsx">Excel (.xlsx)</option>
+                </select>
+              </div>
+              <button id="export-btn" class="btn btn-primary">Export</button>
+            </div>
+            <div class="export-preview" id="export-preview">
+              <p class="muted">Pilih rentang tanggal dan klik Export untuk mengunduh laporan Excel lengkap dengan grafik.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Admin View -->
+        <section id="view-admin" class="view hidden">
+          <div class="page-header">
+            <h2>Manajemen</h2>
+            <div class="admin-tabs">
+              <button class="btn btn-sm btn-secondary admin-tab active" data-admin-tab="users">User</button>
+              <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="years">Thn Ajaran</button>
+              <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="divisions">Divisi</button>
+              <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="employees">Karyawan</button>
+              <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="kf-students">KF - Siswa</button>
+            </div>
+          </div>
+
+          <!-- Tab: Users -->
+          <div id="admin-tab-users" class="admin-tab-content">
+            <div class="admin-grid">
+              <div class="admin-form-card">
+                <h3>Tambah User</h3>
+                <form id="add-user-form">
+                  <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="new-user-username" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Nama Lengkap</label>
+                    <input type="text" id="new-user-fullname" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="new-user-password" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Role</label>
+                    <select id="new-user-role">
+                    <option value="pastoral">Pastoral</option>
+                    <option value="guru_agama">Guru Agama</option>
+                    <option value="kepala_sekolah">Kepala Sekolah</option>
+                    <option value="gereja">Gereja (Read-Only)</option>
+                    <option value="admin">Administrator</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-block">Tambah</button>
+                </form>
+              </div>
+              <div class="admin-list-card">
+                <h3>Daftar User</h3>
+                <div class="table-wrapper">
+                  <table>
+                    <thead><tr><th>Username</th><th>Nama</th><th>Role</th><th>Aksi</th></tr></thead>
+                    <tbody id="users-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: Academic Years -->
+          <div id="admin-tab-years" class="admin-tab-content hidden">
+            <div class="admin-grid">
+              <div class="admin-form-card">
+                <h3>Tambah Tahun Ajaran</h3>
+                <form id="add-year-form">
+                  <div class="form-group">
+                    <label>Kode Tahun Ajaran</label>
+                    <input type="text" id="new-year-code" placeholder="AY2728" required pattern="AY\d{4}" title="Format: AY2728 (untuk 2027-2028)" />
+                  </div>
+                  <div class="form-group">
+                    <label>Label Tahun Ajaran</label>
+                    <input type="text" id="new-year-label" placeholder="2027-2028" required />
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-block">Tambah Tahun Ajaran</button>
+                </form>
+                <p class="muted" style="margin-top:12px">Format kode: AY + 2 digit tahun mulai + 2 digit tahun selesai. Contoh: AY2728 untuk 2027-2028.</p>
+              </div>
+              <div class="admin-list-card">
+                <h3>Daftar Tahun Ajaran</h3>
+                <div class="table-wrapper">
+                  <table>
+                    <thead><tr><th>Kode</th><th>Label</th><th>Status</th><th>Karyawan</th><th>Aksi</th></tr></thead>
+                    <tbody id="years-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: Divisions -->
+          <div id="admin-tab-divisions" class="admin-tab-content hidden">
+            <div class="admin-grid">
+              <div class="admin-form-card">
+                <h3>Tambah Divisi</h3>
+                <form id="add-division-form">
+                  <div class="form-group">
+                    <label>Nama Divisi</label>
+                    <input type="text" id="new-division-name" placeholder="Contoh: Primary" required />
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-block">Tambah Divisi</button>
+                </form>
+              </div>
+              <div class="admin-list-card">
+                <h3>Daftar Divisi</h3>
+                <div class="table-wrapper">
+                  <table>
+                    <thead><tr><th>Nama Divisi</th><th>Karyawan Aktif</th><th>Aksi</th></tr></thead>
+                    <tbody id="divisions-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: Employees -->
+          <div id="admin-tab-employees" class="admin-tab-content hidden">
+            <div class="admin-toolbar">
+              <div class="form-group">
+                <label for="emp-year-select">Thn Ajaran</label>
+                <select id="emp-year-select"></select>
+              </div>
+              <div class="form-group">
+                <label for="emp-search">Cari</label>
+                <input type="text" id="emp-search" placeholder="Cari nama..." />
+              </div>
+              <div class="form-group">
+                <label for="emp-filter-active">Status</label>
+                <select id="emp-filter-active">
+                  <option value="all">Semua</option>
+                  <option value="active">Aktif</option>
+                  <option value="inactive">Nonaktif</option>
+                </select>
+              </div>
+              <button id="emp-load" class="btn btn-secondary">Muat</button>
+            </div>
+
+            <div class="admin-emp-grid">
+              <div class="admin-form-card">
+                <h3>Tambah Karyawan</h3>
+                <form id="add-employee-form">
+                  <div class="form-group">
+                    <label>Nama</label>
+                    <input type="text" id="new-emp-name" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Jabatan</label>
+                    <input type="text" id="new-emp-position" />
+                  </div>
+                  <div class="form-group">
+                    <label>Divisi</label>
+                    <div class="input-with-btn">
+                      <select id="new-emp-division"><option value="">Pilih...</option></select>
+                      <button type="button" id="quick-add-division" class="btn btn-sm btn-secondary" title="Tambah divisi baru">+</button>
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label>Status Karyawan</label>
+                    <input type="text" id="new-emp-status" placeholder="Part Timer / Pension / kosong" />
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-block">Tambah</button>
+                </form>
+
+                <h3 style="margin-top:24px">Import dari Excel</h3>
+                <div class="import-section">
+                  <p class="muted">Format Excel: kolom A=Nama, B=Jabatan, C=Divisi, D=Status. Tanpa header row.</p>
+                  <input type="file" id="emp-import-file" accept=".xlsx,.xls" />
+                  <button id="emp-import-btn" class="btn btn-secondary btn-block" style="margin-top:8px">Import Data</button>
+                  <div id="emp-import-msg" class="info-msg hidden" style="margin-top:8px"></div>
+                </div>
+              </div>
+
+              <div class="admin-list-card">
+                <h3>Daftar Karyawan <span id="emp-count" class="muted"></span></h3>
+                <div class="table-wrapper">
+                  <table>
+                    <thead><tr><th>Nama</th><th>Jabatan</th><th>Divisi</th><th>Status</th><th>RH</th><th>IM</th><th>KF</th><th>Aksi</th></tr></thead>
+                    <tbody id="employees-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Tab: KF Students -->
+          <div id="admin-tab-kf-students" class="admin-tab-content hidden">
+            <div class="admin-toolbar">
+              <div class="form-group">
+                <label for="kfs-year-select">Thn Ajaran</label>
+                <select id="kfs-year-select"></select>
+              </div>
+              <div class="form-group">
+                <label for="kfs-search">Cari</label>
+                <input type="text" id="kfs-search" placeholder="Cari nama..." />
+              </div>
+              <div class="form-group">
+                <label for="kfs-filter-active">Status</label>
+                <select id="kfs-filter-active">
+                  <option value="all">Semua</option>
+                  <option value="active">Aktif</option>
+                  <option value="inactive">Nonaktif</option>
+                </select>
+              </div>
+              <button id="kfs-load" class="btn btn-secondary">Muat</button>
+            </div>
+            <div class="admin-emp-grid">
+              <div class="admin-form-card">
+                <h3>Tambah Siswa</h3>
+                <form id="add-kfs-form">
+                  <div class="form-group">
+                    <label>Nama</label>
+                    <input type="text" id="new-kfs-name" required />
+                  </div>
+                  <div class="form-group">
+                    <label>NIS</label>
+                    <input type="text" id="new-kfs-nis" />
+                  </div>
+                  <div class="form-group">
+                    <label>Kelas</label>
+                    <input type="text" id="new-kfs-class" placeholder="TK A / 1 SD / 7 SMP ..." />
+                  </div>
+                  <div class="form-group">
+                    <label>Gender</label>
+                    <select id="new-kfs-gender"><option value="">—</option><option value="L">L</option><option value="P">P</option></select>
+                  </div>
+                  <div class="form-group">
+                    <label>Agama</label>
+                    <input type="text" id="new-kfs-religion" placeholder="KRISTEN / KATOLIK / ..." />
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-block">Tambah</button>
+                </form>
+                <h3 style="margin-top:24px">Import dari Excel</h3>
+                <div class="import-section">
+                  <p class="muted">Format: kolom A=NIS, B=Nama, C=Kelas, D=Gender, E=Agama. Baris pertama = header.</p>
+                  <input type="file" id="kfs-import-file" accept=".xlsx,.xls" />
+                  <button id="kfs-import-btn" class="btn btn-secondary btn-block" style="margin-top:8px">Import Data</button>
+                  <p class="muted" style="margin-top:6px">Atau impor langsung dari folder Siswa:</p>
+                  <button id="kfs-import-siswa-folder" class="btn btn-info btn-block" style="margin-top:4px">📥 Impor Semua File Siswa (AY2627)</button>
+                  <div id="kfs-import-msg" class="info-msg hidden" style="margin-top:8px"></div>
+                </div>
+              </div>
+              <div class="admin-list-card">
+                <h3>Daftar Siswa <span id="kfs-count" class="muted"></span></h3>
+                <div class="table-wrapper">
+                  <table>
+                    <thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Gender</th><th>Agama</th><th>Aktif</th><th>Aksi</th></tr></thead>
+                    <tbody id="kfs-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
