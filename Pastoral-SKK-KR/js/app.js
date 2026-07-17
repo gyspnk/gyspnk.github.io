@@ -279,6 +279,7 @@ async function loadAdminYears() {
     adminData.years = await api.getAcademicYears();
     renderAdminYears();
     populateEmpYearSelect();
+    populateKFSYearSelect();  // Also populate KF-Siswa year dropdown
   } catch (e) {
     console.error('Failed to load years:', e);
   }
@@ -728,7 +729,10 @@ async function handleAddUser(e) {
 /* ===== Kanaan Fellowship Student Management ===== */
 let kfsData = [];
 
+let kfsInitialized = false;
 function initAdminKFStudents() {
+  if (kfsInitialized) return;
+  kfsInitialized = true;
   document.getElementById('kfs-load').onclick = loadAdminKFStudents;
   document.getElementById('kfs-search').oninput = renderAdminKFStudents;
   document.getElementById('kfs-filter-active').onchange = renderAdminKFStudents;
@@ -741,6 +745,7 @@ function initAdminKFStudents() {
 function populateKFSYearSelect() {
   const select = document.getElementById('kfs-year-select');
   if (!select) return;
+  const currentVal = select.value;
   select.innerHTML = '';
   adminData.years.forEach(y => {
     const opt = document.createElement('option');
@@ -748,10 +753,18 @@ function populateKFSYearSelect() {
     opt.textContent = y.year_label;
     select.appendChild(opt);
   });
-  const currentAY = getCurrentAcademicYear(adminData.years.map(y => ({ code: y.year_code, label: y.year_label })));
-  const match = adminData.years.find(y => y.year_label === currentAY.label);
-  if (match) select.value = match.id;
-  loadAdminKFStudents();
+  // Preserve selected year if still valid
+  if (currentVal && adminData.years.find(y => y.id == currentVal)) {
+    select.value = currentVal;
+  } else {
+    const currentAY = getCurrentAcademicYear(adminData.years.map(y => ({ code: y.year_code, label: y.year_label })));
+    const match = adminData.years.find(y => y.year_label === currentAY.label);
+    if (match) select.value = match.id;
+  }
+  // Auto-load if we have a valid year selected
+  if (select.value) {
+    loadAdminKFStudents();
+  }
 }
 
 async function loadAdminKFStudents() {
