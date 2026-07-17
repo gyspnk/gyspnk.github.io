@@ -265,6 +265,13 @@ async function initAdmin() {
   const form = document.getElementById('add-user-form');
   form.onsubmit = handleAddUser;
 
+  // Load roles first — needed for user permission display
+  try {
+    adminData.roles = await api.getRoles();
+  } catch (e) {
+    console.error('Failed to load roles:', e);
+  }
+
   try {
     const users = await api.getUsers();
     renderUsers(users);
@@ -272,12 +279,7 @@ async function initAdmin() {
     console.error('Failed to load users:', e);
   }
 
-  try {
-    adminData.roles = await api.getRoles();
-    populateRoleDropdowns();
-  } catch (e) {
-    console.error('Failed to load roles:', e);
-  }
+  populateRoleDropdowns();
 
   initAdminYears();
   initAdminDivisions();
@@ -803,10 +805,15 @@ function renderUsers(users) {
   const currentUserObj = getCurrentUser();
   users.forEach(u => {
     const tr = document.createElement('tr');
-    let perms = {};
-    try { perms = (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) || {}; } catch(e) {}
+    // Parse user's custom permissions (may be null/empty)
+    let userPerms = null;
+    try { userPerms = (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions); } catch(e) {}
+    // Use user permissions if set, otherwise fall back to role defaults
     const roleObj = adminData.roles.find(r => r.role_key === u.role);
-    if (Object.keys(perms).length === 0 && roleObj && roleObj.default_permissions) {
+    let perms = {};
+    if (userPerms && Object.keys(userPerms).length > 0) {
+      perms = userPerms;
+    } else if (roleObj && roleObj.default_permissions) {
       try { perms = typeof roleObj.default_permissions === 'string' ? JSON.parse(roleObj.default_permissions) : roleObj.default_permissions; } catch(e) {}
     }
     const permSummary = CONFIG.PRESENSI_TYPES.map(t => {
