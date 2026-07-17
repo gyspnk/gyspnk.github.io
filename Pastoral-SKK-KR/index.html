@@ -69,6 +69,10 @@
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Export Laporan
           </a></li>
+          <li><a href="#kf-docs" data-view="kf-docs" class="nav-link" id="kf-docs-nav">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            Dok. Kanaan Fellowship
+          </a></li>
           <li><a href="#admin" data-view="admin" class="nav-link" id="admin-nav">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             Manajemen User
@@ -606,6 +610,62 @@
               <p class="muted" style="margin-bottom:16px">Atur hari apa saja setiap presensi boleh diisi. Hari yang tidak dicentang akan <strong>digrey-out</strong> di kalender dan tidak bisa dipilih.</p>
               <div id="presensi-config-list"></div>
             </div>
+          </div>
+        <!-- KF Documentation View -->
+        <section id="view-kf-docs" class="view hidden">
+          <div class="page-header">
+            <h2>Dokumentasi Kanaan Fellowship</h2>
+          </div>
+          <div class="kf-docs-controls">
+            <div class="form-group">
+              <label for="kfd-year">Thn Ajaran</label>
+              <select id="kfd-year"></select>
+            </div>
+            <div class="form-group">
+              <label for="kfd-group-filter">Kelompok</label>
+              <select id="kfd-group-filter">
+                <option value="all">Semua</option>
+                <option value="Indria">Indria (TK)</option>
+                <option value="Pratama">Pratama (1-3 SD)</option>
+                <option value="Madya">Madya (4-6 SD)</option>
+                <option value="Tunas Muda">Tunas Muda (7-9 SMP)</option>
+              </select>
+            </div>
+            <button id="kfd-load" class="btn btn-secondary">Muat</button>
+            <button id="kfd-upload-btn" class="btn btn-primary">➕ Upload Foto</button>
+          </div>
+          <div id="kfd-upload-form" class="kf-upload-card hidden">
+            <h3>Upload Foto</h3>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">
+              <div class="form-group">
+                <label>Tanggal Acara</label>
+                <input type="date" id="kfd-event-date" required />
+              </div>
+              <div class="form-group">
+                <label>Kelompok</label>
+                <select id="kfd-class-group">
+                  <option value="Indria">Indria (TK A, TK B)</option>
+                  <option value="Pratama">Pratama (1-3 SD)</option>
+                  <option value="Madya">Madya (4-6 SD)</option>
+                  <option value="Tunas Muda">Tunas Muda (7-9 SMP)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Foto (maks 10MB)</label>
+                <input type="file" id="kfd-file" accept="image/*" required />
+              </div>
+              <button id="kfd-submit" class="btn btn-primary">Upload ke Google Drive</button>
+            </div>
+            <div id="kfd-upload-msg" class="info-msg hidden" style="margin-top:8px"></div>
+            <div id="kfd-upload-progress" class="hidden" style="margin-top:4px">
+              <div style="background:#e2e8f0;border-radius:4px;height:8px;overflow:hidden">
+                <div id="kfd-progress-bar" style="background:var(--primary);height:100%;width:0%;transition:width .3s"></div>
+              </div>
+              <span id="kfd-progress-text" style="font-size:11px;color:var(--text-muted)">0%</span>
+            </div>
+          </div>
+          <div class="kf-gallery" id="kfd-gallery">
+            <p class="muted" style="text-align:center;padding:40px">Pilih tahun ajaran dan klik Muat untuk melihat dokumentasi.</p>
           </div>
         </section>
       </main>

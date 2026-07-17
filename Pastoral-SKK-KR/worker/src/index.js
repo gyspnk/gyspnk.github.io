@@ -351,6 +351,35 @@ export default {
         return json({ success: true }, 200, allowOrigin);
       }
 
+      // ===== KF Documentation =====
+      if (path === '/api/kf-docs' && request.method === 'GET') {
+        const params = url.searchParams;
+        let sql = 'SELECT * FROM kf_documentation WHERE 1=1';
+        const vals = [];
+        if (params.get('academicYear')) { sql += ' AND academic_year = ?'; vals.push(params.get('academicYear')); }
+        if (params.get('classGroup')) { sql += ' AND class_group = ?'; vals.push(params.get('classGroup')); }
+        if (params.get('eventDate')) { sql += ' AND event_date = ?'; vals.push(params.get('eventDate')); }
+        sql += ' ORDER BY event_date DESC, uploaded_at DESC';
+        const rows = await query(env, sql, vals);
+        return json(rows, 200, allowOrigin);
+      }
+
+      if (path === '/api/kf-docs' && request.method === 'POST') {
+        const { eventDate, academicYear, classGroup, fileName, driveFileId, driveUrl } = await request.json();
+        if (!eventDate || !classGroup || !driveFileId) return json({ error: 'Data tidak lengkap' }, 400, allowOrigin);
+        await execute(env,
+          'INSERT INTO kf_documentation (event_date, academic_year, class_group, file_name, drive_file_id, drive_url, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [eventDate, academicYear, classGroup, fileName || '', driveFileId, driveUrl || '', payload.username]);
+        return json({ success: true }, 201, allowOrigin);
+      }
+
+      if (path.startsWith('/api/kf-docs/') && request.method === 'DELETE') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const id = parseInt(path.split('/').pop(), 10);
+        await execute(env, 'DELETE FROM kf_documentation WHERE id = ?', [id]);
+        return json({ success: true }, 200, allowOrigin);
+      }
+
       // ===== Kanaan Fellowship Students =====
       if (path === '/api/kf-students' && request.method === 'GET') {
         const params = url.searchParams;

@@ -326,6 +326,28 @@ const demoApi = {
     if (users.find(u => u.role === role.role_key)) throw new Error('Masih ada user dengan role ini');
     dbSet('pas_presensi_roles', roles.filter(r => r.id !== id));
     return { success: true };
+  },
+  async getKFDocs(params = {}) {
+    let docs = dbGet('pas_presensi_kf_docs');
+    if (params.academicYear) docs = docs.filter(d => d.academic_year === params.academicYear);
+    if (params.classGroup) docs = docs.filter(d => d.class_group === params.classGroup);
+    return docs.sort((a, b) => (b.event_date || '').localeCompare(a.event_date || ''));
+  },
+  async addKFDoc(data) {
+    const docs = dbGet('pas_presensi_kf_docs');
+    const id = docs.length ? Math.max(...docs.map(d => d.id)) + 1 : 1;
+    docs.push({
+      id, event_date: data.eventDate, academic_year: data.academicYear,
+      class_group: data.classGroup, file_name: data.fileName,
+      drive_file_id: data.driveFileId, drive_url: data.driveUrl,
+      uploaded_by: data.uploadedBy || 'admin', uploaded_at: new Date().toISOString()
+    });
+    dbSet('pas_presensi_kf_docs', docs);
+    return { success: true };
+  },
+  async deleteKFDoc(id) {
+    dbSet('pas_presensi_kf_docs', dbGet('pas_presensi_kf_docs').filter(d => d.id !== id));
+    return { success: true };
   }
 };
 
@@ -445,6 +467,19 @@ const realApi = {
   },
   async deleteRole(id) {
     return apiFetch(`/api/roles/${id}`, { method: 'DELETE' });
+  },
+  async getKFDocs(params = {}) {
+    const qs = new URLSearchParams();
+    if (params.academicYear) qs.set('academicYear', params.academicYear);
+    if (params.classGroup) qs.set('classGroup', params.classGroup);
+    if (params.eventDate) qs.set('eventDate', params.eventDate);
+    return apiFetch('/api/kf-docs?' + qs.toString());
+  },
+  async addKFDoc(data) {
+    return apiFetch('/api/kf-docs', { method: 'POST', body: JSON.stringify(data) });
+  },
+  async deleteKFDoc(id) {
+    return apiFetch(`/api/kf-docs/${id}`, { method: 'DELETE' });
   }
 };
 

@@ -5,6 +5,7 @@ import { initDashboard } from './dashboard.js';
 import { initPresensi, loadPresensiData } from './attendance.js';
 import { initHistory, loadHistory } from './history.js';
 import { initExport } from './export.js';
+import { initKFDocs } from './kf-docs.js';
 import { getAvailableYears, getCurrentAcademicYear, loadKaryawanData } from './data-loader.js';
 
 let currentView = 'dashboard';
@@ -291,6 +292,10 @@ function switchView(view) {
   if (view === 'export' && !viewsInitialized.export) {
     viewsInitialized.export = true;
     initExport();
+  }
+
+  if (view === 'kf-docs') {
+    initKFDocs();
   }
 
   if (view === 'admin' && hasRole('admin')) {

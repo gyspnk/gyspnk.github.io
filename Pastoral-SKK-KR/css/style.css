@@ -585,7 +585,48 @@ tbody tr:hover { background: #f8fafc; }
 .input-with-btn select, .input-with-btn input { flex: 1; min-width: 0; }
 .input-with-btn .btn { flex-shrink: 0; }
 
-/* Editable division cell */
+/* ===== KF Documentation ===== */
+.kf-docs-controls {
+  display: flex; gap: 10px; align-items: end; flex-wrap: wrap;
+  margin-bottom: 16px; background: var(--card-bg); padding: 16px;
+  border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.kf-docs-controls .form-group { min-width: 130px; }
+.kf-upload-card {
+  background: var(--card-bg); border-radius: var(--radius);
+  padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px;
+}
+.kf-upload-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+.kf-upload-card .form-group { min-width: 140px; }
+.kf-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.kf-photo-card {
+  background: var(--card-bg); border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden;
+  transition: transform .15s;
+}
+.kf-photo-card:hover { transform: translateY(-2px); }
+.kf-photo-card img {
+  width: 100%; height: 180px; object-fit: cover; cursor: pointer;
+}
+.kf-photo-card .kf-photo-info {
+  padding: 10px 12px; font-size: 12px;
+}
+.kf-photo-card .kf-photo-info .kf-photo-date { font-weight: 600; color: var(--text); }
+.kf-photo-card .kf-photo-info .kf-photo-group { color: var(--primary); font-size: 11px; }
+.kf-photo-card .kf-photo-info .kf-photo-uploader { color: var(--text-muted); font-size: 11px; }
+
+/* ================================================================
+   RESPONSIVE — Tablet (≤ 1024px)
+   ================================================================ */
+@media (max-width: 1024px) {
+  .chart-grid { grid-template-columns: 1fr; }
+  .admin-grid { grid-template-columns: 1fr; }
+  .admin-emp-grid { grid-template-columns: 1fr; }
+  .content { padding: 20px; }
 .editable-div { cursor: pointer; position: relative; }
 .editable-div:hover { background: #f0f9ff; }
 .editable-div .div-label { display: inline-block; padding: 2px 6px; border-radius: 4px; }

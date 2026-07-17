@@ -91,6 +91,20 @@ export async function initSchema(env) {
       INDEX idx_class (class),
       UNIQUE KEY uq_kf_student (name, class, academic_year_id)
     )`,
+    `CREATE TABLE IF NOT EXISTS kf_documentation (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      event_date DATE NOT NULL,
+      academic_year VARCHAR(20) NOT NULL,
+      class_group VARCHAR(30) NOT NULL,
+      file_name VARCHAR(500) NOT NULL,
+      drive_file_id VARCHAR(200) NOT NULL,
+      drive_url VARCHAR(500) NOT NULL,
+      uploaded_by VARCHAR(100) NOT NULL,
+      uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_event (event_date),
+      INDEX idx_group (class_group),
+      INDEX idx_year (academic_year)
+    )`,
     `CREATE TABLE IF NOT EXISTS roles (
       id INT AUTO_INCREMENT PRIMARY KEY,
       role_key VARCHAR(50) UNIQUE NOT NULL,
