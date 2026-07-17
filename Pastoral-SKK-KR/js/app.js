@@ -36,11 +36,33 @@ async function boot() {
 
   initMobileMenu();
 
+  // Load dynamic presensi types before anything else
+  await loadGlobalPresensiTypes();
+
   const user = getCurrentUser();
   if (user) {
     showMainApp();
   } else {
     showLogin();
+  }
+}
+
+async function loadGlobalPresensiTypes() {
+  if (isDemoMode()) return; // Demo uses hardcoded types
+  try {
+    const types = await api.getPresensiTypes();
+    if (types && types.length > 0) {
+      CONFIG.PRESENSI_TYPES = types.map(pt => ({
+        value: pt.type_key, label: pt.type_label,
+        icon: pt.category === 'siswa' ? '🎓' : '👤',
+        group: pt.category === 'siswa' ? 'Siswa' : 'Guru',
+        category: pt.category
+      }));
+      CONFIG.PRESENSI_TYPE_LABELS = {};
+      types.forEach(pt => { CONFIG.PRESENSI_TYPE_LABELS[pt.type_key] = pt.type_label; });
+    }
+  } catch(e) {
+    console.warn('Failed to load presensi types, using defaults:', e.message);
   }
 }
 
