@@ -1,6 +1,6 @@
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { getCurrentUser, isReadOnly } from './auth.js';
+import { getCurrentUser, isReadOnly, canWrite } from './auth.js';
 import { getAvailableYears, loadKaryawanData, getCurrentAcademicYear } from './data-loader.js';
 
 let currentEmployees = [];
@@ -34,10 +34,12 @@ export async function initPresensi() {
     currentPresensiType = typeSelect.value;
     updatePresensiTitle();
     enforceDateRestriction();
+    updatePresensiWriteUI();
     loadPresensiData();
   };
   currentPresensiType = typeSelect.value || 'renungan_harian';
   updatePresensiTitle();
+  updatePresensiWriteUI();
 
   document.getElementById('presensi-date').onchange = loadPresensiData;
   document.getElementById('presensi-year').onchange = loadPresensiData;
@@ -66,6 +68,27 @@ function updatePresensiTitle() {
   if (titleEl) {
     const label = CONFIG.PRESENSI_TYPE_LABELS[currentPresensiType] || 'Presensi';
     titleEl.textContent = `Presensi ${label}`;
+  }
+}
+
+function updatePresensiWriteUI() {
+  const hasWrite = canWrite(currentPresensiType);
+  const saveBtn = document.getElementById('presensi-save');
+  const toolbar = document.querySelector('.presensi-toolbar');
+  const msgEl = document.getElementById('presensi-status-msg');
+
+  if (!hasWrite && !isReadOnly()) {
+    if (saveBtn) saveBtn.classList.add('hidden');
+    if (toolbar) toolbar.classList.add('hidden');
+    if (msgEl) {
+      msgEl.textContent = '🔒 Anda hanya memiliki akses lihat untuk presensi ini.';
+      msgEl.classList.remove('hidden');
+      msgEl.style.background = '#fef3c7';
+      msgEl.style.color = '#92400e';
+    }
+  } else if (!isReadOnly()) {
+    if (saveBtn) saveBtn.classList.remove('hidden');
+    if (toolbar) toolbar.classList.remove('hidden');
   }
 }
 

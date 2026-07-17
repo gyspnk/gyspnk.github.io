@@ -1,6 +1,6 @@
 import { CONFIG } from './config.js';
 import { api, isDemoMode } from './api.js';
-import { login, logout, getCurrentUser, checkHasUsers, setupAdmin, hasRole } from './auth.js';
+import { login, logout, getCurrentUser, checkHasUsers, setupAdmin, hasRole, getUserPermissions, hasAccess } from './auth.js';
 import { initDashboard } from './dashboard.js';
 import { initPresensi, loadPresensiData } from './attendance.js';
 import { initHistory, loadHistory } from './history.js';
@@ -183,7 +183,25 @@ function showMainApp() {
 
   document.getElementById('logout-btn').onclick = handleLogout;
 
+  updateSidebarPermissions();
+
   switchView(currentView || 'dashboard');
+}
+
+function updateSidebarPermissions() {
+  const user = getCurrentUser();
+  if (!user) return;
+  const perms = getUserPermissions();
+
+  // Show/hide sidebar menu items based on user permissions
+  // Presensi link is always visible (it shows category dropdown)
+  // Lihat Presensi - visible if user has at least view access to any type
+  const hasAnyAccess = Object.values(perms).some(p => p !== 'none');
+  const historyLink = document.querySelector('.nav-link[data-view="history"]');
+  const exportLink = document.querySelector('.nav-link[data-view="export"]');
+
+  if (historyLink) historyLink.parentElement.style.display = hasAnyAccess ? '' : 'none';
+  if (exportLink) exportLink.parentElement.style.display = hasAnyAccess ? '' : 'none';
 }
 
 function switchView(view) {
@@ -685,14 +703,42 @@ function renderUsers(users) {
   const currentUserObj = getCurrentUser();
   users.forEach(u => {
     const tr = document.createElement('tr');
+    let perms = {};
+    try { perms = (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions) || {}; } catch(e) {}
+    // Fall back to role defaults for display
+    if (Object.keys(perms).length === 0 && CONFIG.PERMISSION_DEFAULTS[u.role]) {
+      perms = {...CONFIG.PERMISSION_DEFAULTS[u.role]};
+    }
+    const permSummary = CONFIG.PRESENSI_TYPES.map(t => {
+      const level = perms[t.value] || 'none';
+      const icon = level === 'write' ? '✏️' : level === 'view' ? '👁️' : '—';
+      return `<span title="${t.label}: ${CONFIG.PERMISSION_LABELS[level]}" style="font-size:13px">${icon}</span>`;
+    }).join(' ');
+
     tr.innerHTML = `
       <td>${u.username}</td>
       <td>${u.full_name}</td>
-      <td><span class="status-badge" style="background:var(--primary)">${CONFIG.ROLES[u.role] || u.role}</span></td>
-      <td>${u.id === currentUserObj.id ? '<span class="muted">—</span>' : `<button class="btn btn-danger btn-sm" data-del="${u.id}">Hapus</button>`}</td>
+      <td><span class="status-badge" style="background:var(--primary);font-size:11px">${CONFIG.ROLES[u.role] || u.role}</span></td>
+      <td>${permSummary}</td>
+      <td>${u.id === currentUserObj.id ? '<span class="muted">—</span>' : `
+        <div class="action-cell">
+          <button class="btn btn-sm btn-info" data-edit-perms="${u.id}" data-perms='${JSON.stringify(perms)}' data-username="${u.username}">Izin</button>
+          <button class="btn btn-danger btn-sm" data-del="${u.id}">Hapus</button>
+        </div>`}
+      </td>
     `;
     tbody.appendChild(tr);
   });
+  tbody.querySelectorAll('[data-edit-perms]').forEach(btn => {
+    btn.onclick = () => {
+      const id = parseInt(btn.dataset.editPerms, 10);
+      let perms = {};
+      try { perms = JSON.parse(btn.dataset.perms); } catch(e) {}
+      const username = btn.dataset.username;
+      showPermissionModal(id, username, perms);
+    };
+  });
+
   tbody.querySelectorAll('[data-del]').forEach(btn => {
     btn.onclick = async () => {
       if (!confirm('Hapus user ini?')) return;
@@ -707,6 +753,71 @@ function renderUsers(users) {
   });
 }
 
+function showPermissionModal(userId, username, currentPerms) {
+  const types = CONFIG.PRESENSI_TYPES;
+  const levels = CONFIG.PERMISSION_LEVELS;
+  const labels = CONFIG.PERMISSION_LABELS;
+
+  let html = `<div style="max-width:500px">
+    <h3 style="margin-bottom:12px">Izin Akses: ${username}</h3>
+    <table style="width:100%;margin-bottom:16px">
+    <thead><tr><th>Presensi</th>${levels.map(l => `<th style="text-align:center">${labels[l]}</th>`).join('')}</tr></thead>
+    <tbody>`;
+
+  types.forEach(t => {
+    const current = currentPerms[t.value] || 'none';
+    html += `<tr>
+      <td style="padding:6px 8px">${t.icon} ${t.label}</td>
+      ${levels.map(l => `
+        <td style="text-align:center;padding:6px 4px">
+          <label style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:2px">
+            <input type="radio" name="perm_${t.value}" value="${l}" ${current === l ? 'checked' : ''} style="accent-color:var(--primary)" />
+          </label>
+        </td>
+      `).join('')}
+    </tr>`;
+  });
+
+  html += `</tbody></table>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button id="perm-cancel" class="btn btn-secondary btn-sm">Batal</button>
+      <button id="perm-save" class="btn btn-primary btn-sm">Simpan</button>
+    </div>
+    <div id="perm-msg" class="info-msg hidden" style="margin-top:8px"></div>
+  </div>`;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML = `<div style="background:var(--card-bg);border-radius:12px;padding:24px;max-width:95vw">${html}</div>`;
+  document.body.appendChild(overlay);
+
+  overlay.querySelector('#perm-cancel').onclick = () => overlay.remove();
+  overlay.querySelector('#perm-save').onclick = async () => {
+    const newPerms = {};
+    types.forEach(t => {
+      const radio = overlay.querySelector(`input[name="perm_${t.value}"]:checked`);
+      if (radio) newPerms[t.value] = radio.value;
+    });
+    const msgEl = overlay.querySelector('#perm-msg');
+    msgEl.textContent = 'Menyimpan...';
+    msgEl.classList.remove('hidden');
+    try {
+      await api.updateUser(userId, { permissions: newPerms });
+      msgEl.textContent = '✅ Izin berhasil disimpan.';
+      msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';
+      setTimeout(async () => {
+        overlay.remove();
+        const users = await api.getUsers();
+        renderUsers(users);
+      }, 800);
+    } catch (e) {
+      msgEl.textContent = 'Gagal: ' + e.message;
+      msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
+    }
+  };
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+}
+
 async function handleAddUser(e) {
   e.preventDefault();
   const username = document.getElementById('new-user-username').value.trim();
@@ -715,7 +826,8 @@ async function handleAddUser(e) {
   const role = document.getElementById('new-user-role').value;
 
   try {
-    await api.addUser(username, fullName, password, role);
+    const defaultPerms = CONFIG.PERMISSION_DEFAULTS[role] || {};
+    await api.addUser(username, fullName, password, role, defaultPerms);
     document.getElementById('new-user-username').value = '';
     document.getElementById('new-user-fullname').value = '';
     document.getElementById('new-user-password').value = '';

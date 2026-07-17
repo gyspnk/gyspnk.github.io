@@ -36,5 +36,14 @@ export const CONFIG = {
     kanaan_fellowship_guru: 'Kanaan Fellowship Guru',
     kanaan_fellowship_siswa: 'Kanaan Fellowship Siswa'
   },
-  IBADAH_MINGGUAN_DAY: 5 // Friday (0=Sun, 1=Mon, ..., 5=Fri, 6=Sat)
+  IBADAH_MINGGUAN_DAY: 5, // Friday (0=Sun, 1=Mon, ..., 5=Fri, 6=Sat)
+  PERMISSION_LEVELS: ['none', 'view', 'write'],
+  PERMISSION_LABELS: { none: 'Tidak Ada', view: 'Lihat', write: 'Tulis' },
+  PERMISSION_DEFAULTS: {
+    pastoral: { renungan_harian: 'write', ibadah_mingguan: 'write', kanaan_fellowship_guru: 'write', kanaan_fellowship_siswa: 'write' },
+    guru_agama: { renungan_harian: 'write', ibadah_mingguan: 'view', kanaan_fellowship_guru: 'view', kanaan_fellowship_siswa: 'view' },
+    kepala_sekolah: { renungan_harian: 'view', ibadah_mingguan: 'view', kanaan_fellowship_guru: 'view', kanaan_fellowship_siswa: 'view' },
+    gereja: { renungan_harian: 'view', ibadah_mingguan: 'view', kanaan_fellowship_guru: 'view', kanaan_fellowship_siswa: 'view' },
+    admin: { renungan_harian: 'write', ibadah_mingguan: 'write', kanaan_fellowship_guru: 'write', kanaan_fellowship_siswa: 'write' }
+  }
 };

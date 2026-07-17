@@ -61,8 +61,10 @@ export default {
         const user = users[0];
         const valid = await verifyPassword(password, user.password_hash, user.salt);
         if (!valid) return json({ error: 'Password salah' }, 401, allowOrigin);
-        const token = await createJWT({ id: user.id, username: user.username, role: user.role }, env.JWT_SECRET);
-        return json({ token, user: { id: user.id, username: user.username, full_name: user.full_name, role: user.role } }, 200, allowOrigin);
+        let permissions = {};
+        try { permissions = JSON.parse(user.permissions || '{}'); } catch(e) {}
+        const token = await createJWT({ id: user.id, username: user.username, role: user.role, permissions }, env.JWT_SECRET);
+        return json({ token, user: { id: user.id, username: user.username, full_name: user.full_name, role: user.role, permissions } }, 200, allowOrigin);
       }
 
       // Auth required below
@@ -73,20 +75,35 @@ export default {
 
       if (path === '/api/users' && request.method === 'GET') {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
-        const users = await query(env, 'SELECT id, username, full_name, role FROM users ORDER BY id');
+        const users = await query(env, 'SELECT id, username, full_name, role, permissions FROM users ORDER BY id');
         return json(users, 200, allowOrigin);
       }
 
       if (path === '/api/users' && request.method === 'POST') {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
-        const { username, fullName, password, role } = await request.json();
+        const { username, fullName, password, role, permissions } = await request.json();
         if (!username || !password || !fullName) return json({ error: 'Field tidak lengkap' }, 400, allowOrigin);
         const existing = await query(env, 'SELECT id FROM users WHERE username = ?', [username]);
         if (existing.length > 0) return json({ error: 'Username sudah ada' }, 409, allowOrigin);
         const { hash, salt } = await hashPassword(password);
-        await execute(env, 'INSERT INTO users (username, full_name, password_hash, salt, role) VALUES (?, ?, ?, ?, ?)',
-          [username, fullName, hash, salt, role || 'guru_agama']);
+        const permsJson = permissions ? JSON.stringify(permissions) : null;
+        await execute(env, 'INSERT INTO users (username, full_name, password_hash, salt, role, permissions) VALUES (?, ?, ?, ?, ?, ?)',
+          [username, fullName, hash, salt, role || 'guru_agama', permsJson]);
         return json({ success: true }, 201, allowOrigin);
+      }
+
+      if (path.startsWith('/api/users/') && request.method === 'PUT') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const id = parseInt(path.split('/').pop(), 10);
+        const body = await request.json();
+        if (body.permissions !== undefined) {
+          const permsJson = body.permissions ? JSON.stringify(body.permissions) : null;
+          await execute(env, 'UPDATE users SET permissions = ? WHERE id = ?', [permsJson, id]);
+        }
+        if (body.role !== undefined) {
+          await execute(env, 'UPDATE users SET role = ? WHERE id = ?', [body.role, id]);
+        }
+        return json({ success: true }, 200, allowOrigin);
       }
 
       if (path.startsWith('/api/users/') && request.method === 'DELETE') {

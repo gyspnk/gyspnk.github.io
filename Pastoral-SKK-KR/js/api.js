@@ -61,20 +61,31 @@ const demoApi = {
     if (!user) throw new Error('User tidak ditemukan');
     const { hash } = await pbkdf2Hash(password, user.salt);
     if (hash !== user.password_hash) throw new Error('Password salah');
-    const token = btoa(JSON.stringify({ id: user.id, username: user.username, role: user.role, ts: Date.now() }));
-    return { token, user: { id: user.id, username: user.username, full_name: user.full_name, role: user.role } };
+    let perms = {};
+    try { perms = JSON.parse(user.permissions || '{}'); } catch(e) {}
+    const token = btoa(JSON.stringify({ id: user.id, username: user.username, role: user.role, permissions: perms, ts: Date.now() }));
+    return { token, user: { id: user.id, username: user.username, full_name: user.full_name, role: user.role, permissions: perms } };
   },
 
   async getUsers() {
-    return dbGet(DB_USERS).map(u => ({ id: u.id, username: u.username, full_name: u.full_name, role: u.role }));
+    return dbGet(DB_USERS).map(u => ({ id: u.id, username: u.username, full_name: u.full_name, role: u.role, permissions: u.permissions || null }));
   },
 
-  async addUser(username, fullName, password, role) {
+  async addUser(username, fullName, password, role, permissions) {
     const users = dbGet(DB_USERS);
     if (users.find(u => u.username === username)) throw new Error('Username sudah ada');
     const { hash, salt } = await pbkdf2Hash(password);
     const id = users.length ? Math.max(...users.map(u => u.id)) + 1 : 1;
-    users.push({ id, username, full_name: fullName, password_hash: hash, salt, role });
+    users.push({ id, username, full_name: fullName, password_hash: hash, salt, role, permissions: permissions || null });
+    dbSet(DB_USERS, users);
+    return { success: true };
+  },
+  async updateUser(id, data) {
+    const users = dbGet(DB_USERS);
+    const idx = users.findIndex(u => u.id === id);
+    if (idx < 0) throw new Error('User tidak ditemukan');
+    if (data.permissions !== undefined) users[idx].permissions = data.permissions;
+    if (data.role !== undefined) users[idx].role = data.role;
     dbSet(DB_USERS, users);
     return { success: true };
   },
@@ -272,8 +283,11 @@ const realApi = {
   async getUsers() {
     return apiFetch('/api/users');
   },
-  async addUser(username, fullName, password, role) {
-    return apiFetch('/api/users', { method: 'POST', body: JSON.stringify({ username, fullName, password, role }) });
+  async addUser(username, fullName, password, role, permissions) {
+    return apiFetch('/api/users', { method: 'POST', body: JSON.stringify({ username, fullName, password, role, permissions }) });
+  },
+  async updateUser(id, data) {
+    return apiFetch(`/api/users/${id}`, { method: 'PUT', body: JSON.stringify(data) });
   },
   async deleteUser(id) {
     return apiFetch(`/api/users/${id}`, { method: 'DELETE' });

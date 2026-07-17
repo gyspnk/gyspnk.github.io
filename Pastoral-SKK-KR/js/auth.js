@@ -53,3 +53,34 @@ export function isReadOnly() {
   const user = getCurrentUser();
   return user && user.role === 'gereja';
 }
+
+export function getUserPermissions() {
+  const user = getCurrentUser();
+  if (!user) return {};
+  // Admin always has full access
+  if (user.role === 'admin') {
+    const full = {};
+    Object.keys(CONFIG.PERMISSION_DEFAULTS.admin).forEach(k => full[k] = 'write');
+    return full;
+  }
+  // Use stored permissions or fall back to role defaults
+  if (user.permissions && Object.keys(user.permissions).length > 0) {
+    return user.permissions;
+  }
+  return CONFIG.PERMISSION_DEFAULTS[user.role] || {};
+}
+
+export function hasPermission(presensiType, level) {
+  const perms = getUserPermissions();
+  const userLevel = perms[presensiType] || 'none';
+  const levels = CONFIG.PERMISSION_LEVELS;
+  return levels.indexOf(userLevel) >= levels.indexOf(level);
+}
+
+export function hasAccess(presensiType) {
+  return hasPermission(presensiType, 'view');
+}
+
+export function canWrite(presensiType) {
+  return hasPermission(presensiType, 'write');
+}

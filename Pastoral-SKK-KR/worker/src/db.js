@@ -30,6 +30,7 @@ export async function initSchema(env) {
       salt VARCHAR(100) NOT NULL,
       role VARCHAR(50) NOT NULL DEFAULT 'guru_agama',
       full_name VARCHAR(200) NOT NULL,
+      permissions TEXT DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
     `CREATE TABLE IF NOT EXISTS attendance (
@@ -97,6 +98,7 @@ export async function initSchema(env) {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
     // Migration: add columns if they don't exist (for existing installations)
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions TEXT DEFAULT NULL AFTER full_name`,
     `ALTER TABLE attendance ADD COLUMN IF NOT EXISTS presensi_type VARCHAR(30) NOT NULL DEFAULT 'renungan_harian' AFTER attendance_date`,
     `ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_active_rh BOOLEAN DEFAULT TRUE AFTER employment_status`,
     `ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_active_im BOOLEAN DEFAULT TRUE AFTER is_active_rh`,
