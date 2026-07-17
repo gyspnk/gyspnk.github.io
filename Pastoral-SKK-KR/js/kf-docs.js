@@ -63,11 +63,11 @@ export async function initKFDocs() {
 }
 
 function updateUploadVisibility() {
-  const perms = getUserPermissions();
-  const kfPerm = perms['kanaan_fellowship_guru'] || perms['kanaan_fellowship_siswa'];
-  const level = typeof kfPerm === 'string' ? kfPerm : (kfPerm?.level || 'none');
+  // Upload temporarily disabled — requires Google Workspace domain-wide delegation
   const uploadBtn = document.getElementById('kfd-upload-btn');
-  if (uploadBtn) uploadBtn.style.display = (level === 'write') ? '' : 'none';
+  const uploadForm = document.getElementById('kfd-upload-form');
+  if (uploadBtn) uploadBtn.style.display = 'none';
+  if (uploadForm) uploadForm.classList.add('hidden');
 }
 
 async function loadKFDocs() {
@@ -170,7 +170,7 @@ function renderKFGallery() {
   const pageDocs = docs.slice(start, start + kfDocsPerPage);
 
   if (totalItems === 0) {
-    container.innerHTML = '<p class="muted" style="text-align:center;padding:40px">Belum ada dokumentasi. Klik <b>➕ Upload Foto</b> untuk menambah.</p>';
+    container.innerHTML = '<p class="muted" style="text-align:center;padding:40px">Belum ada dokumentasi.<br><span style="font-size:12px">Upload foto sementara dinonaktifkan.</span></p>';
     return;
   }
 
