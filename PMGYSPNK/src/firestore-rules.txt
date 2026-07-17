@@ -1,0 +1,146 @@
+// COMPLETE FIREBASE FIRESTORE SECURITY RULES
+// For Kas Pemuda GYSPNK Application  
+// Updated: September 21, 2025
+// Status: SIMPLIFIED RULES FOR ACCOUNT MERGING FUNCTIONALITY
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users collection - allows authenticated users to read/write user data
+    match /users/{userId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Transactions collection - allows authenticated users to read/write transactions
+    match /transactions/{transactionId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Banks collection - allows authenticated users to read/write bank data
+    match /banks/{bankId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Deductions collection - allows authenticated users to read/write deduction data
+    match /deductions/{deductionId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Settings collection - allows authenticated users to read/write settings
+    match /settings/{settingId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+
+// =====================================================
+// DEPLOYMENT INSTRUCTIONS
+// =====================================================
+// 1. Go to: https://console.firebase.google.com/project/kaspemudagyspnk/firestore/rules
+// 2. Delete ALL existing rules in the editor
+// 3. Copy ONLY the rules from lines 6-27 above (without comments)
+// 4. Click "Publish" button
+// 5. Wait for deployment to complete (usually 10-30 seconds)
+// 6. Refresh your application at http://localhost:8000
+
+// =====================================================
+// SECURITY NOTES
+// =====================================================
+// - These rules allow any authenticated user to read/write all data
+// - Suitable for internal organization apps where all users are trusted  
+// - For production with external users, consider more restrictive rules
+// - Users can only access data if they are signed in with Google Auth
+// - Account merging functionality requires cross-user data access
+
+// =====================================================
+// COLLECTIONS COVERED
+// =====================================================
+// - users: User profiles, balances, roles, merged account data
+// - transactions: Financial transactions, deposits, transfers, OCR data
+// - banks: Bank account information for transfers and recipients
+// - deductions: Organization expenses and deductions
+// - settings: Application configuration and Google Apps Script URLs
+
+// =====================================================
+// FEATURES ENABLED BY THESE RULES
+// =====================================================
+// ✅ Google OAuth authentication and user creation
+// ✅ Account merging when admin pre-adds users by email
+// ✅ Admin user management (create, edit, delete users)
+// ✅ Transaction management and OCR processing
+// ✅ Bank management for transfer recipients
+// ✅ Deduction tracking and management
+// ✅ Google Apps Script integration
+// ✅ Cross-user balance calculations and reporting
+
+// =====================================================
+// TROUBLESHOOTING
+// =====================================================
+// If you get "Missing or insufficient permissions" error:
+// 1. Ensure you are signed in with Google
+// 2. Check that rules above are deployed correctly
+// 3. Try refreshing the application
+// 4. Check Firebase Console for any rule deployment errors
+// 5. Verify project ID is correct: kaspemudagyspnk
+
+// =====================================================
+// VERSION HISTORY
+// =====================================================
+// v1.0 - Complex role-based rules (September 20, 2025)
+// v2.0 - Simplified rules for account merging (September 21, 2025)
+
+// =====================================================
+// EXACT RULES TO COPY TO FIREBASE CONSOLE
+// =====================================================
+// Copy only the rules below (lines 98-118) to Firebase Console:
+
+/*
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null;
+    }
+    match /transactions/{transactionId} {
+      allow read, write: if request.auth != null;
+    }
+    match /banks/{bankId} {
+      allow read, write: if request.auth != null;
+    }
+    match /deductions/{deductionId} {
+      allow read, write: if request.auth != null;
+    }
+    match /settings/{settingId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+*/
+
+// =====================================================
+// ALTERNATIVE: COPY-PASTE READY FORMAT
+// =====================================================
+// Just copy everything between the quotes below:
+
+COPY_THIS_TO_FIREBASE_CONSOLE = '''
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null;
+    }
+    match /transactions/{transactionId} {
+      allow read, write: if request.auth != null;
+    }
+    match /banks/{bankId} {
+      allow read, write: if request.auth != null;
+    }
+    match /deductions/{deductionId} {
+      allow read, write: if request.auth != null;
+    }
+    match /settings/{settingId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+'''

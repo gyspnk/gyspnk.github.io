@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="id" data-theme="light" data-seed="indigo">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Kas Pemuda GYS PNK</title>
+  <script src='https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js'></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <header class="appbar">
+    <button class="ibtn" id="sidebarToggle" title="Toggle Menu"><i class="fas fa-bars"></i></button>
+    <div class="title">Kas Pemuda GYS Pontianak</div>
+    <div class="spacer"></div>
+    <div class="year-filter-container" id="year-filter-container" style="display: none;">
+      <label for="yearFilter">Tahun:</label>
+      <div class="field">
+          <select id="yearFilter"></select>
+      </div>
+    </div>
+        <button class="btn btn-outlined danger" id="logoutBtn" title="Logout">
+          <i class="material-icons">logout</i>
+          <span>Logout</span>
+        </button>
+  </header>
+
+  <main class="container">
+    <div id="app"></div>
+  </main>
+
+  <div id="toastContainer"></div>
+
+  <!-- Theme Control Modal -->
+  <div class="modal-backdrop hidden" id="themeModalBackdrop">
+    <div class="theme-modal">
+      <div class="theme-modal-content">
+        <div class="theme-modal-header">
+          <h2 class="theme-modal-title">Pengaturan Tema</h2>
+          <button class="theme-modal-close" id="themeModalClose" title="Tutup">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="theme-modal-body">
+          <div class="theme-section">
+            <h3 class="theme-section-title">Mode Tampilan</h3>
+            <div class="theme-mode-controls">
+              <button class="theme-mode-btn active" id="themeModeLight" data-mode="light">
+                <i class="fas fa-sun"></i>
+                <span>Terang</span>
+              </button>
+              <button class="theme-mode-btn" id="themeModeDark" data-mode="dark">
+                <i class="fas fa-moon"></i>
+                <span>Gelap</span>
+              </button>
+            </div>
+          </div>
+          
+          <div class="theme-section">
+            <h3 class="theme-section-title">Warna Aksen</h3>
+            <div class="theme-color-controls">
+              <div class="color-palette-modal" id="colorPaletteModal">
+                <button class="color-swatch-modal" data-seed="indigo" style="background:#4F46E5" title="Indigo">
+                  <span class="color-name">Indigo</span>
+                </button>
+                <button class="color-swatch-modal" data-seed="blue" style="background:#2563EB" title="Blue">
+                  <span class="color-name">Blue</span>
+                </button>
+                <button class="color-swatch-modal" data-seed="teal" style="background:#0D9488" title="Teal">
+                  <span class="color-name">Teal</span>
+                </button>
+                <button class="color-swatch-modal" data-seed="emerald" style="background:#059669" title="Emerald">
+                  <span class="color-name">Emerald</span>
+                </button>
+                <button class="color-swatch-modal" data-seed="amber" style="background:#D97706" title="Amber">
+                  <span class="color-name">Amber</span>
+                </button>
+                <button class="color-swatch-modal" data-seed="rose" style="background:#E11D48" title="Rose">
+                  <span class="color-name">Rose</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="theme-modal-footer">
+          <button class="btn btn-outlined" id="themeCancel">Batal</button>
+          <button class="btn btn-filled" id="themeApply">Terapkan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Image Preview Modal -->
+  <div class="modal-backdrop hidden" id="imageModalBackdrop">
+    <div class="image-modal">
+      <div class="image-modal-content">
+        <div class="modal-spinner-container" id="modalSpinner">
+          <div class="spinner"></div>
+        </div>
+        <img id="modalImage" src="" alt="Pratinjau Bukti">
+        
+        <!-- Zoom Controls -->
+        <div class="zoom-controls hidden" id="zoomControls">
+          <button class="zoom-btn" id="zoomOut" title="Zoom Out"><i class="fas fa-minus"></i></button>
+          <button class="zoom-btn" id="zoomReset" title="Reset Zoom"><i class="fas fa-expand-arrows-alt"></i></button>
+          <button class="zoom-btn" id="zoomIn" title="Zoom In"><i class="fas fa-plus"></i></button>
+          <div class="zoom-level" id="zoomLevel">100%</div>
+        </div>
+      </div>
+      <button class="image-modal-close" id="closeModal"><i class="fas fa-times"></i></button>
+    </div>
+  </div>
+  
+  <div class="ocr-processing hidden" id="ocrProcessing">
+    <div><i class="fas fa-search"></i> Memproses OCR...</div>
+    <div class="ocr-progress" id="ocrProgress">Menganalisis gambar...</div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+
+</body>
+</html>
+
