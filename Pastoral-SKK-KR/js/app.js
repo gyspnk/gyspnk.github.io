@@ -193,15 +193,49 @@ function updateSidebarPermissions() {
   if (!user) return;
   const perms = getUserPermissions();
 
+  // Filter all presensi type selectors on the page
+  filterPresensiTypeSelectors();
+
   // Show/hide sidebar menu items based on user permissions
-  // Presensi link is always visible (it shows category dropdown)
-  // Lihat Presensi - visible if user has at least view access to any type
-  const hasAnyAccess = Object.values(perms).some(p => p !== 'none');
+  const hasAnyAccess = Object.values(perms).some(p => (typeof p === 'string' ? p : p.level) !== 'none');
+  const hasAnyWrite = Object.values(perms).some(p => (typeof p === 'string' ? p === 'write' : p.level === 'write'));
+
+  const presensiLink = document.querySelector('.nav-link[data-view="presensi"]');
   const historyLink = document.querySelector('.nav-link[data-view="history"]');
   const exportLink = document.querySelector('.nav-link[data-view="export"]');
 
+  if (presensiLink) presensiLink.parentElement.style.display = hasAnyWrite ? '' : 'none';
   if (historyLink) historyLink.parentElement.style.display = hasAnyAccess ? '' : 'none';
   if (exportLink) exportLink.parentElement.style.display = hasAnyAccess ? '' : 'none';
+}
+
+function filterPresensiTypeSelectors() {
+  const perms = getUserPermissions();
+  const allowedTypes = CONFIG.PRESENSI_TYPES.filter(t => {
+    const p = perms[t.value];
+    const level = (typeof p === 'string') ? p : (p && p.level ? p.level : 'none');
+    return level !== 'none';
+  });
+
+  // Filter all presensi type selectors
+  ['presensi-type', 'history-type', 'export-type', 'dash-presensi-type'].forEach(id => {
+    const select = document.getElementById(id);
+    if (!select) return;
+    const currentVal = select.value;
+    const isAllowed = allowedTypes.find(t => t.value === currentVal);
+
+    select.innerHTML = '';
+    allowedTypes.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.value;
+      opt.textContent = `${t.icon} ${t.label}`;
+      select.appendChild(opt);
+    });
+
+    // Keep current selection if still allowed, otherwise switch to first
+    if (isAllowed) select.value = currentVal;
+    else if (allowedTypes.length > 0) select.value = allowedTypes[0].value;
+  });
 }
 
 function switchView(view) {
