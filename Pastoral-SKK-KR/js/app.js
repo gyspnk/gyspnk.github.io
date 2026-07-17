@@ -978,6 +978,14 @@ function showPermissionModal(targetId, targetName, currentPerms, isRole = false)
     </div>`;
   });
 
+  // Add KF Documentation row (derived from KF permissions)
+  html += `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;background:#fefce8">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span style="font-weight:600;font-size:14px">📸 Dokumentasi KF</span>
+      <span style="font-size:11px;color:var(--text-muted)">(mengikuti izin KF-Guru/Siswa)</span>
+    </div>
+  </div>`;
+
   html += `<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
       <button id="perm-cancel" class="btn btn-secondary btn-sm">Batal</button>
       <button id="perm-save" class="btn btn-primary btn-sm">Simpan</button>
