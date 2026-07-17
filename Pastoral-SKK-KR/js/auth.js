@@ -54,27 +54,48 @@ export function isReadOnly() {
   return user && user.role === 'gereja';
 }
 
+function normalizePermission(perm) {
+  // Convert old string format to new object format
+  if (typeof perm === 'string') {
+    return { level: perm, divisions: [], classes: [] };
+  }
+  if (perm && typeof perm === 'object') {
+    return {
+      level: perm.level || 'none',
+      divisions: perm.divisions || [],
+      classes: perm.classes || []
+    };
+  }
+  return { level: 'none', divisions: [], classes: [] };
+}
+
 export function getUserPermissions() {
   const user = getCurrentUser();
   if (!user) return {};
   // Admin always has full access
   if (user.role === 'admin') {
     const full = {};
-    Object.keys(CONFIG.PERMISSION_DEFAULTS.admin).forEach(k => full[k] = 'write');
+    CONFIG.PRESENSI_TYPES.forEach(t => full[t.value] = { level: 'write', divisions: [], classes: [] });
     return full;
   }
-  // Use stored permissions or fall back to role defaults
+  // Use stored permissions
   if (user.permissions && Object.keys(user.permissions).length > 0) {
-    return user.permissions;
+    const result = {};
+    Object.entries(user.permissions).forEach(([k, v]) => result[k] = normalizePermission(v));
+    return result;
   }
-  return CONFIG.PERMISSION_DEFAULTS[user.role] || {};
+  // Fall back to role defaults
+  const defaults = CONFIG.PERMISSION_DEFAULTS[user.role] || {};
+  const result = {};
+  Object.entries(defaults).forEach(([k, v]) => result[k] = normalizePermission(v));
+  return result;
 }
 
 export function hasPermission(presensiType, level) {
   const perms = getUserPermissions();
-  const userLevel = perms[presensiType] || 'none';
+  const perm = perms[presensiType] || { level: 'none' };
   const levels = CONFIG.PERMISSION_LEVELS;
-  return levels.indexOf(userLevel) >= levels.indexOf(level);
+  return levels.indexOf(perm.level) >= levels.indexOf(level);
 }
 
 export function hasAccess(presensiType) {
@@ -83,4 +104,16 @@ export function hasAccess(presensiType) {
 
 export function canWrite(presensiType) {
   return hasPermission(presensiType, 'write');
+}
+
+// Returns restriction filters for a presensi type
+export function getPermissionFilter(presensiType) {
+  const perms = getUserPermissions();
+  const perm = perms[presensiType] || { level: 'none', divisions: [], classes: [] };
+  if (perm.level === 'none') return null; // no access at all
+  return {
+    level: perm.level,
+    divisions: perm.divisions || [],
+    classes: perm.classes || []
+  };
 }

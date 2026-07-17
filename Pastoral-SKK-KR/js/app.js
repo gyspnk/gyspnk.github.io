@@ -739,7 +739,8 @@ function renderRoles() {
     let perms = {};
     try { perms = typeof r.default_permissions === 'string' ? JSON.parse(r.default_permissions) : (r.default_permissions || {}); } catch(e) {}
     const permSummary = CONFIG.PRESENSI_TYPES.map(t => {
-      const level = perms[t.value] || 'none';
+      const p = perms[t.value];
+      const level = (typeof p === 'string') ? p : (p && p.level ? p.level : 'none');
       const icon = level === 'write' ? '✏️' : level === 'view' ? '👁️' : '—';
       return `<span title="${t.label}: ${CONFIG.PERMISSION_LABELS[level]}" style="font-size:13px">${icon}</span>`;
     }).join(' ');
@@ -805,10 +806,8 @@ function renderUsers(users) {
   const currentUserObj = getCurrentUser();
   users.forEach(u => {
     const tr = document.createElement('tr');
-    // Parse user's custom permissions (may be null/empty)
     let userPerms = null;
     try { userPerms = (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions); } catch(e) {}
-    // Use user permissions if set, otherwise fall back to role defaults
     const roleObj = adminData.roles.find(r => r.role_key === u.role);
     let perms = {};
     if (userPerms && Object.keys(userPerms).length > 0) {
@@ -817,9 +816,11 @@ function renderUsers(users) {
       try { perms = typeof roleObj.default_permissions === 'string' ? JSON.parse(roleObj.default_permissions) : roleObj.default_permissions; } catch(e) {}
     }
     const permSummary = CONFIG.PRESENSI_TYPES.map(t => {
-      const level = perms[t.value] || 'none';
+      const p = perms[t.value];
+      const level = (typeof p === 'string') ? p : (p && p.level ? p.level : 'none');
       const icon = level === 'write' ? '✏️' : level === 'view' ? '👁️' : '—';
-      return `<span title="${t.label}: ${CONFIG.PERMISSION_LABELS[level]}" style="font-size:13px">${icon}</span>`;
+      const extra = (p && p.divisions && p.divisions.length > 0) ? ` (${p.divisions.length} div)` : (p && p.classes && p.classes.length > 0) ? ` (${p.classes.length} kls)` : '';
+      return `<span title="${t.label}: ${CONFIG.PERMISSION_LABELS[level]}${extra}" style="font-size:13px">${icon}</span>`;
     }).join(' ');
 
     tr.innerHTML = `
@@ -865,34 +866,57 @@ function showPermissionModal(targetId, targetName, currentPerms, isRole = false)
   const levels = CONFIG.PERMISSION_LEVELS;
   const labels = CONFIG.PERMISSION_LABELS;
 
-  let html = `<div style="width:100%;max-width:600px">
-    <h3 style="margin-bottom:4px">${isRole ? 'Default Izin Role' : 'Izin Akses'}</h3>
-    <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">${targetName}</p>
-    <div style="overflow-x:auto">
-    <table style="width:100%;border-collapse:collapse;font-size:13px">
-    <thead><tr>
-      <th style="text-align:left;padding:8px;border-bottom:2px solid var(--border)">Presensi</th>
-      ${levels.map(l => `<th style="text-align:center;padding:8px 12px;border-bottom:2px solid var(--border);font-size:12px;font-weight:600">${labels[l]}</th>`).join('')}
-    </tr></thead>
-    <tbody>`;
-
-  types.forEach((t, idx) => {
-    const current = currentPerms[t.value] || 'none';
-    const bg = idx % 2 === 0 ? '#f8fafc' : 'transparent';
-    html += `<tr style="background:${bg}">
-      <td style="padding:8px;font-weight:500;white-space:nowrap">${t.icon} ${t.label}</td>
-      ${levels.map(l => `
-        <td style="text-align:center;padding:8px">
-          <label style="cursor:pointer;display:flex;align-items:center;justify-content:center">
-            <input type="radio" name="perm_${t.value}" value="${l}" ${current === l ? 'checked' : ''} style="accent-color:var(--primary);width:16px;height:16px" />
-          </label>
-        </td>
-      `).join('')}
-    </tr>`;
+  // Normalize current permissions
+  const normalized = {};
+  types.forEach(t => {
+    const val = currentPerms[t.value];
+    if (typeof val === 'string') normalized[t.value] = { level: val, divisions: [], classes: [] };
+    else if (val && typeof val === 'object') normalized[t.value] = { level: val.level || 'none', divisions: val.divisions || [], classes: val.classes || [] };
+    else normalized[t.value] = { level: 'none', divisions: [], classes: [] };
   });
 
-  html += `</tbody></table></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+  // Get available divisions and classes for the filters
+  const allDivisions = [...new Set(adminData.employees.map(e => e.division).filter(Boolean))].sort();
+  const allClasses = [...new Set(kfsData.map(s => s.class).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'id', {numeric:true}));
+
+  let html = `<div style="width:100%;max-width:750px">
+    <h3 style="margin-bottom:4px">${isRole ? 'Default Izin Role' : 'Izin Akses'}</h3>
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">${targetName}</p>`;
+
+  types.forEach((t, idx) => {
+    const perm = normalized[t.value];
+    const isStudent = t.value === 'kanaan_fellowship_siswa';
+    const filterItems = isStudent ? allClasses : allDivisions;
+    const filterLabel = isStudent ? 'Kelas' : 'Divisi';
+    const filterKey = isStudent ? 'classes' : 'divisions';
+
+    html += `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;background:${idx%2===0?'#f8fafc':'white'}">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <span style="font-weight:600;font-size:14px">${t.icon} ${t.label}</span>
+        <div style="display:flex;gap:4px">
+          ${levels.map(l => `
+            <label style="cursor:pointer;padding:4px 10px;border:1px solid var(--border);border-radius:4px;font-size:12px;${perm.level===l?'background:var(--primary);color:#fff;border-color:var(--primary)':''}">
+              <input type="radio" name="perm_${t.value}_level" value="${l}" ${perm.level===l?'checked':''} style="display:none" />${labels[l]}
+            </label>
+          `).join('')}
+        </div>
+      </div>
+      ${filterItems.length > 0 ? `
+      <div style="margin-top:8px">
+        <span style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:block">Batasi ${filterLabel} (kosongkan = semua):</span>
+        <div style="display:flex;gap:4px;flex-wrap:wrap" data-perm-filter="${t.value}">
+          ${filterItems.map(item => {
+            const selected = (perm[filterKey] || []).includes(item);
+            return `<label style="cursor:pointer;padding:3px 8px;border:1px solid var(--border);border-radius:4px;font-size:11px;${selected?'background:#dbeafe;border-color:var(--primary);font-weight:600':''}">
+              <input type="checkbox" value="${item}" ${selected?'checked':''} style="display:none" />${item}
+            </label>`;
+          }).join('')}
+        </div>
+      </div>` : '<div style="margin-top:4px;font-size:11px;color:var(--text-muted)">Data belum dimuat — buka tab Karyawan/Siswa dulu untuk filter.</div>'}
+    </div>`;
+  });
+
+  html += `<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
       <button id="perm-cancel" class="btn btn-secondary btn-sm">Batal</button>
       <button id="perm-save" class="btn btn-primary btn-sm">Simpan</button>
     </div>
@@ -901,15 +925,50 @@ function showPermissionModal(targetId, targetName, currentPerms, isRole = false)
 
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px';
-  overlay.innerHTML = `<div style="background:var(--card-bg);border-radius:12px;padding:24px;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">${html}</div>`;
+  overlay.innerHTML = `<div style="background:var(--card-bg);border-radius:12px;padding:24px;width:100%;max-width:780px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">${html}</div>`;
   document.body.appendChild(overlay);
+
+  // Click handlers for styled radio/checkbox labels
+  overlay.querySelectorAll('label').forEach(label => {
+    const input = label.querySelector('input');
+    if (!input) return;
+    label.onclick = (e) => {
+      e.stopPropagation();
+      if (input.type === 'radio') {
+        const name = input.name;
+        overlay.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+          r.checked = false;
+          r.parentElement.style.background = '';
+          r.parentElement.style.color = '';
+          r.parentElement.style.borderColor = 'var(--border)';
+        });
+        input.checked = true;
+        label.style.background = 'var(--primary)';
+        label.style.color = '#fff';
+        label.style.borderColor = 'var(--primary)';
+      } else {
+        input.checked = !input.checked;
+        label.style.background = input.checked ? '#dbeafe' : '';
+        label.style.borderColor = input.checked ? 'var(--primary)' : 'var(--border)';
+        label.style.fontWeight = input.checked ? '600' : '';
+      }
+    };
+  });
 
   overlay.querySelector('#perm-cancel').onclick = () => overlay.remove();
   overlay.querySelector('#perm-save').onclick = async () => {
     const newPerms = {};
     types.forEach(t => {
-      const radio = overlay.querySelector(`input[name="perm_${t.value}"]:checked`);
-      if (radio) newPerms[t.value] = radio.value;
+      const levelRadio = overlay.querySelector(`input[name="perm_${t.value}_level"]:checked`);
+      const level = levelRadio ? levelRadio.value : 'none';
+      const isStudent = t.value === 'kanaan_fellowship_siswa';
+      const filterDiv = overlay.querySelector(`[data-perm-filter="${t.value}"]`);
+      const selected = filterDiv ? [...filterDiv.querySelectorAll('input:checked')].map(cb => cb.value) : [];
+      newPerms[t.value] = {
+        level,
+        divisions: isStudent ? [] : selected,
+        classes: isStudent ? selected : []
+      };
     });
     const msgEl = overlay.querySelector('#perm-msg');
     msgEl.textContent = 'Menyimpan...';

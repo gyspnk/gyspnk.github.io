@@ -1,5 +1,6 @@
 import { CONFIG } from './config.js';
 import { api, isDemoMode } from './api.js';
+import { getPermissionFilter } from './auth.js';
 
 function parseAcademicYearLabel(label) {
   const parts = label.split('-');
@@ -77,7 +78,7 @@ export async function loadKaryawanData(year, presensiType) {
       // Kanaan Fellowship — load students, not employees
       if (presensiType === 'kanaan_fellowship_siswa') {
         const students = await api.getKFStudents({ academicYear: year.label, active: 'true' });
-        return students.map(s => ({
+        let result = students.map(s => ({
           id: s.id,
           name: s.name,
           position: s.class || '',
@@ -87,6 +88,14 @@ export async function loadKaryawanData(year, presensiType) {
           gender: s.gender || '',
           religion: s.religion || ''
         }));
+
+        // Apply class filter from user permissions
+        const filter = getPermissionFilter(presensiType);
+        if (filter && filter.classes.length > 0) {
+          result = result.filter(s => filter.classes.includes(s.division));
+        }
+
+        return result;
       }
 
       const params = { academicYear: year.label, active: 'true' };
@@ -98,7 +107,7 @@ export async function loadKaryawanData(year, presensiType) {
         params.activeRH = 'true';
       }
       const employees = await api.getEmployees(params);
-      return employees.map(e => ({
+      let result = employees.map(e => ({
         id: e.id,
         name: e.name,
         position: e.position || '',
@@ -108,6 +117,16 @@ export async function loadKaryawanData(year, presensiType) {
         isActiveIM: e.is_active_im != false,
         isActiveKF: e.is_active_kf != false
       }));
+
+      // Apply division filter from user permissions (for non-student presensi types)
+      if (presensiType && presensiType !== 'kanaan_fellowship_siswa') {
+        const filter = getPermissionFilter(presensiType);
+        if (filter && filter.divisions.length > 0) {
+          result = result.filter(e => filter.divisions.includes(e.division));
+        }
+      }
+
+      return result;
     } catch (e) {
       console.error('Failed to load employees from API:', e);
       return [];
