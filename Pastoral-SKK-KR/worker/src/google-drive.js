@@ -24,12 +24,13 @@ async function getAccessToken(env) {
     throw new Error('Google Service Account not configured. Add GOOGLE_SERVICE_ACCOUNT_JSON secret.');
   }
 
-  // Create JWT
+  // Create JWT with domain-wide delegation to staff account
   const header = { alg: 'RS256', typ: 'JWT' };
   const now = Math.floor(Date.now() / 1000);
   const payload = {
     iss: sa.client_email,
-    scope: 'https://www.googleapis.com/auth/drive.file',
+    sub: 'staff.pas.kkr@kanaan.sch.id',  // Impersonate staff account
+    scope: 'https://www.googleapis.com/auth/drive',
     aud: 'https://oauth2.googleapis.com/token',
     exp: now + 3600,
     iat: now
