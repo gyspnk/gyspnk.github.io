@@ -26,15 +26,15 @@ export const CONFIG = {
   DATA_CACHE_KEY: 'pas_presensi_karyawan_cache',
   PRESENSI_TYPES: [
     { value: 'renungan_harian', label: 'Renungan Harian', icon: '📖', group: 'Harian' },
-    { value: 'ibadah_mingguan', label: 'Ibadah Mingguan', icon: '⛪', group: 'Mingguan' },
-    { value: 'kanaan_fellowship_guru', label: 'Kanaan Fellowship - Guru', icon: '🧑‍🏫', group: 'Kanaan Fellowship' },
-    { value: 'kanaan_fellowship_siswa', label: 'Kanaan Fellowship - Siswa', icon: '🎓', group: 'Kanaan Fellowship' }
+    { value: 'ibadah_mingguan', label: 'Ibadah Mingguan (Tiap Jumat)', icon: '⛪', group: 'Mingguan' },
+    { value: 'kanaan_fellowship_guru', label: 'Kanaan Fellowship (Sabat Ceria) - Guru', icon: '🧑‍🏫', group: 'Kanaan Fellowship' },
+    { value: 'kanaan_fellowship_siswa', label: 'Kanaan Fellowship (Sabat Ceria) - Siswa', icon: '🎓', group: 'Kanaan Fellowship' }
   ],
   PRESENSI_TYPE_LABELS: {
     renungan_harian: 'Renungan Harian',
-    ibadah_mingguan: 'Ibadah Mingguan',
-    kanaan_fellowship_guru: 'Kanaan Fellowship Guru',
-    kanaan_fellowship_siswa: 'Kanaan Fellowship Siswa'
+    ibadah_mingguan: 'Ibadah Mingguan (Tiap Jumat)',
+    kanaan_fellowship_guru: 'Kanaan Fellowship (Sabat Ceria) Guru',
+    kanaan_fellowship_siswa: 'Kanaan Fellowship (Sabat Ceria) Siswa'
   },
   IBADAH_MINGGUAN_DAY: 5, // Friday (0=Sun, 1=Mon, ..., 5=Fri, 6=Sat)
   DAY_NAMES: ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'],
