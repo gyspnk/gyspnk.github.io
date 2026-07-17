@@ -224,11 +224,12 @@ function updateSidebarPermissions() {
   if (historyLink) historyLink.parentElement.style.display = hasAnyAccess ? '' : 'none';
   if (exportLink) exportLink.parentElement.style.display = hasAnyAccess ? '' : 'none';
 
-  // KF Docs visible if user has access to KF types
+  // KF Docs: visible for all except gereja (read-only)
   const kfDocsLink = document.getElementById('kf-docs-nav');
-  const hasKFAccess = (perms['kanaan_fellowship_guru'] || perms['kanaan_fellowship_siswa']);
-  const kfLevel = typeof hasKFAccess === 'string' ? hasKFAccess : (hasKFAccess?.level || 'none');
-  if (kfDocsLink) kfDocsLink.parentElement.style.display = kfLevel !== 'none' ? '' : 'none';
+  if (kfDocsLink) {
+    const user = getCurrentUser();
+    kfDocsLink.parentElement.style.display = (user && user.role !== 'gereja') ? '' : 'none';
+  }
 }
 
 function filterPresensiTypeSelectors() {
@@ -300,8 +301,9 @@ function switchView(view) {
     initExport();
   }
 
-  if (view === 'kf-docs') {
-    initKFDocs();
+  if (view === 'kf-docs' && !viewsInitialized['kf-docs']) {
+    viewsInitialized['kf-docs'] = true;
+    try { initKFDocs(); } catch(e) { console.error('KF Docs init error:', e); }
   }
 
   if (view === 'admin' && hasRole('admin')) {

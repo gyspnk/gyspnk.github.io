@@ -18,42 +18,55 @@ let kfDocsPerPage = 12;
 let kfDocsInitDone = false;
 
 export async function initKFDocs() {
+  console.log('KF Docs: init called, initDone=', kfDocsInitDone);
   if (kfDocsInitDone) {
     loadKFDocs();
     return;
   }
   kfDocsInitDone = true;
 
-  const years = await getAvailableYears();
-  const currentAY = getCurrentAcademicYear(years);
-  currentYearLabel = currentAY.label;
+  try {
+    const years = await getAvailableYears();
+    const currentAY = getCurrentAcademicYear(years);
+    currentYearLabel = currentAY.label;
+    console.log('KF Docs: years loaded, current=', currentYearLabel);
 
-  const yearSelect = document.getElementById('kfd-year');
-  if (!yearSelect) return;
-  yearSelect.innerHTML = '';
-  years.forEach(y => {
-    const opt = document.createElement('option');
-    opt.value = y.label;
-    opt.textContent = y.label;
-    if (y.label === currentAY.label) opt.selected = true;
-    yearSelect.appendChild(opt);
-  });
+    const yearSelect = document.getElementById('kfd-year');
+    if (!yearSelect) { console.error('KF Docs: kfd-year not found!'); return; }
+    yearSelect.innerHTML = '';
+    years.forEach(y => {
+      const opt = document.createElement('option');
+      opt.value = y.label;
+      opt.textContent = y.label;
+      if (y.label === currentAY.label) opt.selected = true;
+      yearSelect.appendChild(opt);
+    });
 
-  document.getElementById('kfd-load').onclick = loadKFDocs;
-  document.getElementById('kfd-upload-btn').onclick = () => {
-    const form = document.getElementById('kfd-upload-form');
-    form.classList.toggle('hidden');
-  };
-  document.getElementById('kfd-submit').onclick = handleUpload;
-  document.getElementById('kfd-group-filter').onchange = () => { kfDocsPage = 1; renderKFGallery(); };
-  document.getElementById('kfd-per-page').onchange = () => {
-    kfDocsPerPage = parseInt(document.getElementById('kfd-per-page').value, 10);
-    kfDocsPage = 1;
-    renderKFGallery();
-  };
+    const loadBtn = document.getElementById('kfd-load');
+    const uploadBtn = document.getElementById('kfd-upload-btn');
+    const submitBtn = document.getElementById('kfd-submit');
+    const groupFilter = document.getElementById('kfd-group-filter');
+    const perPageSel = document.getElementById('kfd-per-page');
 
-  updateKFDocsPermissions();
-  loadKFDocs();
+    if (loadBtn) loadBtn.onclick = loadKFDocs;
+    if (uploadBtn) uploadBtn.onclick = () => {
+      const form = document.getElementById('kfd-upload-form');
+      if (form) form.classList.toggle('hidden');
+    };
+    if (submitBtn) submitBtn.onclick = handleUpload;
+    if (groupFilter) groupFilter.onchange = () => { kfDocsPage = 1; renderKFGallery(); };
+    if (perPageSel) perPageSel.onchange = () => {
+      kfDocsPerPage = parseInt(perPageSel.value, 10);
+      kfDocsPage = 1;
+      renderKFGallery();
+    };
+
+    updateKFDocsPermissions();
+    console.log('KF Docs: calling loadKFDocs...');
+    loadKFDocs();
+  } catch(e) {
+    console.error('KF Docs init error:', e);
+  }
 }
 
 function updateKFDocsPermissions() {
