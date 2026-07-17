@@ -348,6 +348,19 @@ const demoApi = {
   async deleteKFDoc(id) {
     dbSet('pas_presensi_kf_docs', dbGet('pas_presensi_kf_docs').filter(d => d.id !== id));
     return { success: true };
+  },
+  async uploadKFDoc(data) {
+    // Demo: simulate upload (no Google Drive in demo mode)
+    const docs = dbGet('pas_presensi_kf_docs');
+    const id = docs.length ? Math.max(...docs.map(d => d.id)) + 1 : 1;
+    docs.push({
+      id, event_date: data.eventDate, academic_year: data.academicYear,
+      class_group: data.classGroup, file_name: data.fileName,
+      drive_file_id: 'demo_' + Date.now(), drive_url: '#',
+      uploaded_by: 'admin', uploaded_at: new Date().toISOString()
+    });
+    dbSet('pas_presensi_kf_docs', docs);
+    return { success: true };
   }
 };
 

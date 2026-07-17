@@ -223,6 +223,12 @@ function updateSidebarPermissions() {
   if (presensiLink) presensiLink.parentElement.style.display = hasAnyWrite ? '' : 'none';
   if (historyLink) historyLink.parentElement.style.display = hasAnyAccess ? '' : 'none';
   if (exportLink) exportLink.parentElement.style.display = hasAnyAccess ? '' : 'none';
+
+  // KF Docs visible if user has access to KF types
+  const kfDocsLink = document.getElementById('kf-docs-nav');
+  const hasKFAccess = (perms['kanaan_fellowship_guru'] || perms['kanaan_fellowship_siswa']);
+  const kfLevel = typeof hasKFAccess === 'string' ? hasKFAccess : (hasKFAccess?.level || 'none');
+  if (kfDocsLink) kfDocsLink.parentElement.style.display = kfLevel !== 'none' ? '' : 'none';
 }
 
 function filterPresensiTypeSelectors() {

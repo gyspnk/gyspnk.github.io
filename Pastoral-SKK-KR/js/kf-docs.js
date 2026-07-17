@@ -1,7 +1,7 @@
 import { CONFIG } from './config.js';
 import { api } from './api.js';
 import { getAvailableYears, getCurrentAcademicYear } from './data-loader.js';
-import { getCurrentUser } from './auth.js';
+import { getCurrentUser, getUserPermissions } from './auth.js';
 
 const CLASS_GROUPS = {
   'Indria': 'Indria (TK A, TK B)',
@@ -9,16 +9,27 @@ const CLASS_GROUPS = {
   'Madya': 'Madya (4-6 SD)',
   'Tunas Muda': 'Tunas Muda (7-9 SMP)'
 };
+const PER_PAGE_OPTIONS = [12, 24, 48, 96];
 
 let kfDocsData = [];
 let currentYearLabel = '';
+let kfDocsPage = 1;
+let kfDocsPerPage = 12;
+let kfDocsInitDone = false;
 
 export async function initKFDocs() {
+  if (kfDocsInitDone) {
+    loadKFDocs();
+    return;
+  }
+  kfDocsInitDone = true;
+
   const years = await getAvailableYears();
   const currentAY = getCurrentAcademicYear(years);
   currentYearLabel = currentAY.label;
 
   const yearSelect = document.getElementById('kfd-year');
+  if (!yearSelect) return;
   yearSelect.innerHTML = '';
   years.forEach(y => {
     const opt = document.createElement('option');
@@ -30,12 +41,41 @@ export async function initKFDocs() {
 
   document.getElementById('kfd-load').onclick = loadKFDocs;
   document.getElementById('kfd-upload-btn').onclick = () => {
-    document.getElementById('kfd-upload-form').classList.toggle('hidden');
+    const form = document.getElementById('kfd-upload-form');
+    form.classList.toggle('hidden');
   };
   document.getElementById('kfd-submit').onclick = handleUpload;
-  document.getElementById('kfd-group-filter').onchange = renderKFGallery;
+  document.getElementById('kfd-group-filter').onchange = () => { kfDocsPage = 1; renderKFGallery(); };
+  document.getElementById('kfd-per-page').onchange = () => {
+    kfDocsPerPage = parseInt(document.getElementById('kfd-per-page').value, 10);
+    kfDocsPage = 1;
+    renderKFGallery();
+  };
 
+  updateKFDocsPermissions();
   loadKFDocs();
+}
+
+function updateKFDocsPermissions() {
+  const perms = getUserPermissions();
+  // Check if user has access to KF documentation
+  const kfPerm = perms['kanaan_fellowship_siswa'] || perms['kanaan_fellowship_guru'];
+  const level = typeof kfPerm === 'string' ? kfPerm : (kfPerm?.level || 'none');
+
+  const uploadBtn = document.getElementById('kfd-upload-btn');
+  const uploadForm = document.getElementById('kfd-upload-form');
+
+  if (level === 'none' || level === 'view') {
+    if (uploadBtn) uploadBtn.classList.add('hidden');
+    if (uploadForm) uploadForm.classList.add('hidden');
+  }
+}
+
+function canUploadKF() {
+  const perms = getUserPermissions();
+  const kfPerm = perms['kanaan_fellowship_siswa'] || perms['kanaan_fellowship_guru'];
+  const level = typeof kfPerm === 'string' ? kfPerm : (kfPerm?.level || 'none');
+  return level === 'write';
 }
 
 async function loadKFDocs() {
@@ -44,6 +84,7 @@ async function loadKFDocs() {
   currentYearLabel = yearLabel;
   try {
     kfDocsData = await api.getKFDocs({ academicYear: yearLabel });
+    kfDocsPage = 1;
     renderKFGallery();
   } catch (e) {
     console.error('Failed to load KF docs:', e);
@@ -54,11 +95,14 @@ async function loadKFDocs() {
 }
 
 async function handleUpload() {
+  if (!canUploadKF()) {
+    alert('Anda tidak memiliki izin untuk upload.');
+    return;
+  }
   const fileInput = document.getElementById('kfd-file');
   const eventDate = document.getElementById('kfd-event-date').value;
   const classGroup = document.getElementById('kfd-class-group').value;
   const msgEl = document.getElementById('kfd-upload-msg');
-  const user = getCurrentUser();
 
   if (!fileInput.files || !fileInput.files[0]) {
     msgEl.textContent = 'Pilih file foto terlebih dahulu.';
@@ -72,7 +116,6 @@ async function handleUpload() {
     msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
     return;
   }
-
   const file = fileInput.files[0];
   if (file.size > 10 * 1024 * 1024) {
     msgEl.textContent = 'Ukuran file maksimal 10MB.';
@@ -81,33 +124,26 @@ async function handleUpload() {
     return;
   }
 
-  // Show progress
   document.getElementById('kfd-upload-progress').classList.remove('hidden');
   document.getElementById('kfd-progress-bar').style.width = '10%';
-  document.getElementById('kfd-progress-text').textContent = 'Mengupload...';
+  document.getElementById('kfd-progress-text').textContent = 'Menyiapkan...';
 
-  msgEl.textContent = 'Mempersiapkan upload ke Google Drive...';
+  msgEl.textContent = 'Upload ke Google Drive...';
   msgEl.classList.remove('hidden');
   msgEl.style.background = '#dbeafe'; msgEl.style.color = '#1e40af';
 
   try {
-    // Convert to base64
     const base64 = await fileToBase64(file);
-    document.getElementById('kfd-progress-bar').style.width = '30%';
-    document.getElementById('kfd-progress-text').textContent = 'Upload ke server...';
+    document.getElementById('kfd-progress-bar').style.width = '40%';
+    document.getElementById('kfd-progress-text').textContent = 'Mengirim ke server...';
 
-    // Upload via worker (server-side Google Drive upload using service account)
-    const result = await api.uploadKFDoc({
+    await api.uploadKFDoc({
       eventDate, academicYear: currentYearLabel, classGroup,
       fileName: file.name, fileData: base64, mimeType: file.type
     });
 
     document.getElementById('kfd-progress-bar').style.width = '100%';
     document.getElementById('kfd-progress-text').textContent = 'Selesai!';
-
-    document.getElementById('kfd-progress-bar').style.width = '100%';
-    document.getElementById('kfd-progress-text').textContent = 'Selesai!';
-
     msgEl.textContent = '✅ Foto berhasil diupload ke Google Drive!';
     msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';
 
@@ -115,10 +151,9 @@ async function handleUpload() {
     document.getElementById('kfd-event-date').value = '';
     document.getElementById('kfd-upload-form').classList.add('hidden');
     document.getElementById('kfd-upload-progress').classList.add('hidden');
-
     await loadKFDocs();
   } catch (e) {
-    msgEl.textContent = 'Gagal upload: ' + (e.message || 'Unknown error');
+    msgEl.textContent = 'Gagal: ' + (e.error || e.message || 'Unknown');
     msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
     document.getElementById('kfd-upload-progress').classList.add('hidden');
   }
@@ -141,20 +176,26 @@ function renderKFGallery() {
   let docs = kfDocsData;
   if (groupFilter !== 'all') docs = docs.filter(d => d.class_group === groupFilter);
 
+  const totalItems = docs.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / kfDocsPerPage));
+  if (kfDocsPage > totalPages) kfDocsPage = totalPages;
+  const start = (kfDocsPage - 1) * kfDocsPerPage;
+  const pageDocs = docs.slice(start, start + kfDocsPerPage);
+
+  if (totalItems === 0) {
+    container.innerHTML = '<p class="muted" style="text-align:center;padding:40px">Belum ada dokumentasi untuk filter ini.</p>';
+    return;
+  }
+
   // Group by event date
   const byDate = {};
-  docs.forEach(d => {
+  pageDocs.forEach(d => {
     const dateKey = d.event_date?.split('T')[0] || 'unknown';
     if (!byDate[dateKey]) byDate[dateKey] = [];
     byDate[dateKey].push(d);
   });
 
-  if (docs.length === 0) {
-    container.innerHTML = '<p class="muted" style="text-align:center;padding:40px">Belum ada dokumentasi untuk filter ini.</p>';
-    return;
-  }
-
-  let html = '';
+  let html = '<div class="kf-gallery">';
   Object.keys(byDate).sort().reverse().forEach(dateKey => {
     html += `<div style="grid-column:1/-1;margin-top:8px"><h3 style="font-size:14px;font-weight:600">📅 ${dateKey}</h3></div>`;
     byDate[dateKey].forEach(d => {
@@ -163,17 +204,43 @@ function renderKFGallery() {
         : '';
       html += `<div class="kf-photo-card">
         <a href="${d.drive_url || '#'}" target="_blank">
-          <img src="${imgUrl}" alt="${d.file_name}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22180%22><rect fill=%22%23e2e8f0%22 width=%22200%22 height=%22180%22/><text fill=%22%2394a3b8%22 x=%22100%22 y=%2290%22 text-anchor=%22middle%22 font-size=%2212%22>📷</text></svg>'" />
+          <img src="${imgUrl}" alt="${d.file_name || ''}" loading="lazy" onerror="this.style.display='none'" />
         </a>
         <div class="kf-photo-info">
           <div class="kf-photo-date">${CLASS_GROUPS[d.class_group] || d.class_group}</div>
-          <div class="kf-photo-uploader">${d.file_name} · oleh ${d.uploaded_by || '—'}</div>
+          <div class="kf-photo-group">${d.file_name || ''}</div>
+          <div class="kf-photo-uploader">oleh ${d.uploaded_by || '—'} · ${new Date(d.uploaded_at).toLocaleDateString('id')}</div>
         </div>
       </div>`;
     });
   });
+  html += '</div>';
+
+  // Pagination
+  if (totalPages > 1) {
+    html += `<div class="pagination-controls" style="margin-top:16px">
+      <button class="btn btn-sm btn-secondary kfd-prev" ${kfDocsPage <= 1 ? 'disabled' : ''}>‹ Prev</button>`;
+    const maxShow = 5;
+    let sp = Math.max(1, kfDocsPage - Math.floor(maxShow / 2));
+    let ep = Math.min(totalPages, sp + maxShow - 1);
+    if (ep - sp + 1 < maxShow) sp = Math.max(1, ep - maxShow + 1);
+    for (let p = sp; p <= ep; p++) {
+      html += `<button class="btn btn-sm ${p === kfDocsPage ? 'btn-primary' : 'btn-secondary'} kfd-page-btn" data-page="${p}">${p}</button>`;
+    }
+    html += `<button class="btn btn-sm btn-secondary kfd-next" ${kfDocsPage >= totalPages ? 'disabled' : ''}>Next ›</button>
+    </div>`;
+  }
+
+  html += `<div style="text-align:center;margin-top:8px;font-size:12px;color:var(--text-muted)">Menampilkan ${start+1}-${Math.min(start+kfDocsPerPage, totalItems)} dari ${totalItems} foto</div>`;
 
   container.innerHTML = html;
+
+  // Bind pagination clicks
+  container.querySelector('.kfd-prev')?.addEventListener('click', () => { kfDocsPage--; renderKFGallery(); });
+  container.querySelector('.kfd-next')?.addEventListener('click', () => { kfDocsPage++; renderKFGallery(); });
+  container.querySelectorAll('.kfd-page-btn').forEach(btn => {
+    btn.addEventListener('click', () => { kfDocsPage = parseInt(btn.dataset.page); renderKFGallery(); });
+  });
 }
 
 export { loadKFDocs };
