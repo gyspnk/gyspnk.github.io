@@ -342,8 +342,9 @@ async function initAdmin() {
   initAdminDivisions();
   initAdminEmployees();
   initAdminKFStudents();
-  initAdminPresensiConfig();
-  initAdminPresensiTypes();
+  initAdminPresensiTypes().then(() => {
+    initAdminPresensiConfig();
+  });
 }
 
 function switchAdminTab(tab) {
@@ -1421,8 +1422,8 @@ function renderPresensiTypesTable() {
         await api.deletePresensiType(parseInt(btn.dataset.delPt, 10));
         await loadPresensiTypes();
         await syncPresensiTypes();
-        await loadPresensiConfig();
-        renderPresensiConfig();
+        await loadPresensiConfig();  // re-renders with updated types
+        if (typeof filterPresensiTypeSelectors === 'function') filterPresensiTypeSelectors();
       } catch(e) { alert('Gagal: ' + e.message); }
     };
   });
@@ -1439,8 +1440,10 @@ async function handleAddPresensiType() {
     document.getElementById('new-pt-label').value = '';
     await loadPresensiTypes();
     await syncPresensiTypes();
+    // Reload config and re-render — now includes new type
     await loadPresensiConfig();
-    renderPresensiConfig();
+    // Also refresh all presensi type selectors on other pages
+    if (typeof filterPresensiTypeSelectors === 'function') filterPresensiTypeSelectors();
   } catch(e) { alert('Gagal: ' + e.message); }
 }
 
