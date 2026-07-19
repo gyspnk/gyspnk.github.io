@@ -1,6 +1,5 @@
 import { query, execute, initSchema } from './db.js';
 import { hashPassword, verifyPassword, createJWT, verifyJWT } from './auth.js';
-import { uploadToDrive } from './google-drive.js';
 
 let _schemaReady = false;
 async function ensureSchema(env) {
@@ -181,6 +180,24 @@ export default {
           count++;
         }
         return json({ success: true, count }, 200, allowOrigin);
+      }
+
+      if (path === '/api/attendance' && request.method === 'DELETE') {
+        if (payload.role !== 'admin') return json({ error: 'Hanya admin yang bisa menghapus presensi' }, 403, allowOrigin);
+        const params = url.searchParams;
+        const date = params.get('date');
+        const academicYear = params.get('academicYear');
+        const presensiType = params.get('presensiType') || 'renungan_harian';
+        const employeeName = params.get('employeeName'); // optional — delete single user
+        if (!date || !academicYear) return json({ error: 'date dan academicYear diperlukan' }, 400, allowOrigin);
+        let sql = 'DELETE FROM attendance WHERE attendance_date = ? AND academic_year = ? AND presensi_type = ?';
+        const vals = [date, academicYear, presensiType];
+        if (employeeName) {
+          sql += ' AND employee_name = ?';
+          vals.push(employeeName);
+        }
+        await execute(env, sql, vals);
+        return json({ success: true }, 200, allowOrigin);
       }
 
       // ===== Academic Years =====
@@ -392,51 +409,6 @@ export default {
         await execute(env,
           'INSERT INTO presensi_config (presensi_type, allowed_days) VALUES (?, ?) ON DUPLICATE KEY UPDATE allowed_days = VALUES(allowed_days)',
           [presensiType, allowedDays]);
-        return json({ success: true }, 200, allowOrigin);
-      }
-
-      // ===== KF Documentation =====
-      if (path === '/api/kf-docs' && request.method === 'GET') {
-        const params = url.searchParams;
-        let sql = 'SELECT * FROM kf_documentation WHERE 1=1';
-        const vals = [];
-        if (params.get('academicYear')) { sql += ' AND academic_year = ?'; vals.push(params.get('academicYear')); }
-        if (params.get('classGroup')) { sql += ' AND class_group = ?'; vals.push(params.get('classGroup')); }
-        if (params.get('eventDate')) { sql += ' AND event_date = ?'; vals.push(params.get('eventDate')); }
-        sql += ' ORDER BY event_date DESC, uploaded_at DESC';
-        const rows = await query(env, sql, vals);
-        return json(rows, 200, allowOrigin);
-      }
-
-      if (path === '/api/kf-docs' && request.method === 'POST') {
-        const { eventDate, academicYear, classGroup, fileName, driveFileId, driveUrl } = await request.json();
-        if (!eventDate || !classGroup || !driveFileId) return json({ error: 'Data tidak lengkap' }, 400, allowOrigin);
-        await execute(env,
-          'INSERT INTO kf_documentation (event_date, academic_year, class_group, file_name, drive_file_id, drive_url, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [eventDate, academicYear, classGroup, fileName || '', driveFileId, driveUrl || '', payload.username]);
-        return json({ success: true }, 201, allowOrigin);
-      }
-
-      if (path === '/api/kf-docs/upload' && request.method === 'POST') {
-        const { eventDate, academicYear, classGroup, fileName, fileData, mimeType } = await request.json();
-        if (!eventDate || !classGroup || !fileData) return json({ error: 'Data tidak lengkap' }, 400, allowOrigin);
-        try {
-          const folderPath = `Kanaan Fellowship/${academicYear}/${classGroup}`;
-          const result = await uploadToDrive(env, fileName, fileData, mimeType || 'image/jpeg', folderPath);
-          // Save metadata
-          await execute(env,
-            'INSERT INTO kf_documentation (event_date, academic_year, class_group, file_name, drive_file_id, drive_url, uploaded_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [eventDate, academicYear, classGroup, fileName, result.fileId, result.webViewLink, payload.username]);
-          return json({ success: true, fileId: result.fileId, url: result.webViewLink }, 201, allowOrigin);
-        } catch (e) {
-          return json({ error: 'Drive upload gagal: ' + e.message }, 500, allowOrigin);
-        }
-      }
-
-      if (path.startsWith('/api/kf-docs/') && request.method === 'DELETE') {
-        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
-        const id = parseInt(path.split('/').pop(), 10);
-        await execute(env, 'DELETE FROM kf_documentation WHERE id = ?', [id]);
         return json({ success: true }, 200, allowOrigin);
       }
 

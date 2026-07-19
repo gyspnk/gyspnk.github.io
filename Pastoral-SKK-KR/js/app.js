@@ -5,7 +5,6 @@ import { initDashboard } from './dashboard.js';
 import { initPresensi, loadPresensiData } from './attendance.js';
 import { initHistory, loadHistory } from './history.js';
 import { initExport } from './export.js';
-import { initKFDocs } from './kf-docs.js';
 import { getAvailableYears, getCurrentAcademicYear, loadKaryawanData } from './data-loader.js';
 
 let currentView = 'dashboard';
@@ -246,9 +245,6 @@ function updateSidebarPermissions() {
   if (historyLink) historyLink.parentElement.style.display = hasAnyAccess ? '' : 'none';
   if (exportLink) exportLink.parentElement.style.display = hasAnyAccess ? '' : 'none';
 
-  // KF Docs: hidden until Drive delegation ready
-  // const kfDocsLink = document.getElementById('kf-docs-nav');
-  // if (kfDocsLink) { ... }
 }
 
 function filterPresensiTypeSelectors() {
@@ -319,9 +315,6 @@ function switchView(view) {
     viewsInitialized.export = true;
     initExport();
   }
-
-  // KF Docs disabled until Drive delegation is set up
-  // if (view === 'kf-docs' && !viewsInitialized['kf-docs']) { ... }
 
   if (view === 'admin' && hasRole('admin')) {
     initAdmin();
@@ -996,14 +989,6 @@ function showPermissionModal(targetId, targetName, currentPerms, isRole = false)
       </div>` : '<div style="margin-top:4px;font-size:11px;color:var(--text-muted)">Data belum dimuat — buka tab Karyawan/Siswa dulu untuk filter.</div>'}
     </div>`;
   });
-
-  // Add KF Documentation row (derived from KF permissions)
-  html += `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;background:#fefce8">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <span style="font-weight:600;font-size:14px">📸 Dokumentasi KF</span>
-      <span style="font-size:11px;color:var(--text-muted)">(mengikuti izin KF-Guru/Siswa)</span>
-    </div>
-  </div>`;
 
   html += `<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
       <button id="perm-cancel" class="btn btn-secondary btn-sm">Batal</button>

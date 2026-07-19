@@ -139,6 +139,20 @@ const demoApi = {
     return { success: true, count: data.records.length };
   },
 
+  async deleteAttendance(params = {}) {
+    let records = dbGet(DB_ATT);
+    const before = records.length;
+    records = records.filter(r => {
+      if (params.date && r.attendance_date !== params.date) return true;
+      if (params.academicYear && r.academic_year !== params.academicYear) return true;
+      if (params.presensiType && (r.presensi_type || 'renungan_harian') !== params.presensiType) return true;
+      if (params.employeeName && r.employee_name !== params.employeeName) return true;
+      return false;
+    });
+    dbSet(DB_ATT, records);
+    return { success: true, deletedCount: before - records.length };
+  },
+
   async hasUsers() {
     return dbGet(DB_USERS).length > 0;
   },
@@ -327,41 +341,6 @@ const demoApi = {
     dbSet('pas_presensi_roles', roles.filter(r => r.id !== id));
     return { success: true };
   },
-  async getKFDocs(params = {}) {
-    let docs = dbGet('pas_presensi_kf_docs');
-    if (params.academicYear) docs = docs.filter(d => d.academic_year === params.academicYear);
-    if (params.classGroup) docs = docs.filter(d => d.class_group === params.classGroup);
-    return docs.sort((a, b) => (b.event_date || '').localeCompare(a.event_date || ''));
-  },
-  async addKFDoc(data) {
-    const docs = dbGet('pas_presensi_kf_docs');
-    const id = docs.length ? Math.max(...docs.map(d => d.id)) + 1 : 1;
-    docs.push({
-      id, event_date: data.eventDate, academic_year: data.academicYear,
-      class_group: data.classGroup, file_name: data.fileName,
-      drive_file_id: data.driveFileId, drive_url: data.driveUrl,
-      uploaded_by: data.uploadedBy || 'admin', uploaded_at: new Date().toISOString()
-    });
-    dbSet('pas_presensi_kf_docs', docs);
-    return { success: true };
-  },
-  async deleteKFDoc(id) {
-    dbSet('pas_presensi_kf_docs', dbGet('pas_presensi_kf_docs').filter(d => d.id !== id));
-    return { success: true };
-  },
-  async uploadKFDoc(data) {
-    // Demo: simulate upload (no Google Drive in demo mode)
-    const docs = dbGet('pas_presensi_kf_docs');
-    const id = docs.length ? Math.max(...docs.map(d => d.id)) + 1 : 1;
-    docs.push({
-      id, event_date: data.eventDate, academic_year: data.academicYear,
-      class_group: data.classGroup, file_name: data.fileName,
-      drive_file_id: 'demo_' + Date.now(), drive_url: '#',
-      uploaded_by: 'admin', uploaded_at: new Date().toISOString()
-    });
-    dbSet('pas_presensi_kf_docs', docs);
-    return { success: true };
-  }
 };
 
 /* ===== Real API backend ===== */
@@ -397,6 +376,14 @@ const realApi = {
   },
   async saveAttendance(data) {
     return apiFetch('/api/attendance', { method: 'POST', body: JSON.stringify(data) });
+  },
+  async deleteAttendance(params = {}) {
+    const qs = new URLSearchParams();
+    if (params.date) qs.set('date', params.date);
+    if (params.academicYear) qs.set('academicYear', params.academicYear);
+    if (params.presensiType) qs.set('presensiType', params.presensiType);
+    if (params.employeeName) qs.set('employeeName', params.employeeName);
+    return apiFetch('/api/attendance?' + qs.toString(), { method: 'DELETE' });
   },
   async hasUsers() {
     const data = await apiFetch('/api/auth/status');
@@ -492,22 +479,6 @@ const realApi = {
   },
   async deleteRole(id) {
     return apiFetch(`/api/roles/${id}`, { method: 'DELETE' });
-  },
-  async getKFDocs(params = {}) {
-    const qs = new URLSearchParams();
-    if (params.academicYear) qs.set('academicYear', params.academicYear);
-    if (params.classGroup) qs.set('classGroup', params.classGroup);
-    if (params.eventDate) qs.set('eventDate', params.eventDate);
-    return apiFetch('/api/kf-docs?' + qs.toString());
-  },
-  async addKFDoc(data) {
-    return apiFetch('/api/kf-docs', { method: 'POST', body: JSON.stringify(data) });
-  },
-  async uploadKFDoc(data) {
-    return apiFetch('/api/kf-docs/upload', { method: 'POST', body: JSON.stringify(data) });
-  },
-  async deleteKFDoc(id) {
-    return apiFetch(`/api/kf-docs/${id}`, { method: 'DELETE' });
   }
 };
 

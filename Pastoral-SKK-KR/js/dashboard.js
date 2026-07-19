@@ -54,6 +54,7 @@ async function loadDashboard() {
   renderDistributionChart();
   renderTrendChart();
   renderDivisionChart();
+  renderDivisionCountChart();
   window.hideLoading();
 }
 
@@ -154,6 +155,55 @@ function renderDivisionChart() {
       responsive: true, maintainAspectRatio: false,
       scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
       plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }
+    }
+  });
+}
+
+function renderDivisionCountChart() {
+  destroyChart('divisionCount');
+  const byDivision = {};
+  currentData.forEach(r => {
+    const div = r.employee_division || 'N/A';
+    if (!byDivision[div]) byDivision[div] = { hadir: 0, terlambat: 0, izin: 0, sakit: 0, tidak_hadir_tk: 0 };
+    if (byDivision[div][r.status] !== undefined) byDivision[div][r.status]++;
+  });
+
+  const divisions = Object.keys(byDivision).sort();
+  // Calculate total per division for count display
+  const totalPerDivision = divisions.map(d => {
+    const v = byDivision[d];
+    return v.hadir + v.terlambat + v.izin + v.sakit + v.tidak_hadir_tk;
+  });
+
+  const datasets = CONFIG.ATTENDANCE_STATUSES.map(s => ({
+    label: s.label,
+    data: divisions.map(d => byDivision[d][s.value]),
+    backgroundColor: s.color
+  }));
+
+  const canvas = document.getElementById('chart-division-count');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  charts.divisionCount = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: divisions, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { stacked: true, title: { display: true, text: 'Divisi' } },
+        y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Jumlah Record' }, ticks: { stepSize: 1 } }
+      },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            footer: (items) => {
+              const idx = items[0]?.dataIndex;
+              return idx !== undefined ? `Total: ${totalPerDivision[idx]} record` : '';
+            }
+          }
+        }
+      }
     }
   });
 }

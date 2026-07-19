@@ -1,6 +1,6 @@
 import { CONFIG } from './config.js';
 import { api } from './api.js';
-import { getCurrentUser, isReadOnly, canWrite } from './auth.js';
+import { getCurrentUser, isReadOnly, canWrite, hasRole } from './auth.js';
 import { getAvailableYears, loadKaryawanData, getCurrentAcademicYear } from './data-loader.js';
 
 let currentEmployees = [];
@@ -45,6 +45,7 @@ export async function initPresensi() {
   document.getElementById('presensi-date').onchange = loadPresensiData;
   document.getElementById('presensi-year').onchange = loadPresensiData;
   document.getElementById('presensi-save').onclick = savePresensi;
+  document.getElementById('presensi-delete').onclick = deletePresensi;
   document.getElementById('presensi-search').oninput = filterTable;
   document.getElementById('presensi-division-filter').onchange = () => {
     divisionFilter = document.getElementById('presensi-division-filter').value;
@@ -74,9 +75,10 @@ function updatePresensiTitle() {
   const headerRow = document.getElementById('presensi-table-header');
   if (!headerRow) return;
   const isSiswa = currentPresensiType === 'kanaan_fellowship_siswa';
+  const isAdmin = hasRole('admin');
   headerRow.innerHTML = isSiswa
-    ? '<th>No</th><th>Nama</th><th>NIS</th><th>Kelas</th><th>Status</th><th>Keterangan</th>'
-    : '<th>No</th><th>Nama</th><th>Jabatan</th><th>Divisi</th><th>Status</th><th>Keterangan</th>';
+    ? `<th>No</th><th>Nama</th><th>NIS</th><th>Kelas</th><th>Status</th><th>Keterangan</th>${isAdmin ? '<th>Aksi</th>' : ''}`
+    : `<th>No</th><th>Nama</th><th>Jabatan</th><th>Divisi</th><th>Status</th><th>Keterangan</th>${isAdmin ? '<th>Aksi</th>' : ''}`;
 }
 
 function updatePresensiWriteUI() {
@@ -148,9 +150,19 @@ function validateCurrentDate() {
   const d = new Date(val + 'T00:00:00');
   const allowedDays = getAllowedDays();
   if (!allowedDays.includes(d.getDay())) {
-    // Find nearest allowed day
-    const nearest = getNearestAllowedDay(d, allowedDays);
-    dateInput.value = nearest;
+    // Only show visual warning — don't auto-change date on initial load
+    // The user should manually pick a valid date or the save validation will catch it
+    const dayNames = CONFIG.DAY_NAMES;
+    const allowedNames = allowedDays.map(d => dayNames[d]).join(', ');
+    dateInput.style.borderColor = 'var(--red)';
+    dateInput.style.background = '#fef2f2';
+    const msgEl = document.getElementById('presensi-status-msg');
+    if (msgEl) {
+      msgEl.textContent = `⚠️ Hari ${dayNames[d.getDay()]} tidak diperbolehkan. Hari yang bisa: ${allowedNames}. Silakan pilih tanggal lain.`;
+      msgEl.classList.remove('hidden');
+      msgEl.style.background = '#fee2e2';
+      msgEl.style.color = '#991b1b';
+    }
   }
 }
 
@@ -266,8 +278,21 @@ async function loadPresensiData() {
     msgEl.textContent = `Belum ada data presensi ${CONFIG.PRESENSI_TYPE_LABELS[currentPresensiType]} untuk tanggal ${date}. Silakan isi presensi.`;
   }
 
+  // Show/hide delete button (admin only, and only when data exists)
+  updateDeleteButtonVisibility();
+
   renderTable();
   window.hideLoading();
+}
+
+function updateDeleteButtonVisibility() {
+  const deleteBtn = document.getElementById('presensi-delete');
+  if (!deleteBtn) return;
+  if (hasRole('admin') && Object.keys(currentAttendance).length > 0 && !isReadOnly() && canWrite(currentPresensiType)) {
+    deleteBtn.classList.remove('hidden');
+  } else {
+    deleteBtn.classList.add('hidden');
+  }
 }
 
 function getRecordedBy() {
@@ -310,6 +335,7 @@ function renderTable() {
 
   const readOnly = isReadOnly() || !canWrite(currentPresensiType);
   const isSiswa = currentPresensiType === 'kanaan_fellowship_siswa';
+  const isAdmin = hasRole('admin');
 
   filtered.forEach((emp, i) => {
 
@@ -320,6 +346,8 @@ function renderTable() {
     const col2 = isSiswa ? (emp.status || '—') : (emp.position || '');
     const col3 = isSiswa ? (emp.division || '—') : (emp.division || '');
 
+    const deleteBtnHtml = (isAdmin && existing.status) ? `<button class="btn btn-danger btn-sm" data-del-user="${emp.name}" title="Hapus presensi user ini" style="padding:2px 6px;font-size:14px">🗑</button>` : '';
+
     const tr = document.createElement('tr');
     if (readOnly) {
       tr.innerHTML = `
@@ -329,6 +357,7 @@ function renderTable() {
         <td>${col3}</td>
         <td>${statusCfg ? `<span class="status-badge status-${currentStatus}">${statusCfg.label}</span>` : '<span class="muted">—</span>'}</td>
         <td><span class="muted">${existing.notes || ''}</span></td>
+        ${isAdmin ? `<td>${deleteBtnHtml}</td>` : ''}
       `;
     } else {
       tr.innerHTML = `
@@ -349,9 +378,18 @@ function renderTable() {
         <td>
           <input type="text" class="notes-input" data-employee="${emp.name}" value="${existing.notes || ''}" placeholder="Keterangan..." style="width:100%;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px" />
         </td>
+        ${isAdmin ? `<td>${deleteBtnHtml}</td>` : ''}
       `;
     }
     tbody.appendChild(tr);
+
+    // Wire up per-user delete buttons
+    if (isAdmin) {
+      const delBtn = tr.querySelector('[data-del-user]');
+      if (delBtn) {
+        delBtn.onclick = () => deletePresensiPerUser(delBtn.dataset.delUser);
+      }
+    }
 
     if (!readOnly) {
       const statusCell = tr.querySelector('.status-cell');
@@ -378,7 +416,8 @@ function renderTable() {
   });
 
   if (tbody.children.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px">Tidak ada data karyawan</td></tr>';
+    const adminColspan = hasRole('admin') ? '7' : '6';
+    tbody.innerHTML = `<tr><td colspan="${adminColspan}" style="text-align:center;color:var(--text-muted);padding:20px">Tidak ada data karyawan</td></tr>`;
   }
 }
 
@@ -428,23 +467,28 @@ async function savePresensi() {
     msgEl.classList.remove('hidden');
     msgEl.style.background = '#fee2e2';
     msgEl.style.color = '#991b1b';
+    window.hideLoading();
     return;
   }
 
+  // Include ALL employees — auto-mark empty ones as "tidak hadir"
   const records = currentEmployees
     .filter(emp => divisionFilter === 'all' || emp.division === divisionFilter)
-    .filter(emp => currentAttendance[emp.name] && currentAttendance[emp.name].status)
-    .map(emp => ({
-      employee_name: emp.name,
-      employee_position: emp.position,
-      employee_division: emp.division,
-      employee_status: emp.status,
-      status: currentAttendance[emp.name].status,
-      notes: currentAttendance[emp.name].notes || ''
-    }));
+    .map(emp => {
+      const att = currentAttendance[emp.name];
+      const hasStatus = att && att.status;
+      return {
+        employee_name: emp.name,
+        employee_position: emp.position,
+        employee_division: emp.division,
+        employee_status: emp.status,
+        status: hasStatus ? att.status : 'tidak_hadir_tk',
+        notes: hasStatus ? (att.notes || '') : 'Otomatis: tidak hadir (belum diisi)'
+      };
+    });
 
   if (records.length === 0) {
-    msgEl.textContent = 'Tidak ada presensi yang diisi. Tandai status minimal satu karyawan.';
+    msgEl.textContent = 'Tidak ada karyawan untuk disimpan.';
     msgEl.classList.remove('hidden');
     window.hideLoading();
     return;
@@ -467,10 +511,86 @@ async function savePresensi() {
     msgEl.style.color = '#166534';
     setTimeout(() => { msgEl.style.background = ''; msgEl.style.color = ''; }, 5000);
     await loadPresensiData();
+    window.hideLoading();
   } catch (e) {
     msgEl.textContent = 'Gagal menyimpan: ' + e.message;
     msgEl.style.background = '#fee2e2';
     msgEl.style.color = '#991b1b';
+    window.hideLoading();
+  }
+}
+
+async function deletePresensi() {
+  const date = document.getElementById('presensi-date').value;
+  const yearLabel = document.getElementById('presensi-year').value;
+  const msgEl = document.getElementById('presensi-status-msg');
+
+  if (!date) {
+    msgEl.textContent = 'Pilih tanggal terlebih dahulu.';
+    msgEl.classList.remove('hidden');
+    return;
+  }
+
+  const count = Object.keys(currentAttendance).length;
+  if (!confirm(`Hapus SEMUA data presensi ${CONFIG.PRESENSI_TYPE_LABELS[currentPresensiType]} untuk tanggal ${date}?\n\nJumlah record: ${count}\n\nData akan kembali ke status "belum diisi" dan tidak bisa dikembalikan.`)) return;
+
+  window.showLoading();
+  msgEl.textContent = 'Menghapus...';
+  msgEl.classList.remove('hidden');
+
+  try {
+    await api.deleteAttendance({
+      date,
+      academicYear: yearLabel,
+      presensiType: currentPresensiType
+    });
+    msgEl.textContent = `Berhasil menghapus ${count} record presensi ${CONFIG.PRESENSI_TYPE_LABELS[currentPresensiType]} untuk tanggal ${date}.`;
+    msgEl.style.background = '#dcfce7';
+    msgEl.style.color = '#166534';
+    setTimeout(() => { msgEl.style.background = ''; msgEl.style.color = ''; }, 5000);
+    currentAttendance = {};
+    renderTable();
+    updateDeleteButtonVisibility();
+    window.hideLoading();
+  } catch (e) {
+    msgEl.textContent = 'Gagal menghapus: ' + e.message;
+    msgEl.style.background = '#fee2e2';
+    msgEl.style.color = '#991b1b';
+    window.hideLoading();
+  }
+}
+
+async function deletePresensiPerUser(employeeName) {
+  const date = document.getElementById('presensi-date').value;
+  const yearLabel = document.getElementById('presensi-year').value;
+  const msgEl = document.getElementById('presensi-status-msg');
+
+  if (!confirm(`Hapus data presensi untuk "${employeeName}" pada tanggal ${date}?\n\nData akan kembali ke status "belum diisi".`)) return;
+
+  window.showLoading();
+  msgEl.textContent = 'Menghapus...';
+  msgEl.classList.remove('hidden');
+
+  try {
+    await api.deleteAttendance({
+      date,
+      academicYear: yearLabel,
+      presensiType: currentPresensiType,
+      employeeName
+    });
+    delete currentAttendance[employeeName];
+    msgEl.textContent = `Berhasil menghapus presensi "${employeeName}".`;
+    msgEl.style.background = '#dcfce7';
+    msgEl.style.color = '#166534';
+    setTimeout(() => { msgEl.style.background = ''; msgEl.style.color = ''; }, 3000);
+    renderTable();
+    updateDeleteButtonVisibility();
+    window.hideLoading();
+  } catch (e) {
+    msgEl.textContent = 'Gagal menghapus: ' + e.message;
+    msgEl.style.background = '#fee2e2';
+    msgEl.style.color = '#991b1b';
+    window.hideLoading();
   }
 }
 
