@@ -150,11 +150,15 @@ function validateCurrentDate() {
   const d = new Date(val + 'T00:00:00');
   const allowedDays = getAllowedDays();
   if (!allowedDays.includes(d.getDay())) {
-    // Auto-adjust backward to the nearest valid day
-    const nearest = getNearestPreviousAllowedDay(d, allowedDays);
+    // Always use TODAY as reference for finding nearest valid day,
+    // NOT the current input value (which may have been adjusted by a previous type switch)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const nearest = getNearestPreviousAllowedDay(today, allowedDays);
     dateInput.value = nearest;
     dateInput.style.borderColor = '';
     dateInput.style.background = '';
+    dateInput.dataset.previousDate = nearest;
     const dayNames = CONFIG.DAY_NAMES;
     const newD = new Date(nearest + 'T00:00:00');
     const msgEl = document.getElementById('presensi-status-msg');
