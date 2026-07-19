@@ -150,18 +150,20 @@ function validateCurrentDate() {
   const d = new Date(val + 'T00:00:00');
   const allowedDays = getAllowedDays();
   if (!allowedDays.includes(d.getDay())) {
-    // Only show visual warning — don't auto-change date on initial load
-    // The user should manually pick a valid date or the save validation will catch it
+    // Auto-adjust backward to the nearest valid day
+    const nearest = getNearestPreviousAllowedDay(d, allowedDays);
+    dateInput.value = nearest;
+    dateInput.style.borderColor = '';
+    dateInput.style.background = '';
     const dayNames = CONFIG.DAY_NAMES;
-    const allowedNames = allowedDays.map(d => dayNames[d]).join(', ');
-    dateInput.style.borderColor = 'var(--red)';
-    dateInput.style.background = '#fef2f2';
+    const newD = new Date(nearest + 'T00:00:00');
     const msgEl = document.getElementById('presensi-status-msg');
     if (msgEl) {
-      msgEl.textContent = `⚠️ Hari ${dayNames[d.getDay()]} tidak diperbolehkan. Hari yang bisa: ${allowedNames}. Silakan pilih tanggal lain.`;
+      msgEl.textContent = `📅 Tanggal otomatis mundur ke ${nearest} (${dayNames[newD.getDay()]}) — hari yang diperbolehkan.`;
       msgEl.classList.remove('hidden');
-      msgEl.style.background = '#fee2e2';
-      msgEl.style.color = '#991b1b';
+      msgEl.style.background = '#dbeafe';
+      msgEl.style.color = '#1e40af';
+      setTimeout(() => { msgEl.style.background = ''; msgEl.style.color = ''; }, 4000);
     }
   }
 }
@@ -193,27 +195,28 @@ function validateDayPopup() {
   if (!allowedDays.includes(d.getDay())) {
     const dayNames = CONFIG.DAY_NAMES;
     const allowedNames = allowedDays.map(d => dayNames[d]).join(', ');
-    const previousVal = dateInput.dataset.previousDate || '';
-    alert(`⚠️ Hari ${dayNames[d.getDay()]} tidak diperbolehkan untuk presensi ini.\n\nHari yang diperbolehkan: ${allowedNames}\n\nTanggal akan dikembalikan.`);
-    dateInput.value = previousVal || getNearestAllowedDay(d, allowedDays);
+    const nearest = getNearestPreviousAllowedDay(d, allowedDays);
+    const newD = new Date(nearest + 'T00:00:00');
+    alert(`⚠️ Hari ${dayNames[d.getDay()]} tidak diperbolehkan untuk presensi ini.\n\nHari yang diperbolehkan: ${allowedNames}\n\nTanggal otomatis mundur ke ${nearest} (${dayNames[newD.getDay()]}).`);
+    dateInput.value = nearest;
     dateInput.style.borderColor = '';
     dateInput.style.background = '';
   } else {
-    dateInput.dataset.previousDate = val;
     dateInput.style.borderColor = '';
     dateInput.style.background = '';
   }
 }
 
-function getNearestAllowedDay(d, allowedDays) {
-  // Find closest allowed day (forward first)
+function getNearestPreviousAllowedDay(d, allowedDays) {
+  // Find closest allowed day going backward (mundur)
   for (let i = 0; i < 7; i++) {
     const check = new Date(d);
-    check.setDate(d.getDate() + i);
+    check.setDate(d.getDate() - i);
     if (allowedDays.includes(check.getDay())) {
       return `${check.getFullYear()}-${String(check.getMonth()+1).padStart(2,'0')}-${String(check.getDate()).padStart(2,'0')}`;
     }
   }
+  // Fallback to original date
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
