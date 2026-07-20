@@ -232,7 +232,13 @@ function renderHistoryTable() {
     const recorderName = user ? user.full_name : r.recorded_by || '—';
     const recorderRole = r.recorded_by_role ? (CONFIG.ROLES[r.recorded_by_role] || r.recorded_by_role) : (user ? (CONFIG.ROLES[user.role] || user.role) : '');
     const presensiTypeLabel = CONFIG.PRESENSI_TYPE_LABELS[r.presensi_type] || '';
-    const presensiTypeClass = r.presensi_type === 'ibadah_mingguan' ? 'presensi-type-im' : r.presensi_type === 'kanaan_fellowship_siswa' ? 'presensi-type-im' : 'presensi-type-rh';
+    const presensiTypeClassMap = {
+      renungan_harian: 'presensi-type-rh',
+      ibadah_mingguan: 'presensi-type-im',
+      kanaan_fellowship_guru: 'presensi-type-kf',
+      kanaan_fellowship_siswa: 'presensi-type-kf'
+    };
+    const presensiTypeClass = presensiTypeClassMap[r.presensi_type] || 'presensi-type-rh';
     const isSiswa = r.presensi_type === 'kanaan_fellowship_siswa';
     tr.innerHTML = `
       <td>${startIdx + i + 1}</td>
@@ -386,7 +392,13 @@ async function exportHistory() {
 
   try {
     const typeLabel = CONFIG.PRESENSI_TYPE_LABELS[presensiType] || 'Presensi';
-    const typeSlug = presensiType === 'ibadah_mingguan' ? 'Ibadah_Mingguan' : 'Renungan_Harian';
+    const typeSlugMap = {
+      renungan_harian: 'Renungan_Harian',
+      ibadah_mingguan: 'Ibadah_Mingguan',
+      kanaan_fellowship_guru: 'Kanaan_Fellowship_Guru',
+      kanaan_fellowship_siswa: 'Kanaan_Fellowship_Siswa'
+    };
+    const typeSlug = typeSlugMap[presensiType] || 'Presensi';
     const isSiswa = presensiType === 'kanaan_fellowship_siswa';
     const meta = {
       startDate,

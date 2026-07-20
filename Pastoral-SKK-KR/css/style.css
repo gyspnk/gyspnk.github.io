@@ -421,6 +421,7 @@ tbody tr:hover { background: #f8fafc; }
 }
 .presensi-type-rh { background: #dbeafe; color: #1e40af; }
 .presensi-type-im { background: #f3e8ff; color: #7c3aed; }
+.presensi-type-kf { background: #d1fae5; color: #065f46; }
 
 /* ===== Status Radio Cells ===== */
 .status-cell { display: flex; gap: 4px; flex-wrap: wrap; }

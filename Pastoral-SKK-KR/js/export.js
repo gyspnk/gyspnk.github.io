@@ -90,7 +90,13 @@ async function doExport() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const typeSlug = presensiType === 'ibadah_mingguan' ? 'Ibadah_Mingguan' : 'Renungan_Harian';
+    const typeSlugMap = {
+      renungan_harian: 'Renungan_Harian',
+      ibadah_mingguan: 'Ibadah_Mingguan',
+      kanaan_fellowship_guru: 'Kanaan_Fellowship_Guru',
+      kanaan_fellowship_siswa: 'Kanaan_Fellowship_Siswa'
+    };
+    const typeSlug = typeSlugMap[presensiType] || 'Presensi';
     a.download = `Laporan_${typeSlug}_${startDate}_${endDate}.xlsx`;
     document.body.appendChild(a);
     a.click();
@@ -341,7 +347,7 @@ export async function createExcelFile(records, chartImages, meta) {
   ws2.getCell('A1').alignment = { horizontal: 'center' };
 
   ws2.mergeCells('A2:C2');
-  const typeLabelExcel = meta.presensiType === 'ibadah_mingguan' ? 'Ibadah Mingguan' : 'Renungan Harian';
+  const typeLabelExcel = CONFIG.PRESENSI_TYPE_LABELS[meta.presensiType]?.replace(/\s*\(.*?\)\s*/g, '').trim() || 'Presensi';
   ws2.getCell('A2').value = `Sekolah Kristen Kanaan Kubu Raya — ${typeLabelExcel}`;
   ws2.getCell('A2').font = { size: 11, italic: true };
   ws2.getCell('A2').alignment = { horizontal: 'center' };
