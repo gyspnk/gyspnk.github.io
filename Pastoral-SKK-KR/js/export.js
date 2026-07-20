@@ -65,7 +65,7 @@ async function doExport() {
     const years = await getAvailableYears();
     const yearObj = years.find(y => y.label === academicYear);
     if (yearObj) {
-      const activeEmps = await loadKaryawanData(yearObj);
+      const activeEmps = await loadKaryawanData(yearObj, presensiType);
       const activeNames = new Set(activeEmps.map(e => e.name));
       records = records.filter(r => activeNames.has(r.employee_name));
     }

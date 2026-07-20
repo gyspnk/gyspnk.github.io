@@ -25,9 +25,22 @@ export async function initHistory() {
     yearSelect.appendChild(opt);
   });
 
-  // Presensi type selector — update filter when changed
+  // Presensi type selector — reload employees when type changes
   const typeSelect = document.getElementById('history-type');
-  typeSelect.onchange = () => {
+  typeSelect.onchange = async () => {
+    const presensiType = typeSelect.value;
+    // Reload employees for the selected presensi type
+    try {
+      const years = await getAvailableYears();
+      const currentAY2 = getCurrentAcademicYear(years);
+      if (presensiType === 'kanaan_fellowship_siswa') {
+        allStudents = await api.getKFStudents({ academicYear: currentAY2.label, active: 'true' });
+      } else {
+        allEmployees = await loadKaryawanData(currentAY2, presensiType);
+      }
+    } catch (e) {
+      console.error('Failed to reload employees for type change:', e);
+    }
     updateHistoryFilterLabel();
     loadHistory();
   };
@@ -50,9 +63,15 @@ export async function initHistory() {
   document.getElementById('history-per-page').onchange = () => { perPage = parseInt(document.getElementById('history-per-page').value, 10); currentPage = 1; renderHistoryTable(); };
 
   try {
-    allEmployees = await loadKaryawanData(currentAY);
-    // Also load KF students for the dropdown
-    allStudents = await api.getKFStudents({ academicYear: currentAY.label, active: 'true' });
+    // Load employees for the initially selected presensi type
+    const initialType = document.getElementById('history-type')?.value || 'renungan_harian';
+    if (initialType === 'kanaan_fellowship_siswa') {
+      allEmployees = [];
+      allStudents = await api.getKFStudents({ academicYear: currentAY.label, active: 'true' });
+    } else {
+      allEmployees = await loadKaryawanData(currentAY, initialType);
+      allStudents = await api.getKFStudents({ academicYear: currentAY.label, active: 'true' });
+    }
   } catch (e) {
     console.error('Failed to load data for history:', e);
   }
@@ -337,10 +356,11 @@ async function exportHistory() {
     return;
   }
 
-  // Filter out inactive employees
+  // Filter out inactive employees (per presensi type)
   const yearLabel = document.getElementById('history-year').value;
+  const presensiType = document.getElementById('history-type').value;
   try {
-    const activeEmps = await loadKaryawanData(yearLabel);
+    const activeEmps = await loadKaryawanData(yearLabel, presensiType);
     const activeNames = new Set(activeEmps.map(e => e.name));
     records = records.filter(r => activeNames.has(r.employee_name));
   } catch (e) {
@@ -365,7 +385,6 @@ async function exportHistory() {
   btn.textContent = 'Membuat Excel...';
 
   try {
-    const presensiType = document.getElementById('history-type').value;
     const typeLabel = CONFIG.PRESENSI_TYPE_LABELS[presensiType] || 'Presensi';
     const typeSlug = presensiType === 'ibadah_mingguan' ? 'Ibadah_Mingguan' : 'Renungan_Harian';
     const isSiswa = presensiType === 'kanaan_fellowship_siswa';
