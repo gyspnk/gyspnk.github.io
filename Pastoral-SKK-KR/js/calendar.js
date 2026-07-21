@@ -813,23 +813,14 @@ function parseDateFlexible(val) {
     return { year: parseInt(gDateMatch[1]), month: parseInt(gDateMatch[2]) + 1, day: parseInt(gDateMatch[3]) };
   }
 
-  // Try month name patterns like "Juli 2026", "July 2026"
   const allMonthNames = [
     ...MONTH_NAMES,           // Januari, Februari, ...
     'January','February','March','April','May','June',
     'July','August','September','October','November','December'
   ];
-  for (let i = 0; i < allMonthNames.length; i++) {
-    const pattern = new RegExp(`(${allMonthNames[i]})\\s*(\\d{4})`, 'i');
-    const m = str.match(pattern);
-    if (m) {
-      const monthIdx = i < 12 ? i : (i - 12);
-      return { month: monthIdx + 1, day: 1, year: parseInt(m[2]), monthOnly: true };
-    }
-  }
-
-  // Try "DD Month YYYY" like "16 Juli 2026" or "17 July 2026"
   const allMonthPattern = allMonthNames.join('|');
+
+  // Try "DD Month YYYY" FIRST (before month-only) — like "17 July 2026"
   const ddMonthRegex = new RegExp(`(\\d{1,2})\\s+(${allMonthPattern})\\s+(\\d{4})`, 'i');
   const ddMonthMatch = str.match(ddMonthRegex);
   if (ddMonthMatch) {
@@ -843,6 +834,15 @@ function parseDateFlexible(val) {
     }
   }
 
+  // Try month-only patterns like "Juli 2026", "July 2026" (only for title rows)
+  for (let i = 0; i < allMonthNames.length; i++) {
+    const pattern = new RegExp(`^(${allMonthNames[i]})\\s*(\\d{4})`, 'i');
+    const m = str.match(pattern);
+    if (m) {
+      const monthIdx = i < 12 ? i : (i - 12);
+      return { month: monthIdx + 1, day: 1, year: parseInt(m[2]), monthOnly: true };
+    }
+  }
   return null;
 }
 
