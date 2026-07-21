@@ -831,8 +831,13 @@ function renderRoles() {
   adminData.roles.forEach(r => {
     let perms = {};
     try { perms = typeof r.default_permissions === 'string' ? JSON.parse(r.default_permissions) : (r.default_permissions || {}); } catch(e) {}
-    // Admin & pastoral always get calendar access
-    if (!('_kalender_pastoral' in perms) && (r.role_key === 'admin' || r.role_key === 'pastoral')) {
+    // Admin & pastoral always get full access to everything
+    if (r.role_key === 'admin' || r.role_key === 'pastoral') {
+      CONFIG.PRESENSI_TYPES.forEach(t => {
+        if (!perms[t.value] || (typeof perms[t.value] === 'object' && perms[t.value].level === 'none')) {
+          perms[t.value] = { level: 'write', divisions: [], classes: [] };
+        }
+      });
       perms._kalender_pastoral = true;
     }
     const permSummary = CONFIG.PRESENSI_TYPES.map(t => {
@@ -919,8 +924,13 @@ function renderUsers(users) {
     } else if (roleObj && roleObj.default_permissions) {
       try { perms = typeof roleObj.default_permissions === 'string' ? JSON.parse(roleObj.default_permissions) : roleObj.default_permissions; } catch(e) {}
     }
-    // Admin & pastoral always get calendar access (even if not in DB defaults)
-    if (!('_kalender_pastoral' in perms) && (u.role === 'admin' || u.role === 'pastoral')) {
+    // Admin & pastoral always get full access to everything
+    if (u.role === 'admin' || u.role === 'pastoral') {
+      CONFIG.PRESENSI_TYPES.forEach(t => {
+        if (!perms[t.value] || (typeof perms[t.value] === 'object' && perms[t.value].level === 'none')) {
+          perms[t.value] = { level: 'write', divisions: [], classes: [] };
+        }
+      });
       perms._kalender_pastoral = true;
     }
 
@@ -981,8 +991,14 @@ function showPermissionModal(targetId, targetName, currentPerms, isRole = false,
   const levels = CONFIG.PERMISSION_LEVELS;
   const labels = CONFIG.PERMISSION_LABELS;
 
-  // Auto-enable calendar for admin & pastoral (even if not in DB)
-  if (!('_kalender_pastoral' in currentPerms) && (roleKey === 'admin' || roleKey === 'pastoral')) {
+  // Admin & pastoral auto-get full write + calendar access
+  if (roleKey === 'admin' || roleKey === 'pastoral') {
+    types.forEach(t => {
+      const val = currentPerms[t.value];
+      if (!val || (typeof val === 'object' && val.level === 'none') || (typeof val === 'string' && val === 'none')) {
+        currentPerms[t.value] = { level: 'write', divisions: [], classes: [] };
+      }
+    });
     currentPerms._kalender_pastoral = true;
   }
 
