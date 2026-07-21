@@ -124,16 +124,17 @@ function renderFilters() {
     const isVisible = visibility[sheet.key];
     const isAccessible = data && data.accessible !== false;
 
-    const chip = document.createElement('label');
+    const chip = document.createElement('button');
     chip.className = 'filter-chip' + (isVisible ? ' active' : '');
     chip.style.setProperty('--chip-color', sheet.color);
+    chip.type = 'button';
     chip.innerHTML = `
-      <input type="checkbox" ${isVisible ? 'checked' : ''} style="display:none" />
       <span class="chip-dot" style="background:${sheet.color}"></span>
       <span class="chip-label">${sheet.label}</span>
       ${!isAccessible ? '<span class="chip-warn" title="Sheet tidak dapat diakses. Publikasikan ke web terlebih dahulu.">⚠️</span>' : ''}
     `;
-    chip.onclick = () => {
+    chip.onclick = (e) => {
+      e.preventDefault();
       visibility[sheet.key] = !visibility[sheet.key];
       renderFilters();
       if (calendarViewMode === 'grid') renderCalendarGrid();

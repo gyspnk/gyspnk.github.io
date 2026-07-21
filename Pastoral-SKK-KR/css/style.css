@@ -889,9 +889,13 @@ tbody tr:hover { background: #f8fafc; }
   border-radius: 16px;
   cursor: pointer;
   font-size: 12px;
+  font-family: inherit;
   background: var(--card-bg);
+  color: var(--text);
   transition: all 0.15s;
   user-select: none;
+  outline: none;
+  line-height: 1.4;
 }
 .filter-chip:hover { border-color: #94a3b8; }
 .filter-chip.active {
