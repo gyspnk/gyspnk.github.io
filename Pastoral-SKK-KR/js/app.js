@@ -954,7 +954,7 @@ function renderUsers(users) {
       <td>${permSummary} <span title="${calTitle}" style="font-size:14px;margin-left:6px">${calIcon}</span></td>
       <td>${u.id === currentUserObj.id ? '<span class="muted">—</span>' : `
         <div class="action-cell">
-          <button class="btn btn-sm btn-info" data-edit-perms="${u.id}" data-perms='${JSON.stringify(perms)}' data-username="${u.username}">Izin</button>
+          <button class="btn btn-sm btn-info" data-edit-perms="${u.id}" data-perms='${JSON.stringify(perms)}' data-username="${u.username}" data-role="${u.role}">Izin</button>
           <button class="btn btn-danger btn-sm" data-del="${u.id}">Hapus</button>
         </div>`}
       </td>
@@ -967,7 +967,7 @@ function renderUsers(users) {
       let perms = {};
       try { perms = JSON.parse(btn.dataset.perms); } catch(e) {}
       const username = btn.dataset.username;
-      const userRole = u.role; // Pass user's role for calendar default
+      const userRole = btn.dataset.role || ''; // Read from data attribute
       showPermissionModal(id, username, perms, false, userRole);
     };
   });
