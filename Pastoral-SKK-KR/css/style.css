@@ -963,8 +963,7 @@ tbody tr:hover { background: #f8fafc; }
   grid-template-columns: repeat(7, 1fr);
 }
 .calendar-day {
-  aspect-ratio: 1 / 1;
-  min-height: 70px;
+  min-height: 80px;
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   padding: 6px 5px 4px;
@@ -1154,7 +1153,7 @@ tbody tr:hover { background: #f8fafc; }
   #view-calendar .page-header h2 { font-size: 18px; }
   .cal-month-label { min-width: 140px; font-size: 14px; }
   .calendar-wrapper { max-width: 100%; }
-  .calendar-day { min-height: 60px; aspect-ratio: auto; padding: 5px 4px; }
+  .calendar-day { min-height: 60px; padding: 5px 4px; }
   .day-num { font-size: 11px; }
   .calendar-grid-header > div { font-size: 11px; padding: 8px 3px; }
 }
@@ -1165,7 +1164,7 @@ tbody tr:hover { background: #f8fafc; }
   #view-calendar .page-header h2 { font-size: 17px; }
   .calendar-nav { margin-left: 0; width: 100%; justify-content: center; }
   .cal-month-label { min-width: 130px; font-size: 14px; }
-  .calendar-day { min-height: 55px; aspect-ratio: auto; padding: 4px 3px; }
+  .calendar-day { min-height: 55px; padding: 4px 3px; }
   .day-num { font-size: 11px; }
   .calendar-grid-header > div { font-size: 10px; padding: 7px 2px; }
   .filter-chip { padding: 3px 8px; }
@@ -1178,7 +1177,7 @@ tbody tr:hover { background: #f8fafc; }
   .calendar-nav { justify-content: center; }
   .cal-month-label { min-width: 110px; font-size: 13px; }
   .calendar-mobile-toggle { display: flex; }
-  .calendar-day { min-height: 48px; aspect-ratio: auto; padding: 3px 2px; }
+  .calendar-day { min-height: 48px; padding: 3px 2px; }
   .day-num { font-size: 10px; }
   .day-dot { width: 5px; height: 5px; }
   .calendar-grid-header > div { font-size: 9px; padding: 6px 1px; }

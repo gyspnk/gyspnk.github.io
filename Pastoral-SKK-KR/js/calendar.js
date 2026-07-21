@@ -403,7 +403,7 @@ function parseIbadahSiswa(sheet, columns, rows) {
   else currentYear = now.getFullYear();
 
   // Build month reference from bulan column (Col C = index 2)
-  const bulanIdx = columns.findIndex(c => c && /bulan/i.test(c));
+  let bulanIdx = columns.findIndex(c => c && /bulan/i.test(c));
   if (bulanIdx < 0 && columns.length > 2) bulanIdx = 2; // fallback
 
   // Class schedule column pairs: [dateCol, officerCol, label]
