@@ -597,13 +597,14 @@ function renderAdminEmployees() {
 
   document.getElementById('emp-count').textContent = `(${emps.length})`;
 
-  emps.forEach(emp => {
+  emps.forEach((emp, idx) => {
     const tr = document.createElement('tr');
     const divOptions = adminData.divisions.map(d => `<option value="${d.name}" ${d.name === emp.division ? 'selected' : ''}>${d.name}</option>`).join('');
     const isActiveRH = emp.is_active_rh != false;
     const isActiveIM = emp.is_active_im != false;
     const isActiveKF = emp.is_active_kf != false;
     tr.innerHTML = `
+      <td style="color:var(--text-muted);font-size:12px">${idx + 1}</td>
       <td>${emp.name}</td>
       <td>${emp.position || ''}</td>
       <td class="editable-div" data-emp-id="${emp.id}" data-emp-name="${emp.name}">
@@ -1268,10 +1269,11 @@ function renderAdminKFStudents() {
 
   document.getElementById('kfs-count').textContent = `(${students.length})`;
 
-  students.forEach(s => {
+  students.forEach((s, idx) => {
     const tr = document.createElement('tr');
     const isActive = s.is_active != false;
     tr.innerHTML = `
+      <td style="color:var(--text-muted);font-size:12px">${idx + 1}</td>
       <td>${s.nis || '—'}</td>
       <td>${s.name}</td>
       <td>${s.class || '—'}</td>
