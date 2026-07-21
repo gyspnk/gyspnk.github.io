@@ -628,11 +628,6 @@ tbody tr:hover { background: #f8fafc; }
 /* ================================================================
    RESPONSIVE — Tablet (≤ 1024px)
    ================================================================ */
-@media (max-width: 1024px) {
-  .chart-grid { grid-template-columns: 1fr; }
-  .admin-grid { grid-template-columns: 1fr; }
-  .admin-emp-grid { grid-template-columns: 1fr; }
-  .content { padding: 20px; }
 .editable-div { cursor: pointer; position: relative; }
 .editable-div:hover { background: #f0f9ff; }
 .editable-div .div-label { display: inline-block; padding: 2px 6px; border-radius: 4px; }
