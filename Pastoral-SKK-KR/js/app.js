@@ -836,12 +836,18 @@ function renderRoles() {
       const icon = level === 'write' ? '✏️' : level === 'view' ? '👁️' : '—';
       return `<span title="${t.label}: ${CONFIG.PERMISSION_LABELS[level]}" style="font-size:13px">${icon}</span>`;
     }).join(' ');
+
+    // Calendar access indicator for roles
+    const calAccess = perms._kalender_pastoral === true;
+    const calIcon = calAccess ? '📅' : '<span style="opacity:0.3">📅</span>';
+    const calTitle = calAccess ? 'Kalender Pastoral: Aktif' : 'Kalender Pastoral: Nonaktif';
+
     const isSystem = ['admin','pastoral','guru_agama','kepala_sekolah','gereja'].includes(r.role_key);
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><code>${r.role_key}</code></td>
       <td>${r.role_label}</td>
-      <td>${permSummary}</td>
+      <td>${permSummary} <span title="${calTitle}" style="font-size:14px;margin-left:6px">${calIcon}</span></td>
       <td>
         <div class="action-cell">
           <button class="btn btn-sm btn-info" data-edit-role-perms="${r.id}" data-role-key="${r.role_key}" data-role-label="${r.role_label}" data-perms='${JSON.stringify(perms)}'>Izin</button>
@@ -915,11 +921,16 @@ function renderUsers(users) {
       return `<span title="${t.label}: ${CONFIG.PERMISSION_LABELS[level]}${extra}" style="font-size:13px">${icon}</span>`;
     }).join(' ');
 
+    // Calendar access indicator
+    const calAccess = perms._kalender_pastoral === true;
+    const calIcon = calAccess ? '📅' : '<span style="opacity:0.3">📅</span>';
+    const calTitle = calAccess ? 'Kalender Pastoral: Aktif' : 'Kalender Pastoral: Nonaktif';
+
     tr.innerHTML = `
       <td>${u.username}</td>
       <td>${u.full_name}</td>
       <td><span class="status-badge" style="background:var(--primary);font-size:11px">${getRoleLabel(u.role)}</span></td>
-      <td>${permSummary}</td>
+      <td>${permSummary} <span title="${calTitle}" style="font-size:14px;margin-left:6px">${calIcon}</span></td>
       <td>${u.id === currentUserObj.id ? '<span class="muted">—</span>' : `
         <div class="action-cell">
           <button class="btn btn-sm btn-info" data-edit-perms="${u.id}" data-perms='${JSON.stringify(perms)}' data-username="${u.username}">Izin</button>
