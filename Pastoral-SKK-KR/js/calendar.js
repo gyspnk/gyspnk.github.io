@@ -243,20 +243,30 @@ function renderCalendarGrid() {
 
 function renderDayCell(day, dateStr, cls, eventMap, todayStr) {
   const events = eventMap[dateStr] || [];
-  // Deduplicate events by sheetKey for dot display
-  const uniqueSources = [...new Set(events.map(e => e.sheetKey))];
-  const dots = uniqueSources.map(key => {
-    const sheet = CONFIG.CALENDAR_SHEETS.find(s => s.key === key);
-    return `<span class="day-dot" style="background:${sheet ? sheet.color : '#999'}" title="${sheet ? sheet.label : key}"></span>`;
-  }).join('');
+  // Build small event label chips — deduplicate by sheetKey, show up to 3 labels
+  const MAX_LABELS = 3;
+  const seenKeys = new Set();
+  const labels = [];
+  for (const evt of events) {
+    if (seenKeys.has(evt.sheetKey)) continue;
+    seenKeys.add(evt.sheetKey);
+    // Extract the key name from summary (first part before " | ")
+    const shortName = evt.summary.split(' | ')[0].replace(/^(📖|⛪|🙏|🤝)\s*/, '').substring(0, 25);
+    labels.push({ color: evt.color, label: shortName, key: evt.sheetKey });
+    if (labels.length >= MAX_LABELS) break;
+  }
 
-  const eventCount = events.length;
-  const countBadge = eventCount > uniqueSources.length
-    ? `<span class="day-count">+${eventCount}</span>` : '';
+  const labelsHtml = labels.map(l =>
+    `<span class="day-label" style="background:${l.color};color:#fff" title="${l.label}">${l.label}</span>`
+  ).join('');
+
+  const remaining = events.length - labels.length;
+  const moreBadge = remaining > 0
+    ? `<span class="day-more">+${remaining}</span>` : '';
 
   return `<div class="calendar-day ${cls}" data-date="${dateStr}">
     <span class="day-num">${day}</span>
-    <span class="day-dots">${dots}${countBadge}</span>
+    <span class="day-labels">${labelsHtml}${moreBadge}</span>
   </div>`;
 }
 
