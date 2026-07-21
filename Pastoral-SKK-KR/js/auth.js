@@ -55,6 +55,10 @@ export function isReadOnly() {
 }
 
 function normalizePermission(perm) {
+  // Boolean values pass through unchanged (feature toggles like _kalender_pastoral)
+  if (typeof perm === 'boolean') {
+    return perm;
+  }
   // Convert old string format to new object format
   if (typeof perm === 'string') {
     return { level: perm, divisions: [], classes: [] };
@@ -76,6 +80,7 @@ export function getUserPermissions() {
   if (user.role === 'admin') {
     const full = {};
     CONFIG.PRESENSI_TYPES.forEach(t => full[t.value] = { level: 'write', divisions: [], classes: [] });
+    full._kalender_pastoral = true;
     return full;
   }
   // Use stored permissions

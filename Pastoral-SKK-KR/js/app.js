@@ -6,9 +6,10 @@ import { initPresensi, loadPresensiData } from './attendance.js';
 import { initHistory, loadHistory } from './history.js';
 import { initExport } from './export.js';
 import { getAvailableYears, getCurrentAcademicYear, loadKaryawanData } from './data-loader.js';
+import { initCalendar } from './calendar.js';
 
 let currentView = 'dashboard';
-let viewsInitialized = { dashboard: false, presensi: false, history: false, export: false, admin: false };
+let viewsInitialized = { dashboard: false, presensi: false, history: false, export: false, admin: false, calendar: false };
 
 /* ===== Global Loading Bar ===== */
 let _loadingCount = 0;
@@ -234,8 +235,10 @@ function updateSidebarPermissions() {
   filterPresensiTypeSelectors();
 
   // Show/hide sidebar menu items based on user permissions
-  const hasAnyAccess = Object.values(perms).some(p => (typeof p === 'string' ? p : p.level) !== 'none');
-  const hasAnyWrite = Object.values(perms).some(p => (typeof p === 'string' ? p === 'write' : p.level === 'write'));
+  // Only count presensi-type permissions (objects with .level), not feature toggles (booleans like _kalender_pastoral)
+  const presensiPerms = Object.entries(perms).filter(([k, v]) => typeof v === 'object' && v.level);
+  const hasAnyAccess = presensiPerms.some(([k, v]) => v.level !== 'none');
+  const hasAnyWrite = presensiPerms.some(([k, v]) => v.level === 'write');
 
   const presensiLink = document.querySelector('.nav-link[data-view="presensi"]');
   const historyLink = document.querySelector('.nav-link[data-view="history"]');
@@ -244,6 +247,14 @@ function updateSidebarPermissions() {
   if (presensiLink) presensiLink.parentElement.style.display = hasAnyWrite ? '' : 'none';
   if (historyLink) historyLink.parentElement.style.display = hasAnyAccess ? '' : 'none';
   if (exportLink) exportLink.parentElement.style.display = hasAnyAccess ? '' : 'none';
+
+  // Calendar visibility: admin and pastoral by default, or users with _kalender_pastoral permission
+  const calendarNav = document.getElementById('calendar-nav');
+  if (calendarNav) {
+    const calPerm = perms._kalender_pastoral;
+    const hasCalAccess = (typeof calPerm === 'boolean') ? calPerm : (user.role === 'admin' || user.role === 'pastoral');
+    calendarNav.parentElement.style.display = hasCalAccess ? '' : 'none';
+  }
 
 }
 
@@ -314,6 +325,13 @@ function switchView(view) {
   if (view === 'export' && !viewsInitialized.export) {
     viewsInitialized.export = true;
     initExport();
+  }
+
+  if (view === 'calendar') {
+    if (!viewsInitialized.calendar) {
+      viewsInitialized.calendar = true;
+      initCalendar();
+    }
   }
 
   if (view === 'admin' && hasRole('admin')) {
@@ -990,6 +1008,19 @@ function showPermissionModal(targetId, targetName, currentPerms, isRole = false)
     </div>`;
   });
 
+  // Calendar access toggle
+  const calAccess = currentPerms._kalender_pastoral === true;
+  html += `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;background:#f0fdf4">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span style="font-weight:600;font-size:14px">📅 Kalender Pastoral</span>
+      <label style="cursor:pointer;padding:6px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;${calAccess?'background:var(--primary);color:#fff;border-color:var(--primary)':''}">
+        <input type="checkbox" name="perm__kalender_pastoral" ${calAccess?'checked':''} style="display:none" />
+        ${calAccess ? '✅ Aktif' : '❌ Nonaktif'}
+      </label>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Akses ke kalender pastoral yang menampilkan jadwal dari Google Sheets</div>
+  </div>`;
+
   html += `<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
       <button id="perm-cancel" class="btn btn-secondary btn-sm">Batal</button>
       <button id="perm-save" class="btn btn-primary btn-sm">Simpan</button>
@@ -1029,6 +1060,28 @@ function showPermissionModal(targetId, targetName, currentPerms, isRole = false)
     };
   });
 
+  // Specific handler for calendar permission label (updates text on toggle)
+  const calPermLabel = overlay.querySelector('input[name="perm__kalender_pastoral"]');
+  if (calPermLabel) {
+    const calLabel = calPermLabel.parentElement;
+    calLabel.onclick = (e) => {
+      e.stopPropagation();
+      const cb = calLabel.querySelector('input');
+      cb.checked = !cb.checked;
+      if (cb.checked) {
+        calLabel.style.background = 'var(--primary)';
+        calLabel.style.color = '#fff';
+        calLabel.style.borderColor = 'var(--primary)';
+        calLabel.innerHTML = '<input type="checkbox" name="perm__kalender_pastoral" checked style="display:none" />✅ Aktif';
+      } else {
+        calLabel.style.background = '';
+        calLabel.style.color = '';
+        calLabel.style.borderColor = 'var(--border)';
+        calLabel.innerHTML = '<input type="checkbox" name="perm__kalender_pastoral" style="display:none" />❌ Nonaktif';
+      }
+    };
+  }
+
   overlay.querySelector('#perm-cancel').onclick = () => overlay.remove();
   overlay.querySelector('#perm-save').onclick = async () => {
     const newPerms = {};
@@ -1044,6 +1097,10 @@ function showPermissionModal(targetId, targetName, currentPerms, isRole = false)
         classes: isStudent ? selected : []
       };
     });
+
+    // Calendar access
+    const calCheckbox = overlay.querySelector('input[name="perm__kalender_pastoral"]');
+    newPerms._kalender_pastoral = calCheckbox ? calCheckbox.checked : false;
     const msgEl = overlay.querySelector('#perm-msg');
     msgEl.textContent = 'Menyimpan...';
     msgEl.classList.remove('hidden');

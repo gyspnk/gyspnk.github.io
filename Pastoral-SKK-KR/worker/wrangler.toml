@@ -9,7 +9,13 @@ compatibility_flags = ["nodejs_compat"]
 #   JWT_SECRET         — random string for signing JWT tokens
 #   CORS_ORIGIN        — your GitHub Pages URL (e.g. https://thengb.github.io)
 #
+# Optional (for Kalender Pastoral Google Sheets access):
+#   GAPI_KEY           — Google API key with Sheets API enabled
+#   GSA_JSON           — Google Service Account JSON (for OAuth2, used if GAPI_KEY not set/doesn't work)
+#
 # Example:
 #   npx wrangler secret put TIDB_DATABASE_URL
 #   npx wrangler secret put JWT_SECRET
 #   npx wrangler secret put CORS_ORIGIN
+#   npx wrangler secret put GAPI_KEY
+#   npx wrangler secret put GSA_JSON

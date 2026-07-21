@@ -341,6 +341,11 @@ const demoApi = {
     dbSet('pas_presensi_roles', roles.filter(r => r.id !== id));
     return { success: true };
   },
+
+  async getCalendarSchedules(sheetId, gid) {
+    // Demo mode: no backend, return empty accessible status
+    return { success: true, sheetId, gid: gid || '0', columns: [], rows: [], accessible: false, error: 'Tidak tersedia di demo mode' };
+  },
 };
 
 /* ===== Real API backend ===== */
@@ -479,6 +484,13 @@ const realApi = {
   },
   async deleteRole(id) {
     return apiFetch(`/api/roles/${id}`, { method: 'DELETE' });
+  },
+
+  async getCalendarSchedules(sheetId, gid) {
+    const qs = new URLSearchParams();
+    qs.set('sheetId', sheetId);
+    if (gid) qs.set('gid', gid);
+    return apiFetch('/api/calendar-schedules?' + qs.toString());
   }
 };
 
