@@ -490,41 +490,40 @@ function parseIbadahSiswa(sheet, columns, rows) {
 }
 
 // Ibadah Mingguan Karyawan (Chapel):
-// Cols: Hari/Tanggal, Tema, Judul, Indikator, Lokasi, Pemimpin Pujian, Pemimpin Firman, Sumbangan Pujian, No.
+// Sheets API returns: No.(0), Hari/Tanggal(1), Tema(2), Judul(3), Indikator(4),
+//   Lokasi(5), Pemimpin Pujian(6), Pemimpin Firman(7), Sumbangan Pujian(8)
+// NOTE: "No." column at index 0 shifts everything by +1 vs the archive Excel
 function parseChapelKaryawan(sheet, columns, rows) {
   const events = [];
   if (!rows || rows.length === 0) return events;
 
   rows.forEach(row => {
-    if (!row || row.length === 0 || !row[0]) return;
-    const rawDate = String(row[0] || '').trim();
+    if (!row || row.length === 0) return;
+    // Date is at index 1 (index 0 = "No." column)
+    const rawDate = row[1] ? String(row[1]).trim() : '';
+    if (!rawDate) return;
     // Skip header/subtitle rows
-    if (!rawDate || /hari\/tanggal|jadwal ibadah|setiap|ruang|character building|^[-\s]*$/i.test(rawDate)) return;
-    // Skip rows where column 0 looks like a label, not a date
-    if (/^(Tema|Judul|Indikator|Lokasi|Jenjang|Tagline|Tujuan|Ayat|Hari)/i.test(rawDate)) return;
+    if (/^(No\.|Hari\/Tanggal|Tema|Judul|Indikator|Lokasi|Pemimpin|Sumbangan)/i.test(rawDate)) return;
+    if (/jadwal ibadah|setiap|ruang|character building|minggu ke/i.test(rawDate)) return;
 
     const parsed = parseDateFlexible(rawDate);
     if (!parsed || parsed.monthOnly) return;
 
-    // Avoid parsing subtitle rows: if row has a year range or long descriptive text
-    const fullText = row.slice(0, 4).map(c => String(c || '')).join(' ');
+    // Avoid subtitle rows with year range
+    const fullText = row.slice(1, 5).map(c => String(c || '')).join(' ');
     if (/\d{4}\s*[-–]\s*\d{4}/.test(fullText)) return;
-    if (/setiap|minggu ke/i.test(fullText) && row[1] && !/love|responsible|respectful|steadfast/i.test(String(row[1]))) return;
 
     const dateStr = fmtDate(new Date(parsed.year || new Date().getFullYear(), parsed.month - 1, parsed.day));
 
-    const tema = row[1] ? String(row[1]).trim() : '';
-    const judul = row[2] ? String(row[2]).trim() : '';
-    const pemimpinPujian = row[5] ? String(row[5]).trim() : '';
-    const pemimpinFirman = row[6] ? String(row[6]).trim() : '';
-    const sumbanganPujian = row[7] ? String(row[7]).trim() : '';
+    // Column indices shifted by +1 due to "No." at index 0
+    const tema = row[2] ? String(row[2]).trim() : '';
+    const judul = row[3] ? String(row[3]).trim() : '';
+    const pemimpinPujian = row[6] ? String(row[6]).trim() : '';
+    const pemimpinFirman = row[7] ? String(row[7]).trim() : '';
+    const sumbanganPujian = row[8] ? String(row[8]).trim() : '';
 
-    let summary = 'Ibadah Karyawan';
-    if (judul) summary = `🙏 ${judul}`;
-    if (pemimpinFirman) summary += ` | Firman: ${pemimpinFirman}`;
-
-    // Short label: just firman leader name
-    const shortLabel = pemimpinFirman || pemimpinPujian || (judul ? judul.substring(0, 22) : 'Ibadah');
+    const shortLabel = pemimpinFirman || pemimpinPujian || (judul ? judul.substring(0, 18) : 'Ibadah');
+    const summary = judul ? `🙏 ${judul}` : 'Ibadah Karyawan';
 
     let detailHtml = '<div class="event-detail">';
     detailHtml += `<div class="event-source" style="color:${sheet.color}">${sheet.label}</div>`;
@@ -542,7 +541,9 @@ function parseChapelKaryawan(sheet, columns, rows) {
 }
 
 // Komsel Karyawan:
-// Cols: Hari/Tanggal, Jenjang, Petugas Pujian, Petugas Firman Tuhan, Tema Utama, Tagline, Tujuan Pembelajaran, Ayat Referensi
+// Sheets API returns: Hari/Tanggal(0), Jenjang(1), Petugas Pujian(2), Petugas Firman(3),
+//   Tema Utama(4), Tagline(5), Judul(6), Tujuan(7), Ayat(8), PAMS(9), Link(10)
+// NOTE: "Judul" column at index 6 shifts Tujuan→7, Ayat→8 vs the archive Excel
 function parseKomselKaryawan(sheet, columns, rows) {
   const events = [];
   if (!rows || rows.length === 0) return events;
@@ -551,13 +552,14 @@ function parseKomselKaryawan(sheet, columns, rows) {
     if (!row || row.length === 0 || !row[0]) return;
     const rawDate = String(row[0] || '').trim();
     // Skip header/subtitle rows
-    if (!rawDate || /hari\/tanggal|jadwal komsel|setiap|character building|minggu ke/i.test(rawDate)) return;
-    if (/^(Tema|Jenjang|Tagline|Tujuan|Ayat|Hari|Petugas)/i.test(rawDate)) return;
+    if (!rawDate) return;
+    if (/^(Hari\/Tanggal|Jenjang|Petugas|Tema|Tagline|Judul|Tujuan|Ayat|PAMS|Link)/i.test(rawDate)) return;
+    if (/jadwal komsel|setiap|character building|minggu ke|bahan pams/i.test(rawDate)) return;
 
     const parsed = parseDateFlexible(rawDate);
     if (!parsed || parsed.monthOnly) return;
 
-    // Avoid parsing subtitle rows with year range
+    // Avoid subtitle rows with year range
     const fullText = row.slice(0, 4).map(c => String(c || '')).join(' ');
     if (/\d{4}\s*[-–]\s*\d{4}/.test(fullText)) return;
 
@@ -568,25 +570,24 @@ function parseKomselKaryawan(sheet, columns, rows) {
     const petugasFirman = row[3] ? String(row[3]).trim() : '';
     const tema = row[4] ? String(row[4]).trim() : '';
     const tagline = row[5] ? String(row[5]).trim() : '';
+    const judul = row[6] ? String(row[6]).trim() : '';
+    const tujuan = row[7] ? String(row[7]).trim() : '';
+    const ayat = row[8] ? String(row[8]).trim() : '';
 
+    const shortLabel = petugasFirman || petugasPujian || jenjang || 'Komsel';
     let summary = 'Komsel Karyawan';
     if (tema) summary = `🤝 ${tema}`;
     if (jenjang) summary += ` | ${jenjang}`;
-    if (petugasFirman) summary += ` | Firman: ${petugasFirman}`;
-
-    // Short label: firman leader + jenjang
-    const shortLabel = petugasFirman || petugasPujian || jenjang || 'Komsel';
 
     let detailHtml = '<div class="event-detail">';
     detailHtml += `<div class="event-source" style="color:${sheet.color}">${sheet.label}</div>`;
     if (jenjang) detailHtml += `<div class="event-field"><strong>Jenjang:</strong> ${jenjang}</div>`;
     if (tema) detailHtml += `<div class="event-field"><strong>Tema:</strong> ${tema}</div>`;
     if (tagline) detailHtml += `<div class="event-field"><strong>Tagline:</strong> ${tagline}</div>`;
+    if (judul) detailHtml += `<div class="event-field"><strong>Judul:</strong> ${judul}</div>`;
     if (petugasPujian) detailHtml += `<div class="event-field"><strong>Petugas Pujian:</strong> ${petugasPujian}</div>`;
     if (petugasFirman) detailHtml += `<div class="event-field"><strong>Petugas Firman:</strong> ${petugasFirman}</div>`;
-    const tujuan = row[6] ? String(row[6]).trim() : '';
     if (tujuan) detailHtml += `<div class="event-field"><strong>Tujuan:</strong> ${tujuan}</div>`;
-    const ayat = row[7] ? String(row[7]).trim() : '';
     if (ayat) detailHtml += `<div class="event-field"><strong>Ayat:</strong> ${ayat}</div>`;
     detailHtml += '</div>';
 
