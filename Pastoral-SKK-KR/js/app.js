@@ -831,6 +831,10 @@ function renderRoles() {
   adminData.roles.forEach(r => {
     let perms = {};
     try { perms = typeof r.default_permissions === 'string' ? JSON.parse(r.default_permissions) : (r.default_permissions || {}); } catch(e) {}
+    // Admin & pastoral always get calendar access
+    if (!('_kalender_pastoral' in perms) && (r.role_key === 'admin' || r.role_key === 'pastoral')) {
+      perms._kalender_pastoral = true;
+    }
     const permSummary = CONFIG.PRESENSI_TYPES.map(t => {
       const p = perms[t.value];
       const level = (typeof p === 'string') ? p : (p && p.level ? p.level : 'none');
@@ -914,6 +918,11 @@ function renderUsers(users) {
     } else if (roleObj && roleObj.default_permissions) {
       try { perms = typeof roleObj.default_permissions === 'string' ? JSON.parse(roleObj.default_permissions) : roleObj.default_permissions; } catch(e) {}
     }
+    // Admin & pastoral always get calendar access (even if not in DB defaults)
+    if (!('_kalender_pastoral' in perms) && (u.role === 'admin' || u.role === 'pastoral')) {
+      perms._kalender_pastoral = true;
+    }
+
     const permSummary = CONFIG.PRESENSI_TYPES.map(t => {
       const p = perms[t.value];
       const level = (typeof p === 'string') ? p : (p && p.level ? p.level : 'none');
