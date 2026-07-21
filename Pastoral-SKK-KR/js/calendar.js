@@ -67,9 +67,26 @@ export async function initCalendar() {
   document.getElementById('calendar-event-modal').onclick = (e) => {
     if (e.target === document.getElementById('calendar-event-modal')) closeEventModal();
   };
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeEventModal();
-  });
+  // Search filter
+  const searchInput = document.getElementById('cal-search');
+  if (searchInput) {
+    searchInput.oninput = () => {
+      if (calendarViewMode === 'grid') renderCalendarGrid();
+      else renderListView();
+    };
+    // Clear search on Escape
+    const origKeyHandler = document.onkeydown;
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (!document.getElementById('calendar-event-modal').classList.contains('hidden')) {
+          closeEventModal();
+        } else if (searchInput.value) {
+          searchInput.value = '';
+          searchInput.oninput();
+        }
+      }
+    });
+  }
 
   renderCalendar();
   fetchAllSchedules();
@@ -388,6 +405,7 @@ function renderListView() {
 /* ===== Event Map Builder ===== */
 function buildEventMap() {
   const eventMap = {}; // dateStr → [{ sheetKey, color, sourceLabel, summary, detailHtml }]
+  const searchQuery = (document.getElementById('cal-search')?.value || '').trim().toLowerCase();
 
   calendarSheets.forEach(sheet => {
     if (!visibility[sheet.key]) return;
@@ -396,6 +414,11 @@ function buildEventMap() {
 
     const events = parseSheetEvents(sheet, data.columns, data.rows);
     events.forEach(evt => {
+      // Apply search filter: match shortLabel, summary, or detailHtml
+      if (searchQuery) {
+        const haystack = (evt.shortLabel + ' ' + evt.summary + ' ' + (evt.detailHtml || '').replace(/<[^>]*>/g, ' ')).toLowerCase();
+        if (!haystack.includes(searchQuery)) return;
+      }
       if (!eventMap[evt.dateStr]) eventMap[evt.dateStr] = [];
       eventMap[evt.dateStr].push(evt);
     });
