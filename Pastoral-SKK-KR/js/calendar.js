@@ -98,12 +98,17 @@ async function fetchAllSchedules() {
 
   await Promise.all(promises);
 
-  // Debug: log fetch + parse results
+  // Debug: log fetch + parse results with sample data
   CONFIG.CALENDAR_SHEETS.forEach(sheet => {
     const data = scheduleData[sheet.key];
     if (data) {
       const events = parseSheetEvents(sheet, data.columns, data.rows);
-      console.log(`[Kalender] ${sheet.key}: accessible=${data.accessible}, rows=${data.rows ? data.rows.length : 0}, events=${events.length}`, data.error || '');
+      const sampleRows = data.rows ? data.rows.slice(0, 3) : [];
+      console.log(`[Kalender] ${sheet.key}: accessible=${data.accessible}, rows=${data.rows ? data.rows.length : 0}, cols=${data.columns ? data.columns.length : 0}, events=${events.length}`,
+        data.error || '',
+        '\n  cols:', JSON.stringify(data.columns),
+        '\n  sample rows:', JSON.stringify(sampleRows),
+        '\n  sample events:', JSON.stringify(events.slice(0, 3).map(e => ({ d: e.dateStr, s: e.shortLabel }))));
     }
   });
 
@@ -245,16 +250,13 @@ function renderCalendarGrid() {
 function renderDayCell(day, dateStr, cls, eventMap, todayStr) {
   const events = eventMap[dateStr] || [];
   // Build small event label chips — deduplicate by sheetKey, show up to 3 labels
-  const MAX_LABELS = 3;
-  const seenKeys = new Set();
+  const MAX_LABELS = 6;  // 3 rows × 2 columns
+  // Show ALL events (not deduplicated by sheetKey) for better coverage
   const labels = [];
   for (const evt of events) {
-    if (seenKeys.has(evt.sheetKey)) continue;
-    seenKeys.add(evt.sheetKey);
-    // Use shortLabel (officer name) if available, otherwise extract from summary
-    const labelText = (evt.shortLabel || evt.summary.split(' | ')[0]).replace(/^(📖|⛪|🙏|🤝)\s*/, '').substring(0, 22);
-    labels.push({ color: evt.color, label: labelText, key: evt.sheetKey });
     if (labels.length >= MAX_LABELS) break;
+    const labelText = (evt.shortLabel || evt.summary.split(' | ')[0]).replace(/^(📖|⛪|🙏|🤝)\s*/, '').substring(0, 18);
+    labels.push({ color: evt.color, label: labelText, key: evt.sheetKey });
   }
 
   const labelsHtml = labels.map(l =>
