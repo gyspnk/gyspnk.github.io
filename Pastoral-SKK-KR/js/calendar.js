@@ -6,6 +6,8 @@ let currentMonth, currentYear;
 let scheduleData = {};    // { sheetKey: { columns, rows, accessible, error } }
 let visibility = {};      // { sheetKey: boolean }
 let calendarViewMode = 'grid'; // 'grid' | 'list'
+let calendarSheets = [];  // Loaded from API (or fallback to CONFIG)
+let currentAcademicYear = CONFIG.ACADEMIC_YEAR_CURRENT || '2026-2027';
 
 /* ===== Month names (Indonesian) ===== */
 const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -13,15 +15,21 @@ const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
   'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
-export function initCalendar() {
+export async function initCalendar() {
   const now = new Date();
   currentMonth = now.getMonth();
   currentYear = now.getFullYear();
 
-  // Init visibility from config defaults
-  CONFIG.CALENDAR_SHEETS.forEach(sheet => {
-    visibility[sheet.key] = sheet.defaultVisible;
+  // Load calendar sheet configs from API (or fallback to CONFIG)
+  await loadCalendarConfig();
+
+  // Init visibility from loaded config
+  calendarSheets.forEach(sheet => {
+    if (!(sheet.key in visibility)) visibility[sheet.key] = true;
   });
+
+  // Populate AY dropdown
+  await loadAYSelector();
 
   // Wire up navigation
   document.getElementById('cal-prev-month').onclick = () => navigateMonth(-1);
@@ -32,6 +40,21 @@ export function initCalendar() {
     currentYear = now.getFullYear();
     renderCalendar();
   };
+
+  // Wire up AY selector
+  const aySelect = document.getElementById('cal-academic-year');
+  if (aySelect) {
+    aySelect.onchange = async () => {
+      currentAcademicYear = aySelect.value;
+      scheduleData = {};
+      visibility = {};
+      await loadCalendarConfig();
+      calendarSheets.forEach(s => { visibility[s.key] = true; });
+      renderFilters();
+      renderCalendar();
+      fetchAllSchedules();
+    };
+  }
 
   // View toggle (mobile)
   const gridBtn = document.getElementById('cal-view-grid');
@@ -44,14 +67,52 @@ export function initCalendar() {
   document.getElementById('calendar-event-modal').onclick = (e) => {
     if (e.target === document.getElementById('calendar-event-modal')) closeEventModal();
   };
-
-  // Keyboard: close modal on Escape
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') closeEventModal();
   });
 
   renderCalendar();
   fetchAllSchedules();
+}
+
+async function loadCalendarConfig() {
+  try {
+    const configs = await api.getCalendarConfig(currentAcademicYear);
+    if (configs && configs.length > 0) {
+      calendarSheets = configs.map(c => ({
+        key: c.sheet_key,
+        label: c.sheet_label,
+        sheetId: c.sheet_id,
+        gid: c.gid || '0',
+        color: c.color || '#3b82f6',
+        defaultVisible: true
+      }));
+      return;
+    }
+  } catch (e) {
+    console.warn('Failed to load calendar config from API, using defaults:', e.message);
+  }
+  // Fallback to hardcoded config
+  calendarSheets = calendarSheets || [];
+}
+
+async function loadAYSelector() {
+  const select = document.getElementById('cal-academic-year');
+  if (!select) return;
+  try {
+    const years = await api.getCalendarConfigYears();
+    select.innerHTML = '';
+    const allYears = years.length > 0 ? years : [CONFIG.ACADEMIC_YEAR_CURRENT];
+    allYears.forEach(y => {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      if (y === currentAcademicYear) opt.selected = true;
+      select.appendChild(opt);
+    });
+  } catch (e) {
+    select.innerHTML = `<option value="${currentAcademicYear}">${currentAcademicYear}</option>`;
+  }
 }
 
 function switchViewMode(mode) {
@@ -79,7 +140,7 @@ async function fetchAllSchedules() {
   const statusEl = document.getElementById('calendar-status');
   showStatus('Memuat data jadwal...', 'info');
 
-  const promises = CONFIG.CALENDAR_SHEETS.map(async (sheet) => {
+  const promises = calendarSheets.map(async (sheet) => {
     try {
       const data = await api.getCalendarSchedules(sheet.sheetId, sheet.gid);
       scheduleData[sheet.key] = {
@@ -99,7 +160,7 @@ async function fetchAllSchedules() {
   await Promise.all(promises);
 
   // Debug: log fetch + parse results with sample data
-  CONFIG.CALENDAR_SHEETS.forEach(sheet => {
+  calendarSheets.forEach(sheet => {
     const data = scheduleData[sheet.key];
     if (data) {
       const events = parseSheetEvents(sheet, data.columns, data.rows);
@@ -125,7 +186,7 @@ function renderFilters() {
   if (!container) return;
 
   container.innerHTML = '';
-  CONFIG.CALENDAR_SHEETS.forEach(sheet => {
+  calendarSheets.forEach(sheet => {
     const data = scheduleData[sheet.key];
     const isVisible = visibility[sheet.key];
     const isAccessible = data && data.accessible !== false;
@@ -152,7 +213,7 @@ function renderFilters() {
   // Render legend
   const legend = document.getElementById('calendar-legend');
   if (legend) {
-    legend.innerHTML = CONFIG.CALENDAR_SHEETS.map(s => {
+    legend.innerHTML = calendarSheets.map(s => {
       const data = scheduleData[s.key];
       const warnIcon = (data && data.accessible === false) ? ' ⚠️' : '';
       return `<span class="legend-item">
@@ -326,7 +387,7 @@ function renderListView() {
 function buildEventMap() {
   const eventMap = {}; // dateStr → [{ sheetKey, color, sourceLabel, summary, detailHtml }]
 
-  CONFIG.CALENDAR_SHEETS.forEach(sheet => {
+  calendarSheets.forEach(sheet => {
     if (!visibility[sheet.key]) return;
     const data = scheduleData[sheet.key];
     if (!data || !data.rows || data.rows.length === 0) return;

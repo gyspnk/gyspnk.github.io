@@ -378,6 +378,7 @@ async function initAdmin() {
   initAdminPresensiTypes().then(() => {
     initAdminPresensiConfig();
   });
+  initAdminCalendarConfig();
 }
 
 function switchAdminTab(tab) {
@@ -1537,11 +1538,82 @@ async function syncPresensiTypes() {
     // Also update PERMISSION_DEFAULTS for new types
     presensiTypesData.forEach(pt => {
       if (!CONFIG.PERMISSION_DEFAULTS[pt.type_key]) {
-        // Copy defaults from an existing type
         CONFIG.PERMISSION_DEFAULTS[pt.type_key] = pt.category === 'siswa'
           ? { level: 'write', divisions: [], classes: [] }
           : { level: 'write', divisions: [], classes: [] };
       }
     });
   }
+}
+
+/* ===== Calendar Config Management (Admin) ===== */
+let calendarConfigData = [];
+
+function initAdminCalendarConfig() {
+  document.getElementById('add-cal-config-btn').onclick = handleAddCalendarConfig;
+  loadCalendarConfigTable();
+}
+
+async function loadCalendarConfigTable() {
+  try {
+    calendarConfigData = await api.getCalendarConfig('') || [];
+  } catch (e) {
+    calendarConfigData = [];
+    console.error('Failed to load calendar config:', e);
+  }
+  renderCalendarConfigTable();
+}
+
+function renderCalendarConfigTable() {
+  const tbody = document.getElementById('calendar-config-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  calendarConfigData.forEach(c => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><code>${c.academic_year}</code></td>
+      <td><code style="font-size:11px">${c.sheet_key}</code></td>
+      <td>${c.sheet_label}</td>
+      <td><code style="font-size:10px">${c.sheet_id.substring(0, 12)}...</code></td>
+      <td>${c.gid || '0'}</td>
+      <td><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${c.color};vertical-align:middle"></span></td>
+      <td><button class="btn btn-danger btn-sm" data-del-cal="${c.id}">Hapus</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('[data-del-cal]').forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm('Hapus konfigurasi kalender ini?')) return;
+      try {
+        await api.deleteCalendarConfig(parseInt(btn.dataset.delCal, 10));
+        await loadCalendarConfigTable();
+      } catch (e) { alert('Gagal: ' + e.message); }
+    };
+  });
+  if (tbody.children.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px">Belum ada konfigurasi — gunakan default dari sistem</td></tr>';
+  }
+}
+
+async function handleAddCalendarConfig() {
+  const academicYear = document.getElementById('new-cal-ay').value.trim();
+  const sheetKey = document.getElementById('new-cal-key').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  const sheetLabel = document.getElementById('new-cal-label').value.trim();
+  const sheetId = document.getElementById('new-cal-sheetid').value.trim();
+  const gid = document.getElementById('new-cal-gid').value.trim() || '0';
+  const color = document.getElementById('new-cal-color').value;
+
+  if (!academicYear || !sheetKey || !sheetLabel || !sheetId) {
+    alert('Isi Tahun Ajaran, Key, Label, dan Google Sheet ID.');
+    return;
+  }
+  try {
+    await api.saveCalendarConfig({ academicYear, sheetKey, sheetLabel, sheetId, gid, color, sortOrder: calendarConfigData.length + 1 });
+    document.getElementById('new-cal-ay').value = '';
+    document.getElementById('new-cal-key').value = '';
+    document.getElementById('new-cal-label').value = '';
+    document.getElementById('new-cal-sheetid').value = '';
+    document.getElementById('new-cal-gid').value = '0';
+    await loadCalendarConfigTable();
+  } catch (e) { alert('Gagal: ' + e.message); }
 }

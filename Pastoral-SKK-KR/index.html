@@ -340,11 +340,17 @@
         <section id="view-calendar" class="view hidden">
           <div class="page-header">
             <h2>📅 Kalender Pastoral</h2>
-            <div class="calendar-nav">
-              <button id="cal-prev-month" class="btn btn-sm btn-secondary" title="Bulan sebelumnya">◀</button>
-              <span id="cal-month-year" class="cal-month-label"></span>
-              <button id="cal-next-month" class="btn btn-sm btn-secondary" title="Bulan berikutnya">▶</button>
-              <button id="cal-today" class="btn btn-sm btn-secondary" style="margin-left:8px">Hari Ini</button>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div class="calendar-nav">
+                <button id="cal-prev-month" class="btn btn-sm btn-secondary" title="Bulan sebelumnya">◀</button>
+                <span id="cal-month-year" class="cal-month-label"></span>
+                <button id="cal-next-month" class="btn btn-sm btn-secondary" title="Bulan berikutnya">▶</button>
+                <button id="cal-today" class="btn btn-sm btn-secondary" style="margin-left:8px">Hari Ini</button>
+              </div>
+              <div class="form-group" style="margin:0;min-width:100px">
+                <label style="font-size:11px">Thn Ajaran</label>
+                <select id="cal-academic-year" style="font-size:12px;padding:3px 6px"></select>
+              </div>
             </div>
           </div>
 
@@ -396,6 +402,7 @@
               <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="employees">Karyawan</button>
               <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="kf-students">KF - Siswa</button>
               <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="presensi-config">Presensi</button>
+              <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="calendar-config">Kalender</button>
             </div>
           </div>
 
@@ -657,6 +664,29 @@
               </div>
             </div>
           </div>
+          <!-- Tab: Calendar Config -->
+          <div id="admin-tab-calendar-config" class="admin-tab-content hidden">
+            <div class="admin-form-card" style="max-width:800px">
+              <h3>Kelola Link Kalender Pastoral <span style="font-weight:400;font-size:13px;color:var(--text-muted)">(Admin only)</span></h3>
+              <p class="muted" style="margin-bottom:12px">Atur Google Sheets yang ditampilkan di Kalender Pastoral per Tahun Ajaran.</p>
+              <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:14px">
+                <div class="form-group" style="min-width:110px"><label>Tahun Ajaran</label><input type="text" id="new-cal-ay" placeholder="2026-2027" style="font-family:monospace" /></div>
+                <div class="form-group" style="min-width:90px"><label>Key</label><input type="text" id="new-cal-key" placeholder="renungan_harian_siswa" style="font-family:monospace" /></div>
+                <div class="form-group" style="min-width:120px"><label>Label</label><input type="text" id="new-cal-label" placeholder="📖 Renungan Harian" /></div>
+                <div class="form-group" style="min-width:200px"><label>Google Sheet ID</label><input type="text" id="new-cal-sheetid" placeholder="1ojbcrwsnlnr..." style="font-family:monospace" /></div>
+                <div class="form-group" style="min-width:70px"><label>GID</label><input type="text" id="new-cal-gid" value="0" /></div>
+                <div class="form-group" style="min-width:60px"><label>Warna</label><input type="color" id="new-cal-color" value="#3b82f6" style="width:36px;height:30px;padding:2px" /></div>
+                <button id="add-cal-config-btn" class="btn btn-primary btn-sm">Tambah</button>
+              </div>
+              <div class="table-wrapper">
+                <table>
+                  <thead><tr><th>AY</th><th>Key</th><th>Label</th><th>Sheet ID</th><th>GID</th><th>Warna</th><th>Aksi</th></tr></thead>
+                  <tbody id="calendar-config-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
           <!-- Tab: Presensi Config -->
           <div id="admin-tab-presensi-config" class="admin-tab-content hidden">
             <div class="admin-form-card" style="max-width:700px;margin-bottom:16px">

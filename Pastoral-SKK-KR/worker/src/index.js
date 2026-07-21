@@ -816,6 +816,43 @@ export default {
         }
       }
 
+      // ===== Calendar Sheet Configs (admin only) =====
+      if (path === '/api/calendar-config' && request.method === 'GET') {
+        const ay = url.searchParams.get('academicYear') || '';
+        let sql = 'SELECT * FROM calendar_sheet_configs WHERE is_active = TRUE';
+        const vals = [];
+        if (ay) { sql += ' AND academic_year = ?'; vals.push(ay); }
+        sql += ' ORDER BY sort_order, id';
+        const rows = await query(env, sql, vals);
+        // If no configs in DB, return defaults from CONFIG
+        return json(rows, 200, allowOrigin);
+      }
+
+      if (path === '/api/calendar-config' && request.method === 'POST') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const { academicYear, sheetKey, sheetLabel, sheetId, gid, color, sortOrder } = await request.json();
+        if (!academicYear || !sheetKey || !sheetLabel || !sheetId) return json({ error: 'Field tidak lengkap' }, 400, allowOrigin);
+        await execute(env,
+          `INSERT INTO calendar_sheet_configs (academic_year, sheet_key, sheet_label, sheet_id, gid, color, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE sheet_label=VALUES(sheet_label), sheet_id=VALUES(sheet_id), gid=VALUES(gid), color=VALUES(color), sort_order=VALUES(sort_order), is_active=TRUE`,
+          [academicYear, sheetKey, sheetLabel, sheetId, gid || '0', color || '#3b82f6', sortOrder || 0]);
+        return json({ success: true }, 200, allowOrigin);
+      }
+
+      if (path.startsWith('/api/calendar-config/') && request.method === 'DELETE') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const id = parseInt(path.split('/').pop(), 10);
+        await execute(env, 'UPDATE calendar_sheet_configs SET is_active = FALSE WHERE id = ?', [id]);
+        return json({ success: true }, 200, allowOrigin);
+      }
+
+      // Get distinct academic years that have calendar configs
+      if (path === '/api/calendar-config-years' && request.method === 'GET') {
+        const rows = await query(env, 'SELECT DISTINCT academic_year FROM calendar_sheet_configs WHERE is_active = TRUE ORDER BY academic_year');
+        return json(rows.map(r => r.academic_year), 200, allowOrigin);
+      }
+
       return json({ error: 'Endpoint tidak ditemukan' }, 404, allowOrigin);
     } catch (err) {
       return json({ error: err.message || 'Server error' }, 500, allowOrigin);

@@ -343,9 +343,17 @@ const demoApi = {
   },
 
   async getCalendarSchedules(sheetId, gid) {
-    // Demo mode: no backend, return empty accessible status
     return { success: true, sheetId, gid: gid || '0', columns: [], rows: [], accessible: false, error: 'Tidak tersedia di demo mode' };
   },
+  async getCalendarConfig(academicYear) {
+    // In demo mode, return hardcoded CALENDAR_SHEETS from config
+    return CONFIG.CALENDAR_SHEETS || [];
+  },
+  async getCalendarConfigYears() {
+    return [CONFIG.ACADEMIC_YEAR_CURRENT];
+  },
+  async saveCalendarConfig(config) { return { success: true }; },
+  async deleteCalendarConfig(id) { return { success: true }; },
 };
 
 /* ===== Real API backend ===== */
@@ -491,6 +499,19 @@ const realApi = {
     qs.set('sheetId', sheetId);
     if (gid) qs.set('gid', gid);
     return apiFetch('/api/calendar-schedules?' + qs.toString());
+  },
+  async getCalendarConfig(academicYear) {
+    const qs = academicYear ? `?academicYear=${encodeURIComponent(academicYear)}` : '';
+    return apiFetch('/api/calendar-config' + qs);
+  },
+  async getCalendarConfigYears() {
+    return apiFetch('/api/calendar-config-years');
+  },
+  async saveCalendarConfig(config) {
+    return apiFetch('/api/calendar-config', { method: 'POST', body: JSON.stringify(config) });
+  },
+  async deleteCalendarConfig(id) {
+    return apiFetch(`/api/calendar-config/${id}`, { method: 'DELETE' });
   }
 };
 

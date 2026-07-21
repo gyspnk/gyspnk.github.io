@@ -119,6 +119,20 @@ export async function initSchema(env) {
       is_active BOOLEAN DEFAULT TRUE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS calendar_sheet_configs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      academic_year VARCHAR(20) NOT NULL,
+      sheet_key VARCHAR(50) NOT NULL,
+      sheet_label VARCHAR(200) NOT NULL,
+      sheet_id VARCHAR(200) NOT NULL,
+      gid VARCHAR(20) DEFAULT '0',
+      color VARCHAR(20) DEFAULT '#3b82f6',
+      is_active BOOLEAN DEFAULT TRUE,
+      sort_order INT DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_cal_config (academic_year, sheet_key)
+    )`,
     // Migration: add columns if they don't exist (for existing installations)
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions TEXT DEFAULT NULL AFTER full_name`,
     `ALTER TABLE attendance ADD COLUMN IF NOT EXISTS presensi_type VARCHAR(30) NOT NULL DEFAULT 'renungan_harian' AFTER attendance_date`,
@@ -133,6 +147,11 @@ export async function initSchema(env) {
     `INSERT IGNORE INTO roles (role_key, role_label, default_permissions) VALUES ('guru_agama', 'Guru Agama', '{"renungan_harian":{"level":"write","divisions":[],"classes":[]},"ibadah_mingguan":{"level":"view","divisions":[],"classes":[]},"kanaan_fellowship_guru":{"level":"view","divisions":[],"classes":[]},"kanaan_fellowship_siswa":{"level":"view","divisions":[],"classes":[]}}')`,
     `INSERT IGNORE INTO roles (role_key, role_label, default_permissions) VALUES ('kepala_sekolah', 'Kepala Sekolah', '{"renungan_harian":{"level":"view","divisions":[],"classes":[]},"ibadah_mingguan":{"level":"view","divisions":[],"classes":[]},"kanaan_fellowship_guru":{"level":"view","divisions":[],"classes":[]},"kanaan_fellowship_siswa":{"level":"view","divisions":[],"classes":[]}}')`,
     `INSERT IGNORE INTO roles (role_key, role_label, default_permissions) VALUES ('gereja', 'Gereja', '{"renungan_harian":{"level":"view","divisions":[],"classes":[]},"ibadah_mingguan":{"level":"view","divisions":[],"classes":[]},"kanaan_fellowship_guru":{"level":"view","divisions":[],"classes":[]},"kanaan_fellowship_siswa":{"level":"view","divisions":[],"classes":[]}}')`,
+    // Seed default calendar sheet configs for AY2627
+    `INSERT IGNORE INTO calendar_sheet_configs (academic_year, sheet_key, sheet_label, sheet_id, gid, color, sort_order) VALUES ('2026-2027', 'renungan_harian_siswa', '📖 Renungan Harian Siswa', '1ojbcrwsnlnrzwp1RyqjUmYMmoo3XKsuKRfffU_vOTl4', '0', '#3b82f6', 1)`,
+    `INSERT IGNORE INTO calendar_sheet_configs (academic_year, sheet_key, sheet_label, sheet_id, gid, color, sort_order) VALUES ('2026-2027', 'ibadah_mingguan_siswa', '⛪ Ibadah Mingguan Siswa', '1UBUPnNqvx8nbDzaUZNG0m7WfhQkvx5-Js5gKilhhEvY', '0', '#22c55e', 2)`,
+    `INSERT IGNORE INTO calendar_sheet_configs (academic_year, sheet_key, sheet_label, sheet_id, gid, color, sort_order) VALUES ('2026-2027', 'ibadah_mingguan_karyawan', '🙏 Ibadah Mingguan Karyawan', '1Xkhum8q8c8RvJy3Vck4qm54P0ik7d6y6zaxR_XO4gc4', '1467382719', '#a855f7', 3)`,
+    `INSERT IGNORE INTO calendar_sheet_configs (academic_year, sheet_key, sheet_label, sheet_id, gid, color, sort_order) VALUES ('2026-2027', 'komsel_karyawan', '🤝 Komsel Karyawan', '1NLyFjTCflD3qZ0e9LqCMLkupMwtjpMCs_1E2yE3P1B0', '843795037', '#f59e0b', 4)`,
     `ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_active_rh BOOLEAN DEFAULT TRUE AFTER employment_status`,
     `ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_active_im BOOLEAN DEFAULT TRUE AFTER is_active_rh`,
     `ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_active_kf BOOLEAN DEFAULT TRUE AFTER is_active_im`,
