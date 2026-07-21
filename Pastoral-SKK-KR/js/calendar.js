@@ -372,33 +372,34 @@ function parseRenunganSiswa(sheet, columns, rows) {
 
       const dateStr = fmtDate(new Date(parsed.year || currentYear, parsed.month - 1, parsed.day));
 
-      // Build summary from available columns
       const petugasTkSd = row[2] ? String(row[2]).trim() : '';
       const petugasSmp = row[3] ? String(row[3]).trim() : '';
       const keterangan = row[4] ? String(row[4]).trim() : '';
+      const jadwal = row[1] ? String(row[1]).trim() : '';
 
-      let summary = 'Renungan Harian';
-      if (petugasTkSd) summary += ` | TK-SD: ${petugasTkSd}`;
-      if (petugasSmp) summary += ` | SMP: ${petugasSmp}`;
-      if (keterangan) summary += ` | ${keterangan}`;
-
-      let detailHtml = '<div class="event-detail">';
-      detailHtml += `<div class="event-source" style="color:${sheet.color}">${sheet.label}</div>`;
-      if (row[1]) detailHtml += `<div class="event-field"><strong>Jadwal:</strong> ${String(row[1])}</div>`;
-      if (petugasTkSd) detailHtml += `<div class="event-field"><strong>Petugas TK-SD:</strong> ${petugasTkSd}</div>`;
-      if (petugasSmp) detailHtml += `<div class="event-field"><strong>Petugas SMP:</strong> ${petugasSmp}</div>`;
-      if (keterangan) detailHtml += `<div class="event-field"><strong>Keterangan:</strong> ${keterangan}</div>`;
-      detailHtml += '</div>';
-
-      // Build short label: just the officer names
-      let shortLabel = '';
-      if (petugasTkSd) shortLabel += petugasTkSd;
-      if (petugasSmp) shortLabel += (shortLabel ? ', ' : '') + petugasSmp;
-
-      // Skip if it looks like a header or holiday with no officers
       const isHoliday = keterangan && /libur|merah|break|holiday/i.test(keterangan);
-      if (!isHoliday || petugasTkSd || petugasSmp || (row[1] && !/jadwal|renungan/i.test(String(row[1])))) {
-        events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, shortLabel, detailHtml });
+      if (isHoliday && !petugasTkSd && !petugasSmp) return;
+
+      // Common detail HTML for the day
+      const commonDetail = '<div class="event-detail">' +
+        `<div class="event-source" style="color:${sheet.color}">${sheet.label}</div>` +
+        (jadwal ? `<div class="event-field"><strong>Jadwal:</strong> ${jadwal}</div>` : '') +
+        (keterangan ? `<div class="event-field"><strong>Keterangan:</strong> ${keterangan}</div>` : '');
+
+      // Split into 2 events: TK-SD and SMP (separate labels in calendar cell)
+      if (petugasTkSd) {
+        const detailHtml = commonDetail +
+          `<div class="event-field"><strong>Jenjang:</strong> TK-SD</div>` +
+          `<div class="event-field"><strong>Petugas:</strong> ${petugasTkSd}</div></div>`;
+        events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label,
+          summary: `Renungan TK-SD: ${petugasTkSd}`, shortLabel: `TK-SD: ${petugasTkSd}`, detailHtml });
+      }
+      if (petugasSmp) {
+        const detailHtml = commonDetail +
+          `<div class="event-field"><strong>Jenjang:</strong> SMP</div>` +
+          `<div class="event-field"><strong>Petugas:</strong> ${petugasSmp}</div></div>`;
+        events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label,
+          summary: `Renungan SMP: ${petugasSmp}`, shortLabel: `SMP: ${petugasSmp}`, detailHtml });
       }
     }
   });
@@ -423,14 +424,13 @@ function parseIbadahSiswa(sheet, columns, rows) {
   let bulanIdx = columns.findIndex(c => c && /bulan/i.test(c));
   if (bulanIdx < 0 && columns.length > 2) bulanIdx = 2; // fallback
 
-  // Class schedule column pairs: [dateCol, officerCol, label]
+  // Class schedule column pairs: [dateCol, officerCol, fullLabel, shortPrefix]
   const classSlots = [
-    { dateIdx: 9,  officerIdx: 10, label: 'Kelas 1' },
-    { dateIdx: 11, officerIdx: 12, label: 'Kelas 2-4' },
-    { dateIdx: 13, officerIdx: 14, label: 'Kelas 5-6' },
-    { dateIdx: 15, officerIdx: 16, label: 'TK' },
-    { dateIdx: 17, officerIdx: 18, label: 'SMP' },
-    { dateIdx: 9,  officerIdx: 10, label: 'Kelas 1' }, // duplicate in case of col name search
+    { dateIdx: 9,  officerIdx: 10, label: 'Kelas 1',   short: 'K1' },
+    { dateIdx: 11, officerIdx: 12, label: 'Kelas 2-4', short: 'K2-4' },
+    { dateIdx: 13, officerIdx: 14, label: 'Kelas 5-6', short: 'K5-6' },
+    { dateIdx: 15, officerIdx: 16, label: 'TK',        short: 'TK' },
+    { dateIdx: 17, officerIdx: 18, label: 'SMP',       short: 'SMP' },
   ];
 
   rows.forEach(row => {
@@ -464,10 +464,9 @@ function parseIbadahSiswa(sheet, columns, rows) {
       if (!parsed || parsed.monthOnly) return;
       const dateStr = fmtDate(new Date(parsed.year || currentYear, parsed.month - 1, parsed.day));
 
-      // Build summary
-      let summary = `⛪ ${slot.label}`;
-      if (tema) summary += ` — ${tema}`;
-      if (officer) summary += ` | ${officer}`;
+      // Build summary & short label with class prefix
+      const shortLabel = `${slot.short}: ${officer}`;
+      const summary = `⛪ ${slot.label} — ${tema} | ${officer}`;
 
       // Build detail HTML
       let detailHtml = '<div class="event-detail">';
@@ -481,7 +480,7 @@ function parseIbadahSiswa(sheet, columns, rows) {
       detailHtml += `<div class="event-field"><strong>Petugas:</strong> ${officer}</div>`;
       detailHtml += '</div>';
 
-      events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, shortLabel: officer, detailHtml });
+      events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, shortLabel, detailHtml });
     });
   });
 
