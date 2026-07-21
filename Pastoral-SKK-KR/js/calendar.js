@@ -356,50 +356,66 @@ function renderListView() {
   const today = new Date();
   const todayStr = fmtDate(today);
 
-  // Flatten all events into sorted list by date
-  const allEvents = [];
+  // Group events by date, sorted
+  const dateGroups = [];
   Object.entries(eventMap).forEach(([dateStr, events]) => {
-    events.forEach(evt => {
-      allEvents.push({ dateStr, ...evt });
-    });
+    if (events.length > 0) dateGroups.push({ dateStr, events });
   });
-  allEvents.sort((a, b) => a.dateStr.localeCompare(b.dateStr));
+  dateGroups.sort((a, b) => a.dateStr.localeCompare(b.dateStr));
 
-  if (allEvents.length === 0) {
+  if (dateGroups.length === 0) {
     container.innerHTML = '<div class="list-empty">Tidak ada jadwal yang sesuai filter</div>';
     return;
   }
 
   let html = '';
-  let lastDate = '';
-  allEvents.forEach(evt => {
-    const d = new Date(evt.dateStr + 'T00:00:00');
+  dateGroups.forEach(group => {
+    const d = new Date(group.dateStr + 'T00:00:00');
     const dayName = CONFIG.DAY_NAMES[d.getDay()];
-    const isToday = evt.dateStr === todayStr;
     const dateLabel = `${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+    const isToday = group.dateStr === todayStr;
+    const isPast = group.dateStr < todayStr;
 
-    // Show date header when date changes
-    if (evt.dateStr !== lastDate) {
-      lastDate = evt.dateStr;
-      html += `<div class="list-day ${isToday ? 'list-today' : ''}">
-        <div class="list-day-header">
-          <span class="list-date">${dateLabel}</span>
-          <span class="list-dayname">${dayName}</span>
-          ${isToday ? '<span class="list-today-badge">Hari Ini</span>' : ''}
-        </div>`;
-    }
+    // Past dates: collapsed by default, with toggle
+    const sectionId = `list-section-${group.dateStr}`;
+    const collapsedClass = (isPast && !isToday) ? ' list-collapsed' : '';
 
-    html += `<div class="list-event" style="border-left:3px solid ${evt.color};cursor:pointer" data-date="${evt.dateStr}" data-key="${evt.sheetKey}">
-      <span class="list-event-source" style="color:${evt.color}">${evt.shortLabel || evt.summary.split(' | ')[0]}</span>
-      <span class="list-event-desc">${evt.summary}</span>
-    </div>`;
+    html += `<div class="list-day${isToday ? ' list-today' : ''}${collapsedClass}" data-date="${group.dateStr}">
+      <div class="list-day-header" data-toggle="${sectionId}">
+        <span class="list-expand-icon">${(isPast && !isToday) ? '▶' : '▼'}</span>
+        <span class="list-date">${dateLabel}</span>
+        <span class="list-dayname">${dayName}</span>
+        ${isToday ? '<span class="list-today-badge">Hari Ini</span>' : ''}
+        ${isPast && !isToday ? '<span class="list-past-badge">Lewat</span>' : ''}
+      </div>
+      <div class="list-events" id="${sectionId}">`;
+
+    group.events.forEach(evt => {
+      html += `<div class="list-event" style="border-left:3px solid ${evt.color};cursor:pointer" data-date="${evt.dateStr}">
+        <span class="list-event-source" style="color:${evt.color}">${evt.shortLabel || evt.summary.split(' | ')[0]}</span>
+        <span class="list-event-desc">${evt.summary.split(' | ').slice(1).join(' | ').substring(0, 60)}</span>
+      </div>`;
+    });
+
+    html += '</div></div>';
   });
 
   container.innerHTML = html;
 
-  // Wire up click to open detail modal
+  // Wire up collapse toggle
+  container.querySelectorAll('.list-day-header').forEach(header => {
+    header.onclick = () => {
+      const dayDiv = header.parentElement;
+      dayDiv.classList.toggle('list-collapsed');
+      const icon = header.querySelector('.list-expand-icon');
+      if (icon) icon.textContent = dayDiv.classList.contains('list-collapsed') ? '▶' : '▼';
+    };
+  });
+
+  // Wire up event click
   container.querySelectorAll('.list-event').forEach(el => {
-    el.onclick = () => {
+    el.onclick = (e) => {
+      e.stopPropagation();
       const dateStr = el.dataset.date;
       const events = eventMap[dateStr] || [];
       if (events.length > 0) showEventDetail(dateStr, events);
