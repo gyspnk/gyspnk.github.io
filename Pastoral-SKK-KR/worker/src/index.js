@@ -860,6 +860,30 @@ export default {
         return json({ success: true }, 200, allowOrigin);
       }
 
+      // ===== Calendar Custom Events =====
+      if (path === '/api/calendar-events' && request.method === 'GET') {
+        const ay = url.searchParams.get('academicYear') || '';
+        const rows = ay
+          ? await query(env, 'SELECT * FROM calendar_custom_events WHERE academic_year = ? ORDER BY start_date', [ay])
+          : await query(env, 'SELECT * FROM calendar_custom_events ORDER BY start_date');
+        return json(rows, 200, allowOrigin);
+      }
+
+      if (path === '/api/calendar-events' && request.method === 'POST') {
+        const { academicYear, title, description, startDate, endDate, color } = await request.json();
+        if (!academicYear || !title || !startDate || !endDate) return json({ error: 'Field tidak lengkap' }, 400, allowOrigin);
+        const result = await execute(env,
+          'INSERT INTO calendar_custom_events (academic_year, title, description, start_date, end_date, color, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [academicYear, title, description || '', startDate, endDate, color || '#ef4444', payload.username]);
+        return json({ success: true, id: result.insertId }, 201, allowOrigin);
+      }
+
+      if (path.startsWith('/api/calendar-events/') && request.method === 'DELETE') {
+        const id = parseInt(path.split('/').pop(), 10);
+        await execute(env, 'DELETE FROM calendar_custom_events WHERE id = ?', [id]);
+        return json({ success: true }, 200, allowOrigin);
+      }
+
       // Get distinct academic years that have calendar configs
       if (path === '/api/calendar-config-years' && request.method === 'GET') {
         const rows = await query(env, 'SELECT DISTINCT academic_year FROM calendar_sheet_configs WHERE is_active = TRUE ORDER BY academic_year');

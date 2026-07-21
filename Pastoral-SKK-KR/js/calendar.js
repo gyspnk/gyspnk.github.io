@@ -8,6 +8,7 @@ let visibility = {};      // { sheetKey: boolean }
 let calendarViewMode = 'grid'; // 'grid' | 'list'
 let calendarSheets = [];  // Loaded from API (or fallback to CONFIG)
 let currentAcademicYear = CONFIG.ACADEMIC_YEAR_CURRENT || '2026-2027';
+let customEvents = [];    // Custom events from API [{ id, title, description, start_date, end_date, color, ... }]
 
 /* ===== Month names (Indonesian) ===== */
 const MONTH_NAMES = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -74,22 +75,34 @@ export async function initCalendar() {
       if (calendarViewMode === 'grid') renderCalendarGrid();
       else renderListView();
     };
-    // Clear search on Escape
-    const origKeyHandler = document.onkeydown;
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        if (!document.getElementById('calendar-event-modal').classList.contains('hidden')) {
-          closeEventModal();
-        } else if (searchInput.value) {
-          searchInput.value = '';
-          searchInput.oninput();
-        }
-      }
-    });
   }
+
+  // Custom event modal
+  document.getElementById('cal-add-event-btn').onclick = () => openCustomEventModal();
+  document.getElementById('cal-custom-close').onclick = closeCustomEventModal;
+  document.getElementById('cev-cancel').onclick = closeCustomEventModal;
+  document.getElementById('cev-save').onclick = saveCustomEvent;
+  document.getElementById('calendar-custom-modal').onclick = (e) => {
+    if (e.target === document.getElementById('calendar-custom-modal')) closeCustomEventModal();
+  };
+
+  // Keyboard handling
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (!document.getElementById('calendar-event-modal').classList.contains('hidden')) {
+        closeEventModal();
+      } else if (!document.getElementById('calendar-custom-modal').classList.contains('hidden')) {
+        closeCustomEventModal();
+      } else if (searchInput && searchInput.value) {
+        searchInput.value = '';
+        searchInput.oninput();
+      }
+    }
+  });
 
   renderCalendar();
   fetchAllSchedules();
+  loadCustomEvents();
 }
 
 async function loadCalendarConfig() {
@@ -232,13 +245,17 @@ function renderFilters() {
   // Render legend
   const legend = document.getElementById('calendar-legend');
   if (legend) {
-    legend.innerHTML = calendarSheets.map(s => {
+    let legendHtml = calendarSheets.map(s => {
       const data = scheduleData[s.key];
       const warnIcon = (data && data.accessible === false) ? ' ⚠️' : '';
       return `<span class="legend-item">
         <span class="legend-dot" style="background:${s.color}"></span> ${s.label}${warnIcon}
       </span>`;
     }).join('');
+    if (customEvents.length > 0) {
+      legendHtml += `<span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> ⭐ Event Khusus</span>`;
+    }
+    legend.innerHTML = legendHtml;
   }
 }
 
@@ -443,6 +460,25 @@ function buildEventMap() {
       if (!eventMap[evt.dateStr]) eventMap[evt.dateStr] = [];
       eventMap[evt.dateStr].push(evt);
     });
+  });
+
+  // Add custom events
+  customEvents.forEach(cev => {
+    const start = new Date(cev.start_date + 'T00:00:00');
+    const end = new Date(cev.end_date + 'T00:00:00');
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const ds = fmtDate(d);
+      if (!eventMap[ds]) eventMap[ds] = [];
+      eventMap[ds].push({
+        dateStr: ds,
+        sheetKey: '_custom',
+        color: cev.color || '#ef4444',
+        sourceLabel: 'Event Khusus',
+        summary: cev.title,
+        shortLabel: '⭐ ' + cev.title.substring(0, 16),
+        detailHtml: `<div class="event-detail"><div class="event-source" style="color:${cev.color || '#ef4444'}">⭐ Event Khusus</div><div class="event-field"><strong>${cev.title}</strong></div>${cev.description ? `<div class="event-field">${cev.description}</div>` : ''}<div class="event-field"><strong>Tanggal:</strong> ${cev.start_date} – ${cev.end_date}</div></div>`
+      });
+    }
   });
 
   return eventMap;
@@ -938,6 +974,104 @@ function showStatus(msg, type) {
 function hideStatus() {
   const el = document.getElementById('calendar-status');
   if (el) el.classList.add('hidden');
+}
+
+/* ===== Custom Events ===== */
+function openCustomEventModal() {
+  document.getElementById('calendar-custom-modal').classList.remove('hidden');
+  document.getElementById('cal-custom-title').textContent = 'Tambah Event Khusus';
+  document.getElementById('cev-title').value = '';
+  document.getElementById('cev-desc').value = '';
+  document.getElementById('cev-start').value = '';
+  document.getElementById('cev-end').value = '';
+  document.getElementById('cev-color').value = '#ef4444';
+  document.getElementById('cev-msg').classList.add('hidden');
+  renderCustomEventList();
+}
+
+function closeCustomEventModal() {
+  document.getElementById('calendar-custom-modal').classList.add('hidden');
+}
+
+async function saveCustomEvent() {
+  const title = document.getElementById('cev-title').value.trim();
+  const description = document.getElementById('cev-desc').value.trim();
+  const startDate = document.getElementById('cev-start').value;
+  const endDate = document.getElementById('cev-end').value;
+  const color = document.getElementById('cev-color').value;
+  const msgEl = document.getElementById('cev-msg');
+
+  if (!title || !startDate || !endDate) {
+    msgEl.textContent = 'Judul, Dari, dan Sampai wajib diisi.';
+    msgEl.className = 'info-msg'; msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
+    msgEl.classList.remove('hidden'); return;
+  }
+  if (endDate < startDate) {
+    msgEl.textContent = 'Tanggal Sampai tidak boleh sebelum Dari.';
+    msgEl.className = 'info-msg'; msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
+    msgEl.classList.remove('hidden'); return;
+  }
+
+  try {
+    await api.addCalendarEvent({ academicYear: currentAcademicYear, title, description, startDate, endDate, color });
+    msgEl.textContent = '✅ Event berhasil ditambahkan.';
+    msgEl.className = 'info-msg'; msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';
+    msgEl.classList.remove('hidden');
+    document.getElementById('cev-title').value = '';
+    document.getElementById('cev-desc').value = '';
+    document.getElementById('cev-start').value = '';
+    document.getElementById('cev-end').value = '';
+    await loadCustomEvents();
+    renderCustomEventList();
+    if (calendarViewMode === 'grid') renderCalendarGrid(); else renderListView();
+    setTimeout(() => msgEl.classList.add('hidden'), 2000);
+  } catch (e) {
+    msgEl.textContent = 'Gagal: ' + (e.message || 'Coba lagi');
+    msgEl.className = 'info-msg'; msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
+    msgEl.classList.remove('hidden');
+  }
+}
+
+async function loadCustomEvents() {
+  try {
+    customEvents = await api.getCalendarEvents(currentAcademicYear) || [];
+  } catch (e) {
+    // Fallback silently — if API unavailable, no custom events
+    customEvents = [];
+  }
+}
+
+function renderCustomEventList() {
+  const tbody = document.getElementById('cev-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  customEvents.forEach(evt => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${evt.title}</strong>${evt.description ? `<br><small style="color:var(--text-muted)">${evt.description}</small>` : ''}</td>
+      <td>${evt.start_date}</td>
+      <td>${evt.end_date}</td>
+      <td>
+        <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${evt.color};vertical-align:middle;margin-right:6px"></span>
+        <button class="btn btn-danger btn-sm" data-del-cev="${evt.id}">✕</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('[data-del-cev]').forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm('Hapus event ini?')) return;
+      try {
+        await api.deleteCalendarEvent(parseInt(btn.dataset.delCev, 10));
+        await loadCustomEvents();
+        renderCustomEventList();
+        if (calendarViewMode === 'grid') renderCalendarGrid(); else renderListView();
+      } catch (e) { alert('Gagal: ' + e.message); }
+    };
+  });
+  if (tbody.children.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:12px">Belum ada event khusus</td></tr>';
+  }
 }
 
 /* ===== Window resize handler ===== */

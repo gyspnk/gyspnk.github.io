@@ -119,6 +119,19 @@ export async function initSchema(env) {
       is_active BOOLEAN DEFAULT TRUE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS calendar_custom_events (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      academic_year VARCHAR(20) NOT NULL,
+      title VARCHAR(200) NOT NULL,
+      description TEXT,
+      start_date DATE NOT NULL,
+      end_date DATE NOT NULL,
+      color VARCHAR(20) DEFAULT '#ef4444',
+      created_by VARCHAR(100),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      INDEX idx_ay (academic_year)
+    )`,
     `CREATE TABLE IF NOT EXISTS calendar_sheet_configs (
       id INT AUTO_INCREMENT PRIMARY KEY,
       academic_year VARCHAR(20) NOT NULL,
