@@ -1110,6 +1110,46 @@ tbody tr:hover { background: #f8fafc; }
   font-size: 14px;
 }
 
+/* Modal Overlay (shared) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal-overlay.hidden { display: none; }
+.modal-overlay .modal-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.modal-overlay .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--card-bg);
+  border-radius: 12px 12px 0 0;
+  z-index: 1;
+}
+.modal-overlay .modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.modal-overlay .modal-body {
+  padding: 16px 20px 20px;
+}
+
 /* Event Detail Modal */
 #calendar-event-modal {
   position: fixed;

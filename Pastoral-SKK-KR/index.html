@@ -388,7 +388,7 @@
 
           <!-- Custom Event Modal -->
           <div id="calendar-custom-modal" class="modal-overlay hidden">
-            <div class="modal-card" style="max-width:480px">
+            <div class="modal-card" style="max-width:500px">
               <div class="modal-header">
                 <h3 id="cal-custom-title">Tambah Event Khusus</h3>
                 <button id="cal-custom-close" class="btn btn-sm btn-text">✕</button>
@@ -400,15 +400,15 @@
                   <div class="form-group" style="flex:1"><label>Dari</label><input type="date" id="cev-start" /></div>
                   <div class="form-group" style="flex:1"><label>Sampai</label><input type="date" id="cev-end" /></div>
                 </div>
-                <div class="form-group"><label>Warna Highlight</label><input type="color" id="cev-color" value="#ef4444" style="width:48px;height:30px" /></div>
+                <div class="form-group"><label>Warna</label><input type="color" id="cev-color" value="#ef4444" style="width:48px;height:30px" /></div>
                 <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
                   <button id="cev-cancel" class="btn btn-secondary btn-sm">Batal</button>
                   <button id="cev-save" class="btn btn-primary btn-sm">Simpan</button>
                 </div>
                 <div id="cev-msg" class="info-msg hidden" style="margin-top:8px"></div>
                 <hr style="margin:16px 0" />
-                <h4 style="margin-bottom:8px;font-size:14px">Event Khusus Tersimpan</h4>
-                <div id="cev-list" class="table-wrapper" style="max-height:200px;overflow-y:auto">
+                <h4 style="margin-bottom:8px;font-size:14px">📋 Daftar Event Tersimpan</h4>
+                <div class="table-wrapper" style="max-height:200px;overflow-y:auto">
                   <table><thead><tr><th>Judul</th><th>Dari</th><th>Sampai</th><th>Aksi</th></tr></thead>
                   <tbody id="cev-tbody"></tbody></table>
                 </div>
