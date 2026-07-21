@@ -82,7 +82,7 @@ export const CONFIG = {
       key: 'komsel_karyawan',
       label: '🤝 Komsel Karyawan',
       sheetId: '1NLyFjTCflD3qZ0e9LqCMLkupMwtjpMCs_1E2yE3P1B0',
-      gid: '0',
+      gid: '843795037',
       color: '#f59e0b',
       defaultVisible: true
     }

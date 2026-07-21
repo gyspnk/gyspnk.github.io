@@ -98,11 +98,12 @@ async function fetchAllSchedules() {
 
   await Promise.all(promises);
 
-  // Debug: log fetch results
+  // Debug: log fetch + parse results
   CONFIG.CALENDAR_SHEETS.forEach(sheet => {
     const data = scheduleData[sheet.key];
     if (data) {
-      console.log(`[Kalender] ${sheet.key}: accessible=${data.accessible}, rows=${data.rows ? data.rows.length : 0}, cols=${data.columns ? data.columns.length : 0}`, data.error || '');
+      const events = parseSheetEvents(sheet, data.columns, data.rows);
+      console.log(`[Kalender] ${sheet.key}: accessible=${data.accessible}, rows=${data.rows ? data.rows.length : 0}, events=${events.length}`, data.error || '');
     }
   });
 
