@@ -8,8 +8,8 @@ export const CONFIG = {
   SCHOOL_NAME: 'Sekolah Kristen Kanaan Kubu Raya',
   ACADEMIC_YEAR_CURRENT: '2026-2027',
   ATTENDANCE_STATUSES: [
-    { value: 'hadir', label: 'Hadir', color: '#22c55e', short: 'H' },
-    { value: 'terlambat', label: 'Terlambat', color: '#f59e0b', short: 'T' },
+    { value: 'hadir', label: 'Hadir On Time', color: '#22c55e', short: 'H' },
+    { value: 'terlambat', label: 'Hadir Terlambat', color: '#f59e0b', short: 'T' },
     { value: 'izin', label: 'Izin', color: '#3b82f6', short: 'I' },
     { value: 'sakit', label: 'Sakit', color: '#a855f7', short: 'S' },
     { value: 'tidak_hadir_tk', label: 'Tidak Hadir', color: '#ef4444', short: 'TH' }
