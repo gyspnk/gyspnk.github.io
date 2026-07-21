@@ -97,6 +97,15 @@ async function fetchAllSchedules() {
   });
 
   await Promise.all(promises);
+
+  // Debug: log fetch results
+  CONFIG.CALENDAR_SHEETS.forEach(sheet => {
+    const data = scheduleData[sheet.key];
+    if (data) {
+      console.log(`[Kalender] ${sheet.key}: accessible=${data.accessible}, rows=${data.rows ? data.rows.length : 0}, cols=${data.columns ? data.columns.length : 0}`, data.error || '');
+    }
+  });
+
   hideStatus();
 
   // Update filter chips with status
@@ -380,64 +389,79 @@ function parseRenunganSiswa(sheet, columns, rows) {
   return events;
 }
 
-// Ibadah Mingguan Siswa: Many columns — Bulan, Tanggal, Tema, Sub Tema, Cerita Alkitab, etc.
+// Ibadah Mingguan Siswa:
+// Cols: A=Tema, B=SubTema, C=Bulan, D=Tanggal(range), E=CeritaAlkitab, F=AlkitabBacaan,
+// G=ArahanCerita, H=Pengajaran(TK-SD), I=Diskusi(Sec-JC),
+// J+K=Kelas1(date+officer), L+M=Kelas2-4(date+officer), N+O=Kelas5-6(date+officer),
+// P+Q=TK(date+officer), R+S=SMP(date+officer)
+// Each class has its OWN specific day within the week range.
 function parseIbadahSiswa(sheet, columns, rows) {
   const events = [];
   let currentYear = new Date().getFullYear();
-  // Academic year spans Jul 2026 - Jun 2027, so detect year from context
   const now = new Date();
   if (now.getMonth() >= 6) currentYear = now.getFullYear();
   else currentYear = now.getFullYear();
 
-  // Find column indices for month and date
-  // Usually: col 2 = Bulan, col 3 = Tanggal
+  // Build month reference from bulan column (Col C = index 2)
   const bulanIdx = columns.findIndex(c => c && /bulan/i.test(c));
-  const tanggalIdx = columns.findIndex(c => c && /tanggal/i.test(c));
-  // Find first string column with schedule info (like "Kelas 1")
-  const temaIdx = 0; // Usually col 0 = Tema
-  const subTemaIdx = 1; // Usually col 1 = Sub Tema
+  if (bulanIdx < 0 && columns.length > 2) bulanIdx = 2; // fallback
+
+  // Class schedule column pairs: [dateCol, officerCol, label]
+  const classSlots = [
+    { dateIdx: 9,  officerIdx: 10, label: 'Kelas 1' },
+    { dateIdx: 11, officerIdx: 12, label: 'Kelas 2-4' },
+    { dateIdx: 13, officerIdx: 14, label: 'Kelas 5-6' },
+    { dateIdx: 15, officerIdx: 16, label: 'TK' },
+    { dateIdx: 17, officerIdx: 18, label: 'SMP' },
+    { dateIdx: 9,  officerIdx: 10, label: 'Kelas 1' }, // duplicate in case of col name search
+  ];
 
   rows.forEach(row => {
     if (!row || row.length === 0) return;
+    // Skip header rows
+    const firstVal = String(row[0] || '').trim();
+    if (!firstVal || /^tema$/i.test(firstVal)) return;
 
-    const bulanRaw = bulanIdx >= 0 ? row[bulanIdx] : (row[2] || '');
-    const tanggalRaw = tanggalIdx >= 0 ? row[tanggalIdx] : (row[3] || '');
-
-    if (!bulanRaw && !tanggalRaw) return; // Header row or empty
-
+    // Parse month from column C (or bulanIdx)
+    const bulanRaw = row[bulanIdx] || row[2] || '';
     const month = parseMonthShort(String(bulanRaw).trim());
-    const dateRange = String(tanggalRaw).trim();
+    if (!month) return;
 
-    if (!month || !dateRange) return;
+    // Core info
+    const tema = row[0] ? String(row[0]).trim() : '';
+    const subTema = row[1] ? String(row[1]).trim() : '';
+    const ceritaAlkitab = row[4] ? String(row[4]).trim() : '';
+    const alkitabBacaan = row[5] ? String(row[5]).trim() : '';
+    const pengajaran = row[7] ? String(row[7]).trim() : '';
 
-    // Parse date range like "20-24" or "27-31" or single "7"
-    const dates = parseDateRange(dateRange, month, currentYear);
+    // Process each class slot — each has its own specific date
+    classSlots.slice(0, 5).forEach(slot => {
+      const dateRaw = row[slot.dateIdx] ? String(row[slot.dateIdx]).trim() : '';
+      const officer = row[slot.officerIdx] ? String(row[slot.officerIdx]).trim() : '';
 
-    // Build detail from all available columns
-    const tema = row[temaIdx] ? String(row[temaIdx]).trim() : '';
-    const subTema = row[subTemaIdx] ? String(row[subTemaIdx]).trim() : '';
-    const cerita = columns.findIndex(c => c && /cerita/i.test(c));
+      // Skip if no date or officer
+      if (!dateRaw || !officer) return;
 
-    dates.forEach(d => {
-      const dateStr = fmtDate(d);
+      // Parse the specific date (e.g., "Selasa, 21/07/2026" or "Jumat, 24/07/2026")
+      const parsed = parseDateFlexible(dateRaw);
+      if (!parsed || parsed.monthOnly) return;
+      const dateStr = fmtDate(new Date(parsed.year || currentYear, parsed.month - 1, parsed.day));
 
       // Build summary
-      let summary = 'Ibadah Mingguan Siswa';
-      if (tema) summary = tema;
-      if (subTema) summary += ` — ${subTema}`;
+      let summary = `⛪ ${slot.label}`;
+      if (tema) summary += ` — ${tema}`;
+      if (officer) summary += ` | ${officer}`;
 
+      // Build detail HTML
       let detailHtml = '<div class="event-detail">';
       detailHtml += `<div class="event-source" style="color:${sheet.color}">${sheet.label}</div>`;
+      detailHtml += `<div class="event-field"><strong>Kelas:</strong> ${slot.label}</div>`;
       if (tema) detailHtml += `<div class="event-field"><strong>Tema:</strong> ${tema}</div>`;
       if (subTema) detailHtml += `<div class="event-field"><strong>Sub Tema:</strong> ${subTema}</div>`;
-
-      // Add all other non-empty columns
-      row.forEach((val, i) => {
-        if (i <= 3) return; // Skip Bulan, Tanggal, Tema, Sub Tema
-        if (val && columns[i] && String(val).trim()) {
-          detailHtml += `<div class="event-field"><strong>${columns[i]}:</strong> ${String(val).trim()}</div>`;
-        }
-      });
+      if (ceritaAlkitab) detailHtml += `<div class="event-field"><strong>Cerita Alkitab:</strong> ${ceritaAlkitab}</div>`;
+      if (alkitabBacaan) detailHtml += `<div class="event-field"><strong>Bacaan Alkitab:</strong> ${alkitabBacaan}</div>`;
+      if (pengajaran) detailHtml += `<div class="event-field"><strong>Pengajaran:</strong> ${pengajaran}</div>`;
+      detailHtml += `<div class="event-field"><strong>Petugas:</strong> ${officer}</div>`;
       detailHtml += '</div>';
 
       events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, detailHtml });
@@ -456,10 +480,19 @@ function parseChapelKaryawan(sheet, columns, rows) {
   rows.forEach(row => {
     if (!row || row.length === 0 || !row[0]) return;
     const rawDate = String(row[0] || '').trim();
-    if (!rawDate || /hari\/tanggal|jadwal ibadah/i.test(rawDate)) return; // Skip header
+    // Skip header/subtitle rows
+    if (!rawDate || /hari\/tanggal|jadwal ibadah|setiap|ruang|character building|^[-\s]*$/i.test(rawDate)) return;
+    // Skip rows where column 0 looks like a label, not a date
+    if (/^(Tema|Judul|Indikator|Lokasi|Jenjang|Tagline|Tujuan|Ayat|Hari)/i.test(rawDate)) return;
 
     const parsed = parseDateFlexible(rawDate);
     if (!parsed || parsed.monthOnly) return;
+
+    // Avoid parsing subtitle rows: if row has a year range or long descriptive text
+    const fullText = row.slice(0, 4).map(c => String(c || '')).join(' ');
+    if (/\d{4}\s*[-–]\s*\d{4}/.test(fullText)) return;
+    if (/setiap|minggu ke/i.test(fullText) && row[1] && !/love|responsible|respectful|steadfast/i.test(String(row[1]))) return;
+
     const dateStr = fmtDate(new Date(parsed.year || new Date().getFullYear(), parsed.month - 1, parsed.day));
 
     const tema = row[1] ? String(row[1]).trim() : '';
@@ -496,10 +529,17 @@ function parseKomselKaryawan(sheet, columns, rows) {
   rows.forEach(row => {
     if (!row || row.length === 0 || !row[0]) return;
     const rawDate = String(row[0] || '').trim();
-    if (!rawDate || /hari\/tanggal|jadwal komsel/i.test(rawDate)) return; // Skip header
+    // Skip header/subtitle rows
+    if (!rawDate || /hari\/tanggal|jadwal komsel|setiap|character building|minggu ke/i.test(rawDate)) return;
+    if (/^(Tema|Jenjang|Tagline|Tujuan|Ayat|Hari|Petugas)/i.test(rawDate)) return;
 
     const parsed = parseDateFlexible(rawDate);
     if (!parsed || parsed.monthOnly) return;
+
+    // Avoid parsing subtitle rows with year range
+    const fullText = row.slice(0, 4).map(c => String(c || '')).join(' ');
+    if (/\d{4}\s*[-–]\s*\d{4}/.test(fullText)) return;
+
     const dateStr = fmtDate(new Date(parsed.year || new Date().getFullYear(), parsed.month - 1, parsed.day));
 
     const jenjang = row[1] ? String(row[1]).trim() : '';
@@ -653,7 +693,13 @@ function parseDateFlexible(val) {
 
   const slashMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (slashMatch) {
-    return { year: parseInt(slashMatch[3]), month: parseInt(slashMatch[1]), day: parseInt(slashMatch[2]) };
+    const a = parseInt(slashMatch[1]), b = parseInt(slashMatch[2]), y = parseInt(slashMatch[3]);
+    // Indonesian format: DD/MM/YYYY. If first > 12 it's definitely DD/MM.
+    if (a > 12) return { year: y, month: b, day: a };
+    // If second > 12, it's MM/DD (non-Indonesian, but handle gracefully)
+    if (b > 12) return { year: y, month: a, day: b };
+    // Both ≤ 12: assume DD/MM/YYYY (Indonesian convention)
+    return { year: y, month: b, day: a };
   }
 
   // Try Google Sheets date serial number (days since 1899-12-30)
