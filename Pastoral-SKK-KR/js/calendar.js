@@ -164,7 +164,9 @@ async function fetchAllSchedules() {
     const data = scheduleData[sheet.key];
     if (data) {
       const events = parseSheetEvents(sheet, data.columns, data.rows);
-      const sampleRows = data.rows ? data.rows.slice(0, 3) : [];
+      // For chapel/komsel, show first data rows (skip title/subtitle/header = first 3)
+      const startIdx = (sheet.key === 'ibadah_mingguan_karyawan' || sheet.key === 'komsel_karyawan') ? 3 : 0;
+      const sampleRows = data.rows ? data.rows.slice(startIdx, startIdx + 3) : [];
       console.log(`[Kalender] ${sheet.key}: accessible=${data.accessible}, rows=${data.rows ? data.rows.length : 0}, cols=${data.columns ? data.columns.length : 0}, events=${events.length}`,
         data.error || '',
         '\n  cols:', JSON.stringify(data.columns),
@@ -558,7 +560,9 @@ function parseChapelKaryawan(sheet, columns, rows) {
   const events = [];
   if (!rows || rows.length === 0) return events;
 
+  let rowIdx = 0;
   rows.forEach(row => {
+    rowIdx++;
     if (!row || row.length === 0) return;
     // Date is at index 1 (index 0 = "No." column)
     const rawDate = row[1] ? String(row[1]).trim() : '';
@@ -568,13 +572,20 @@ function parseChapelKaryawan(sheet, columns, rows) {
     if (/jadwal ibadah|setiap|ruang|character building|minggu ke/i.test(rawDate)) return;
 
     const parsed = parseDateFlexible(rawDate);
-    if (!parsed || parsed.monthOnly) return;
+    if (!parsed || parsed.monthOnly) {
+      if (rowIdx <= 6) console.log(`[Chapel] row ${rowIdx} date parse failed:`, JSON.stringify(rawDate), 'parsed:', JSON.stringify(parsed));
+      return;
+    }
 
     // Avoid subtitle rows with year range
     const fullText = row.slice(1, 5).map(c => String(c || '')).join(' ');
-    if (/\d{4}\s*[-–]\s*\d{4}/.test(fullText)) return;
+    if (/\d{4}\s*[-–]\s*\d{4}/.test(fullText)) {
+      if (rowIdx <= 6) console.log(`[Chapel] row ${rowIdx} year range skip:`, fullText.substring(0, 80));
+      return;
+    }
 
     const dateStr = fmtDate(new Date(parsed.year || new Date().getFullYear(), parsed.month - 1, parsed.day));
+    if (rowIdx <= 6) console.log(`[Chapel] row ${rowIdx} OK: date=${dateStr} firman=${String(row[7] || '').trim()}`);
 
     // Column indices shifted by +1 due to "No." at index 0
     const tema = row[2] ? String(row[2]).trim() : '';

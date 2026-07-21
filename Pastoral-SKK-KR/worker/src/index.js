@@ -274,7 +274,20 @@ export default {
 
               if (metaRes.ok) {
                 const meta = await metaRes.json();
-                steps.push({ step: 'sheet_found', sheets: (meta.sheets || []).map(s => ({ title: s.properties.title, sheetId: s.properties.sheetId })) });
+                const sheets = (meta.sheets || []).map(s => ({ title: s.properties.title, sheetId: s.properties.sheetId }));
+                steps.push({ step: 'sheet_found', sheets });
+
+                // Fetch first 8 rows of actual data
+                if (sheets.length > 0) {
+                  const valuesUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheets[0].title)}?valueRenderOption=FORMATTED_VALUE`;
+                  const valuesRes = await fetch(valuesUrl, { headers: { 'Authorization': `Bearer ${tokenData.access_token}` } });
+                  if (valuesRes.ok) {
+                    const valuesData = await valuesRes.json();
+                    const allValues = valuesData.values || [];
+                    steps.push({ step: 'values_total', count: allValues.length });
+                    steps.push({ step: 'sample_rows', rows: allValues.slice(0, 8) });
+                  }
+                }
               } else {
                 const errBody = await metaRes.text();
                 steps.push({ step: 'sheet_meta_error', status: metaRes.status, body: errBody.substring(0, 300) });
