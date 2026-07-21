@@ -74,7 +74,7 @@ export const CONFIG = {
       key: 'ibadah_mingguan_karyawan',
       label: '🙏 Ibadah Mingguan Karyawan',
       sheetId: '1Xkhum8q8c8RvJy3Vck4qm54P0ik7d6y6zaxR_XO4gc4',
-      gid: '0',
+      gid: '1467382719',
       color: '#a855f7',
       defaultVisible: true
     },

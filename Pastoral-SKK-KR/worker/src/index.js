@@ -33,6 +33,17 @@ function parseCSVLine(line) {
   return result;
 }
 
+// Helper: parse GSA_JSON with aggressive cleanup
+function parseGSAJson(raw) {
+  if (!raw) return null;
+  let str = raw;
+  // Remove ALL characters before the first '{' — handles BOM, whitespace, newlines, anything
+  const start = str.indexOf('{');
+  if (start > 0) str = str.slice(start);
+  if (start < 0) throw new Error('No JSON object found in GSA_JSON');
+  return JSON.parse(str);
+}
+
 // ===== Google Service Account OAuth2 (Web Crypto JWT) =====
 // Used for non-public Google Sheets. Credentials stored as Cloudflare Worker secret `GSA_JSON`.
 // No credentials are ever exposed to client — token exchange happens entirely server-side.
@@ -77,12 +88,9 @@ async function getGoogleAccessToken(env) {
     return _cachedAccessToken;
   }
 
-  const saJson = env.GSA_JSON;
-  if (!saJson) return null;
-
   let sa;
-  try { sa = JSON.parse(saJson); } catch (e) { console.error('GSA_JSON parse error:', e.message); return null; }
-  if (!sa.client_email || !sa.private_key) { console.error('GSA_JSON missing client_email or private_key'); return null; }
+  try { sa = parseGSAJson(env.GSA_JSON); } catch (e) { console.error('GSA_JSON parse error:', e.message); return null; }
+  if (!sa || !sa.client_email || !sa.private_key) { console.error('GSA_JSON missing client_email or private_key'); return null; }
 
   const now = Math.floor(Date.now() / 1000);
   const jwt = await signJWT(
@@ -227,6 +235,60 @@ export default {
         try { permissions = JSON.parse(user.permissions || '{}'); } catch(e) {}
         const token = await createJWT({ id: user.id, username: user.username, role: user.role, permissions }, env.JWT_SECRET);
         return json({ token, user: { id: user.id, username: user.username, full_name: user.full_name, role: user.role, permissions } }, 200, allowOrigin);
+      }
+
+      // ===== Debug: Test Google Sheets OAuth2 (PUBLIC — no auth) =====
+      if (path === '/api/debug-oauth2' && request.method === 'GET') {
+        const sheetId = url.searchParams.get('sheetId') || '1Xkhum8q8c8RvJy3Vck4qm54P0ik7d6y6zaxR_XO4gc4';
+        const steps = [];
+        steps.push({ step: 'secrets', hasGapiKey: !!env.GAPI_KEY, hasGsaJson: !!env.GSA_JSON });
+
+        if (env.GSA_JSON) {
+          try {
+            const sa = parseGSAJson(env.GSA_JSON);
+            steps.push({ step: 'gsa_parsed', client_email: sa.client_email });
+            const now = Math.floor(Date.now() / 1000);
+            const jwt = await signJWT(
+              { alg: 'RS256', typ: 'JWT' },
+              { iss: sa.client_email, scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+                aud: 'https://oauth2.googleapis.com/token', exp: now + 3600, iat: now },
+              sa.private_key
+            );
+            steps.push({ step: 'jwt_signed', ok: true });
+
+            const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${encodeURIComponent(jwt)}`
+            });
+            const tokenBody = await tokenRes.text();
+            steps.push({ step: 'token_exchange', status: tokenRes.status, ok: tokenRes.ok });
+
+            if (tokenRes.ok) {
+              const tokenData = JSON.parse(tokenBody);
+              steps.push({ step: 'token_obtained', ok: true });
+
+              const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties`;
+              const metaRes = await fetch(metaUrl, { headers: { 'Authorization': `Bearer ${tokenData.access_token}` } });
+              steps.push({ step: 'sheet_meta', status: metaRes.status, ok: metaRes.ok });
+
+              if (metaRes.ok) {
+                const meta = await metaRes.json();
+                steps.push({ step: 'sheet_found', sheets: (meta.sheets || []).map(s => ({ title: s.properties.title, sheetId: s.properties.sheetId })) });
+              } else {
+                const errBody = await metaRes.text();
+                steps.push({ step: 'sheet_meta_error', status: metaRes.status, body: errBody.substring(0, 300) });
+              }
+            } else {
+              steps.push({ step: 'token_error', body: tokenBody.substring(0, 300) });
+            }
+          } catch (e) {
+            steps.push({ step: 'error', message: e.message, stack: e.stack ? e.stack.substring(0, 300) : '' });
+          }
+        } else {
+          steps.push({ step: 'no_gsa_json', error: 'GSA_JSON secret not configured' });
+        }
+        return json({ success: true, steps }, 200, allowOrigin);
       }
 
       // Auth required below
@@ -681,54 +743,70 @@ export default {
 
           // If gviz fails, try Google Sheets API v4
           if (res.status === 401 || res.status === 403) {
-            // 2a. Try with API key first (faster, no OAuth handshake)
+            const diagnostics = { gviz: `${res.status}`, methods: [] };
+
+            // 2a. Try with API key first
             const gapiKey = env.GAPI_KEY;
             if (gapiKey) {
               const apiData = await fetchSheetViaSheetsAPIWithKey(sheetId, gid, gapiKey);
+              diagnostics.methods.push({ method: 'apikey', ok: !!apiData });
               if (apiData) {
                 const { columns, rows } = apiData;
                 const result = { success: true, sheetId, gid, columns, rows, accessible: true };
                 _calendarCache.set(cacheKey, { ts: Date.now(), data: result });
                 return json(result, 200, allowOrigin);
               }
+            } else {
+              diagnostics.methods.push({ method: 'apikey', ok: false, error: 'GAPI_KEY not configured' });
             }
 
             // 2b. Try with OAuth2 service account
-            const accessToken = await getGoogleAccessToken(env);
-            if (accessToken) {
-              const apiData = await fetchSheetViaSheetsAPI(sheetId, gid, accessToken);
-              if (apiData) {
-                const { columns, rows } = apiData;
-                const result = { success: true, sheetId, gid, columns, rows, accessible: true };
-                _calendarCache.set(cacheKey, { ts: Date.now(), data: result });
-                return json(result, 200, allowOrigin);
+            let oauthError = null;
+            try {
+              const accessToken = await getGoogleAccessToken(env);
+              if (accessToken) {
+                const apiData = await fetchSheetViaSheetsAPI(sheetId, gid, accessToken);
+                diagnostics.methods.push({ method: 'oauth2', ok: !!apiData, tokenObtained: true });
+                if (apiData) {
+                  const { columns, rows } = apiData;
+                  const result = { success: true, sheetId, gid, columns, rows, accessible: true };
+                  _calendarCache.set(cacheKey, { ts: Date.now(), data: result });
+                  return json(result, 200, allowOrigin);
+                }
+                diagnostics.methods[diagnostics.methods.length - 1].error = 'Sheets API call failed with valid token';
+              } else {
+                oauthError = 'Failed to obtain OAuth2 token';
+                diagnostics.methods.push({ method: 'oauth2', ok: false, error: oauthError, tokenObtained: false });
               }
+            } catch (e) {
+              oauthError = e.message;
+              diagnostics.methods.push({ method: 'oauth2', ok: false, error: oauthError });
             }
 
-            // Try CSV export as second fallback (works for published sheets)
+            // 2c. Try CSV export
             const csvUrl = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/export?format=csv&gid=${gid}`;
             const csvRes = await fetch(csvUrl);
-
+            diagnostics.methods.push({ method: 'csvexport', ok: csvRes.ok });
             if (csvRes.ok) {
               const csvText = await csvRes.text();
               const lines = csvText.trim().split('\n');
               const cols = lines.length > 0 ? parseCSVLine(lines[0]) : [];
               const rows = lines.slice(1).map(line => parseCSVLine(line));
-
               const result = { success: true, sheetId, gid, columns: cols, rows, accessible: true };
               _calendarCache.set(cacheKey, { ts: Date.now(), data: result });
               return json(result, 200, allowOrigin);
             }
 
-            // All methods failed — sheet not accessible
+            // All methods failed
             let saEmail = null;
-            try { if (env.GSA_JSON) saEmail = JSON.parse(env.GSA_JSON).client_email; } catch (e) { /* ignore */ }
+            try { if (env.GSA_JSON) saEmail = parseGSAJson(env.GSA_JSON).client_email; } catch (e) { /* ignore */ }
             return json({
               success: true, sheetId, gid, columns: [], rows: [],
               accessible: false,
               error: saEmail
-                ? `Sheet tidak dapat diakses. Pastikan service account (${saEmail}) sudah ditambahkan sebagai Viewer di Google Sheet ini.`
-                : 'Sheet tidak dapat diakses. Tambahkan GSA_JSON secret di Worker atau publikasikan sheet ke web.'
+                ? `Sheet tidak dapat diakses. Service account: ${saEmail}. Diagnostics: ${JSON.stringify(diagnostics)}`
+                : `Sheet tidak dapat diakses. Diagnostics: ${JSON.stringify(diagnostics)}`,
+              diagnostics
             }, 200, allowOrigin);
           }
 
