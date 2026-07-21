@@ -250,9 +250,9 @@ function renderDayCell(day, dateStr, cls, eventMap, todayStr) {
   for (const evt of events) {
     if (seenKeys.has(evt.sheetKey)) continue;
     seenKeys.add(evt.sheetKey);
-    // Extract the key name from summary (first part before " | ")
-    const shortName = evt.summary.split(' | ')[0].replace(/^(📖|⛪|🙏|🤝)\s*/, '').substring(0, 25);
-    labels.push({ color: evt.color, label: shortName, key: evt.sheetKey });
+    // Use shortLabel (officer name) if available, otherwise extract from summary
+    const labelText = (evt.shortLabel || evt.summary.split(' | ')[0]).replace(/^(📖|⛪|🙏|🤝)\s*/, '').substring(0, 22);
+    labels.push({ color: evt.color, label: labelText, key: evt.sheetKey });
     if (labels.length >= MAX_LABELS) break;
   }
 
@@ -389,10 +389,15 @@ function parseRenunganSiswa(sheet, columns, rows) {
       if (keterangan) detailHtml += `<div class="event-field"><strong>Keterangan:</strong> ${keterangan}</div>`;
       detailHtml += '</div>';
 
+      // Build short label: just the officer names
+      let shortLabel = '';
+      if (petugasTkSd) shortLabel += petugasTkSd;
+      if (petugasSmp) shortLabel += (shortLabel ? ', ' : '') + petugasSmp;
+
       // Skip if it looks like a header or holiday with no officers
       const isHoliday = keterangan && /libur|merah|break|holiday/i.test(keterangan);
       if (!isHoliday || petugasTkSd || petugasSmp || (row[1] && !/jadwal|renungan/i.test(String(row[1])))) {
-        events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, detailHtml });
+        events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, shortLabel, detailHtml });
       }
     }
   });
@@ -475,7 +480,7 @@ function parseIbadahSiswa(sheet, columns, rows) {
       detailHtml += `<div class="event-field"><strong>Petugas:</strong> ${officer}</div>`;
       detailHtml += '</div>';
 
-      events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, detailHtml });
+      events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, shortLabel: officer, detailHtml });
     });
   });
 
@@ -516,6 +521,9 @@ function parseChapelKaryawan(sheet, columns, rows) {
     if (judul) summary = `🙏 ${judul}`;
     if (pemimpinFirman) summary += ` | Firman: ${pemimpinFirman}`;
 
+    // Short label: just firman leader name
+    const shortLabel = pemimpinFirman || pemimpinPujian || (judul ? judul.substring(0, 22) : 'Ibadah');
+
     let detailHtml = '<div class="event-detail">';
     detailHtml += `<div class="event-source" style="color:${sheet.color}">${sheet.label}</div>`;
     if (tema) detailHtml += `<div class="event-field"><strong>Tema:</strong> ${tema}</div>`;
@@ -525,7 +533,7 @@ function parseChapelKaryawan(sheet, columns, rows) {
     if (sumbanganPujian) detailHtml += `<div class="event-field"><strong>Sumbangan Pujian:</strong> ${sumbanganPujian}</div>`;
     detailHtml += '</div>';
 
-    events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, detailHtml });
+    events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, shortLabel, detailHtml });
   });
 
   return events;
@@ -564,6 +572,9 @@ function parseKomselKaryawan(sheet, columns, rows) {
     if (jenjang) summary += ` | ${jenjang}`;
     if (petugasFirman) summary += ` | Firman: ${petugasFirman}`;
 
+    // Short label: firman leader + jenjang
+    const shortLabel = petugasFirman || petugasPujian || jenjang || 'Komsel';
+
     let detailHtml = '<div class="event-detail">';
     detailHtml += `<div class="event-source" style="color:${sheet.color}">${sheet.label}</div>`;
     if (jenjang) detailHtml += `<div class="event-field"><strong>Jenjang:</strong> ${jenjang}</div>`;
@@ -577,7 +588,7 @@ function parseKomselKaryawan(sheet, columns, rows) {
     if (ayat) detailHtml += `<div class="event-field"><strong>Ayat:</strong> ${ayat}</div>`;
     detailHtml += '</div>';
 
-    events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, detailHtml });
+    events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, shortLabel, detailHtml });
   });
 
   return events;
@@ -642,7 +653,7 @@ function parseDefaultSheet(sheet, columns, rows, fallbackLabel) {
     });
     detailHtml += '</div>';
 
-    events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, detailHtml });
+    events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, shortLabel: summary.substring(0, 22), detailHtml });
   });
 
   return events;
