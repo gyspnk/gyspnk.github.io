@@ -898,7 +898,8 @@ function renderRoles() {
       const id = parseInt(btn.dataset.editRolePerms, 10);
       let perms = {};
       try { perms = JSON.parse(btn.dataset.perms); } catch(e) {}
-      showPermissionModal(id, btn.dataset.roleLabel, perms, true);
+      const roleKey = btn.dataset.roleKey;
+      showPermissionModal(id, btn.dataset.roleLabel, perms, true, roleKey);
     };
   });
 }
@@ -956,7 +957,8 @@ function renderUsers(users) {
       let perms = {};
       try { perms = JSON.parse(btn.dataset.perms); } catch(e) {}
       const username = btn.dataset.username;
-      showPermissionModal(id, username, perms);
+      const userRole = u.role; // Pass user's role for calendar default
+      showPermissionModal(id, username, perms, false, userRole);
     };
   });
 
@@ -974,10 +976,15 @@ function renderUsers(users) {
   });
 }
 
-function showPermissionModal(targetId, targetName, currentPerms, isRole = false) {
+function showPermissionModal(targetId, targetName, currentPerms, isRole = false, roleKey = null) {
   const types = CONFIG.PRESENSI_TYPES;
   const levels = CONFIG.PERMISSION_LEVELS;
   const labels = CONFIG.PERMISSION_LABELS;
+
+  // Auto-enable calendar for admin & pastoral (even if not in DB)
+  if (!('_kalender_pastoral' in currentPerms) && (roleKey === 'admin' || roleKey === 'pastoral')) {
+    currentPerms._kalender_pastoral = true;
+  }
 
   // Normalize current permissions
   const normalized = {};
