@@ -1030,10 +1030,10 @@ tbody tr:hover { background: #f8fafc; }
 
 /* List View (mobile) */
 .calendar-mobile-toggle {
-  display: none;
+  display: flex;
   gap: 6px;
-  margin-top: 12px;
-  justify-content: center;
+  margin-bottom: 12px;
+  justify-content: flex-start;
 }
 .list-day {
   background: var(--card-bg);

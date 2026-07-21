@@ -247,12 +247,6 @@ function renderCalendar() {
   document.getElementById('cal-month-year').textContent =
     `${MONTH_NAMES[currentMonth]} ${currentYear}`;
 
-  // Show/hide mobile toggle based on screen width
-  const mobileToggle = document.querySelector('.calendar-mobile-toggle');
-  if (mobileToggle) {
-    mobileToggle.style.display = window.innerWidth <= 600 ? 'flex' : 'none';
-  }
-
   if (calendarViewMode === 'grid') {
     document.querySelector('.calendar-wrapper').style.display = '';
     document.getElementById('calendar-list-view').classList.add('hidden');
@@ -353,7 +347,7 @@ function renderDayCell(day, dateStr, cls, eventMap, todayStr) {
   </div>`;
 }
 
-/* ===== List View (mobile) ===== */
+/* ===== List / Agenda View (all events, chronological) ===== */
 function renderListView() {
   const container = document.getElementById('calendar-list-view');
   if (!container) return;
@@ -362,44 +356,55 @@ function renderListView() {
   const today = new Date();
   const todayStr = fmtDate(today);
 
-  // Get all dates in this month that have events, sorted
-  const datesWithEvents = Object.keys(eventMap)
-    .filter(d => {
-      const parts = d.split('-');
-      return parseInt(parts[1], 10) === currentMonth + 1 && parseInt(parts[0], 10) === currentYear;
-    })
-    .sort();
+  // Flatten all events into sorted list by date
+  const allEvents = [];
+  Object.entries(eventMap).forEach(([dateStr, events]) => {
+    events.forEach(evt => {
+      allEvents.push({ dateStr, ...evt });
+    });
+  });
+  allEvents.sort((a, b) => a.dateStr.localeCompare(b.dateStr));
 
-  if (datesWithEvents.length === 0) {
-    container.innerHTML = '<div class="list-empty">Tidak ada jadwal di bulan ini</div>';
+  if (allEvents.length === 0) {
+    container.innerHTML = '<div class="list-empty">Tidak ada jadwal yang sesuai filter</div>';
     return;
   }
 
   let html = '';
-  datesWithEvents.forEach(dateStr => {
-    const events = eventMap[dateStr] || [];
-    const d = new Date(dateStr + 'T00:00:00');
+  let lastDate = '';
+  allEvents.forEach(evt => {
+    const d = new Date(evt.dateStr + 'T00:00:00');
     const dayName = CONFIG.DAY_NAMES[d.getDay()];
-    const isToday = dateStr === todayStr;
+    const isToday = evt.dateStr === todayStr;
+    const dateLabel = `${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 
-    html += `<div class="list-day ${isToday ? 'list-today' : ''}">
-      <div class="list-day-header">
-        <span class="list-date">${d.getDate()} ${MONTH_SHORT[d.getMonth()]} ${d.getFullYear()}</span>
-        <span class="list-dayname">${dayName}</span>
-        ${isToday ? '<span class="list-today-badge">Hari Ini</span>' : ''}
-      </div>`;
+    // Show date header when date changes
+    if (evt.dateStr !== lastDate) {
+      lastDate = evt.dateStr;
+      html += `<div class="list-day ${isToday ? 'list-today' : ''}">
+        <div class="list-day-header">
+          <span class="list-date">${dateLabel}</span>
+          <span class="list-dayname">${dayName}</span>
+          ${isToday ? '<span class="list-today-badge">Hari Ini</span>' : ''}
+        </div>`;
+    }
 
-    events.forEach(evt => {
-      html += `<div class="list-event" style="border-left:3px solid ${evt.color}">
-        <span class="list-event-source" style="color:${evt.color}">${evt.sourceLabel}</span>
-        <span class="list-event-desc">${evt.summary}</span>
-      </div>`;
-    });
-
-    html += '</div>';
+    html += `<div class="list-event" style="border-left:3px solid ${evt.color};cursor:pointer" data-date="${evt.dateStr}" data-key="${evt.sheetKey}">
+      <span class="list-event-source" style="color:${evt.color}">${evt.shortLabel || evt.summary.split(' | ')[0]}</span>
+      <span class="list-event-desc">${evt.summary}</span>
+    </div>`;
   });
 
   container.innerHTML = html;
+
+  // Wire up click to open detail modal
+  container.querySelectorAll('.list-event').forEach(el => {
+    el.onclick = () => {
+      const dateStr = el.dataset.date;
+      const events = eventMap[dateStr] || [];
+      if (events.length > 0) showEventDetail(dateStr, events);
+    };
+  });
 }
 
 /* ===== Event Map Builder ===== */
@@ -921,11 +926,5 @@ function hideStatus() {
 
 /* ===== Window resize handler ===== */
 window.addEventListener('resize', () => {
-  const mobileToggle = document.querySelector('.calendar-mobile-toggle');
-  if (mobileToggle) {
-    mobileToggle.style.display = window.innerWidth <= 600 ? 'flex' : 'none';
-  }
-  if (window.innerWidth > 600 && calendarViewMode === 'list') {
-    switchViewMode('grid');
-  }
+  // No longer auto-switch to grid on resize — user choice respected
 });
