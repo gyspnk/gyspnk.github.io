@@ -338,29 +338,37 @@
 
         <!-- Calendar View -->
         <section id="view-calendar" class="view hidden">
-          <div class="page-header">
-            <h2>📅 Kalender Pastoral</h2>
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <div class="calendar-nav">
-                <button id="cal-prev-month" class="btn btn-sm btn-secondary" title="Bulan sebelumnya">◀</button>
-                <span id="cal-month-year" class="cal-month-label"></span>
-                <button id="cal-next-month" class="btn btn-sm btn-secondary" title="Bulan berikutnya">▶</button>
-                <button id="cal-today" class="btn btn-sm btn-secondary" style="margin-left:8px">Hari Ini</button>
-              </div>
+          <div class="page-header" style="align-items:center">
+            <div style="display:flex;align-items:center;gap:8px">
+              <h2 style="margin:0">📅 Kalender Pastoral</h2>
+              <span class="cal-view-toggle">
+                <button id="cal-view-grid" class="btn btn-sm btn-primary cal-view-btn">📅 Grid</button>
+                <button id="cal-view-list" class="btn btn-sm btn-secondary cal-view-btn">📋 List</button>
+              </span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <button id="cal-manage-events-btn" class="btn btn-sm btn-secondary" title="Kelola Event Khusus">⭐ Kelola Event</button>
+              <button id="cal-add-event-btn" class="btn btn-sm btn-primary" title="Tambah Event Khusus">+ Event</button>
               <div class="form-group" style="margin:0;min-width:100px">
-                <label style="font-size:11px">Thn Ajaran</label>
                 <select id="cal-academic-year" style="font-size:12px;padding:3px 6px"></select>
               </div>
             </div>
+          </div>
+
+          <!-- Month Navigation -->
+          <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px">
+            <button id="cal-prev-month" class="btn btn-sm btn-secondary" title="Bulan sebelumnya">◀</button>
+            <span id="cal-month-year" style="font-weight:700;font-size:16px;min-width:160px;text-align:center;color:var(--text)"></span>
+            <button id="cal-next-month" class="btn btn-sm btn-secondary" title="Bulan berikutnya">▶</button>
+            <button id="cal-today" class="btn btn-sm btn-secondary">Hari Ini</button>
           </div>
 
           <!-- Filter / Show-Hide Toggles -->
           <div class="calendar-filters" id="calendar-filters">
             <span class="filter-label">Tampilkan:</span>
             <div id="calendar-filter-chips" class="filter-chips"></div>
-            <div style="flex:1;min-width:140px;max-width:220px;margin-left:auto;display:flex;gap:6px;align-items:center">
-              <input type="text" id="cal-search" placeholder="🔍 Cari nama petugas..." style="flex:1;padding:5px 10px;border:1px solid var(--border);border-radius:16px;font-size:12px" />
-              <button id="cal-add-event-btn" class="btn btn-sm btn-primary" title="Tambah Event Khusus" style="flex-shrink:0">+ Event</button>
+            <div style="flex:1;min-width:140px;max-width:220px;margin-left:auto">
+              <input type="text" id="cal-search" placeholder="🔍 Cari nama petugas..." style="width:100%;padding:5px 10px;border:1px solid var(--border);border-radius:16px;font-size:12px" />
             </div>
           </div>
 
@@ -376,11 +384,6 @@
             <div class="calendar-grid" id="calendar-grid"></div>
           </div>
 
-          <!-- Mobile: List view toggle -->
-          <div class="calendar-mobile-toggle">
-            <button id="cal-view-grid" class="btn btn-sm btn-primary cal-view-btn">📅 Grid</button>
-            <button id="cal-view-list" class="btn btn-sm btn-secondary cal-view-btn">📋 List</button>
-          </div>
           <div class="calendar-list-view hidden" id="calendar-list-view"></div>
 
           <!-- Custom Event Modal -->

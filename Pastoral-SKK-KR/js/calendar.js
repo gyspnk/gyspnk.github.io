@@ -57,11 +57,19 @@ export async function initCalendar() {
     };
   }
 
-  // View toggle (mobile)
-  const gridBtn = document.getElementById('cal-view-grid');
-  const listBtn = document.getElementById('cal-view-list');
-  if (gridBtn) gridBtn.onclick = () => switchViewMode('grid');
-  if (listBtn) listBtn.onclick = () => switchViewMode('list');
+  // View toggle
+  document.getElementById('cal-view-grid').onclick = () => switchViewMode('grid');
+  document.getElementById('cal-view-list').onclick = () => switchViewMode('list');
+
+  // Custom event modal
+  document.getElementById('cal-add-event-btn').onclick = () => openCustomEventModal();
+  document.getElementById('cal-manage-events-btn').onclick = () => openCustomEventModal();
+  document.getElementById('cal-custom-close').onclick = closeCustomEventModal;
+  document.getElementById('cev-cancel').onclick = closeCustomEventModal;
+  document.getElementById('cev-save').onclick = saveCustomEvent;
+  document.getElementById('calendar-custom-modal').onclick = (e) => {
+    if (e.target === document.getElementById('calendar-custom-modal')) closeCustomEventModal();
+  };
 
   // Event modal close
   document.getElementById('cal-event-close').onclick = closeEventModal;
@@ -76,15 +84,6 @@ export async function initCalendar() {
       else renderListView();
     };
   }
-
-  // Custom event modal
-  document.getElementById('cal-add-event-btn').onclick = () => openCustomEventModal();
-  document.getElementById('cal-custom-close').onclick = closeCustomEventModal;
-  document.getElementById('cev-cancel').onclick = closeCustomEventModal;
-  document.getElementById('cev-save').onclick = saveCustomEvent;
-  document.getElementById('calendar-custom-modal').onclick = (e) => {
-    if (e.target === document.getElementById('calendar-custom-modal')) closeCustomEventModal();
-  };
 
   // Keyboard handling
   document.addEventListener('keydown', (e) => {
@@ -149,18 +148,18 @@ function switchViewMode(mode) {
   calendarViewMode = mode;
   const gridBtn = document.getElementById('cal-view-grid');
   const listBtn = document.getElementById('cal-view-list');
-  const gridEl = document.querySelector('.calendar-wrapper');
+  const gridWrapper = document.querySelector('.calendar-wrapper');
   const listEl = document.getElementById('calendar-list-view');
 
   if (mode === 'grid') {
     gridBtn.classList.add('btn-primary'); gridBtn.classList.remove('btn-secondary');
     listBtn.classList.add('btn-secondary'); listBtn.classList.remove('btn-primary');
-    if (gridEl) gridEl.style.display = '';
+    if (gridWrapper) gridWrapper.style.display = '';
     if (listEl) listEl.classList.add('hidden');
   } else {
     listBtn.classList.add('btn-primary'); listBtn.classList.remove('btn-secondary');
     gridBtn.classList.add('btn-secondary'); gridBtn.classList.remove('btn-primary');
-    if (gridEl) gridEl.style.display = 'none';
+    if (gridWrapper) gridWrapper.style.display = 'none';
     if (listEl) { listEl.classList.remove('hidden'); renderListView(); }
   }
 }
@@ -265,12 +264,8 @@ function renderCalendar() {
     `${MONTH_NAMES[currentMonth]} ${currentYear}`;
 
   if (calendarViewMode === 'grid') {
-    document.querySelector('.calendar-wrapper').style.display = '';
-    document.getElementById('calendar-list-view').classList.add('hidden');
     renderCalendarGrid();
   } else {
-    document.querySelector('.calendar-wrapper').style.display = 'none';
-    document.getElementById('calendar-list-view').classList.remove('hidden');
     renderListView();
   }
 }

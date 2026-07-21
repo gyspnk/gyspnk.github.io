@@ -1029,12 +1029,12 @@ tbody tr:hover { background: #f8fafc; }
 }
 
 /* List View (mobile) */
-.calendar-mobile-toggle {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 12px;
-  justify-content: flex-start;
+.cal-view-toggle {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 4px;
 }
+.cal-view-toggle .btn { font-size: 11px; padding: 3px 8px; }
 .list-day {
   background: var(--card-bg);
   border: 1px solid var(--border);
