@@ -194,15 +194,23 @@ export async function renderChartImages(records, startDate, endDate) {
   const trendDatasets = [];
   EXPORT_TREND_SERIES.forEach(series => {
     if (!exportTrendState[series.key]) return;
-    let data;
-    if (series.key === 'combined') {
-      data = dates.map(d => calcCombined(byDate[d]));
-    } else {
-      data = dates.map(d => calcRate(byDate[d], series.key === 'tidak_hadir' ? 'tidak_hadir_tk' : series.key));
-    }
+    const data = [];
+    const counts = [];
+    dates.forEach(d => {
+      const v = byDate[d];
+      if (series.key === 'combined') {
+        data.push(calcCombined(v));
+        counts.push(v.hadir + v.terlambat);
+      } else {
+        const statusKey = series.key === 'tidak_hadir' ? 'tidak_hadir_tk' : series.key;
+        data.push(calcRate(v, statusKey));
+        counts.push(v[statusKey]);
+      }
+    });
     trendDatasets.push({
-      label: series.key === 'combined' ? 'Hadir+Terlambat (%)' : `${series.label} (%)`,
+      label: series.key === 'combined' ? 'Hadir+Terlambat' : series.label,
       data,
+      _counts: counts,
       borderColor: series.color,
       backgroundColor: series.bgColor,
       fill: series.fill,

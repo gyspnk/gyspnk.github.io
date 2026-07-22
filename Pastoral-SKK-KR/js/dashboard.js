@@ -74,12 +74,31 @@ function updateStats() {
   const counts = { hadir: 0, terlambat: 0, izin: 0, sakit: 0, tidak_hadir_tk: 0 };
   currentData.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
 
-  document.getElementById('stat-hadir').textContent = counts.hadir;
-  document.getElementById('stat-terlambat').textContent = counts.terlambat;
-  document.getElementById('stat-izin').textContent = counts.izin;
-  document.getElementById('stat-sakit').textContent = counts.sakit;
-  document.getElementById('stat-tk').textContent = counts.tidak_hadir_tk;
-  document.getElementById('stat-total').textContent = currentData.length;
+  // Count unique dates for average
+  const uniqueDates = new Set(currentData.map(r => r.attendance_date));
+  const dayCount = uniqueDates.size || 1;
+
+  const statMap = [
+    { id: 'hadir', label: 'Hadir On Time', val: counts.hadir },
+    { id: 'terlambat', label: 'Hadir Terlambat', val: counts.terlambat },
+    { id: 'izin', label: 'Izin', val: counts.izin },
+    { id: 'sakit', label: 'Sakit', val: counts.sakit },
+    { id: 'tk', label: 'Tidak Hadir', val: counts.tidak_hadir_tk },
+    { id: 'total', label: 'Total Record', val: currentData.length },
+  ];
+
+  statMap.forEach(s => {
+    document.getElementById(`stat-${s.id}`).textContent = s.val;
+    const avgEl = document.getElementById(`stat-${s.id}-avg`);
+    if (avgEl) {
+      const avg = s.val / dayCount;
+      if (dayCount > 1) {
+        avgEl.textContent = `ø ${avg % 1 === 0 ? avg : avg.toFixed(1)}/hari`;
+      } else {
+        avgEl.textContent = '';
+      }
+    }
+  });
 }
 
 function destroyChart(key) {
@@ -127,19 +146,27 @@ function renderTrendChart() {
   const calcRate = (v, status) => v.total > 0 ? Math.round((v[status] / v.total) * 100) : 0;
   const calcCombined = v => v.total > 0 ? Math.round(((v.hadir + v.terlambat) / v.total) * 100) : 0;
 
-  // Build datasets only for enabled toggles
+  // Build datasets only for enabled toggles — store counts alongside percentages
   const datasets = [];
   TREND_SERIES.forEach(series => {
     if (!trendToggleState[series.key]) return;
-    let data;
-    if (series.key === 'combined') {
-      data = dates.map(d => calcCombined(byDate[d]));
-    } else {
-      data = dates.map(d => calcRate(byDate[d], series.key === 'tidak_hadir' ? 'tidak_hadir_tk' : series.key));
-    }
+    const data = [];
+    const counts = [];
+    dates.forEach(d => {
+      const v = byDate[d];
+      if (series.key === 'combined') {
+        data.push(calcCombined(v));
+        counts.push(v.hadir + v.terlambat);
+      } else {
+        const statusKey = series.key === 'tidak_hadir' ? 'tidak_hadir_tk' : series.key;
+        data.push(calcRate(v, statusKey));
+        counts.push(v[statusKey]);
+      }
+    });
     datasets.push({
-      label: series.key === 'combined' ? 'Hadir + Terlambat (%)' : `${series.label} (%)`,
+      label: series.key === 'combined' ? 'Hadir + Terlambat' : series.label,
       data,
+      _counts: counts,
       borderColor: series.color,
       backgroundColor: series.bgColor,
       fill: series.fill,
@@ -161,7 +188,28 @@ function renderTrendChart() {
     options: {
       responsive: true, maintainAspectRatio: false,
       scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } },
-      plugins: { legend: { display: true, position: 'bottom', labels: { font: { size: 11 }, usePointStyle: true, padding: 16 } } }
+      plugins: {
+        legend: { display: true, position: 'bottom', labels: { font: { size: 11 }, usePointStyle: true, padding: 16 } },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              const dataset = context.dataset;
+              const pct = context.parsed.y;
+              const count = dataset._counts ? dataset._counts[context.dataIndex] : 0;
+              const total = byDate[context.chart.data.labels[context.dataIndex]]?.total || 0;
+              let parts = [`${dataset.label}: ${count} orang`];
+              if (total > 0) {
+                parts.push(`(${Math.round(pct)}%)`);
+              }
+              return parts.join(' ');
+            },
+            afterLabel: (context) => {
+              const total = byDate[context.chart.data.labels[context.dataIndex]]?.total || 0;
+              return total > 0 ? `Total hari ini: ${total} orang` : '';
+            }
+          }
+        }
+      }
     }
   });
 }

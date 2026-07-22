@@ -324,6 +324,7 @@ body {
 }
 .stat-card .stat-value { font-size: 32px; font-weight: 700; line-height: 1.2; }
 .stat-card .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.stat-card .stat-avg { font-size: 11px; color: var(--text-muted); margin-top: 2px; opacity: 0.75; }
 .stat-hadir { border-top-color: var(--green); } .stat-hadir .stat-value { color: var(--green); }
 .stat-terlambat { border-top-color: var(--amber); } .stat-terlambat .stat-value { color: var(--amber); }
 .stat-izin { border-top-color: var(--blue); } .stat-izin .stat-value { color: var(--blue); }
