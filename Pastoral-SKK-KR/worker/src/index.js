@@ -878,6 +878,16 @@ export default {
         return json({ success: true, id: result.insertId }, 201, allowOrigin);
       }
 
+      if (path.startsWith('/api/calendar-events/') && request.method === 'PUT') {
+        const id = parseInt(path.split('/').pop(), 10);
+        const { title, description, startDate, endDate, color } = await request.json();
+        if (!title || !startDate || !endDate) return json({ error: 'Field tidak lengkap' }, 400, allowOrigin);
+        await execute(env,
+          'UPDATE calendar_custom_events SET title = ?, description = ?, start_date = ?, end_date = ?, color = ? WHERE id = ?',
+          [title, description || '', startDate, endDate, color || '#ef4444', id]);
+        return json({ success: true }, 200, allowOrigin);
+      }
+
       if (path.startsWith('/api/calendar-events/') && request.method === 'DELETE') {
         const id = parseInt(path.split('/').pop(), 10);
         await execute(env, 'DELETE FROM calendar_custom_events WHERE id = ?', [id]);

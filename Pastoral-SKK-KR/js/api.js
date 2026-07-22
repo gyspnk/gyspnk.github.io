@@ -356,6 +356,7 @@ const demoApi = {
   async deleteCalendarConfig(id) { return { success: true }; },
   async getCalendarEvents(academicYear) { return []; },
   async addCalendarEvent(data) { return { success: true }; },
+  async updateCalendarEvent(id, data) { return { success: true }; },
   async deleteCalendarEvent(id) { return { success: true }; },
 };
 
@@ -522,6 +523,9 @@ const realApi = {
   },
   async addCalendarEvent(data) {
     return apiFetch('/api/calendar-events', { method: 'POST', body: JSON.stringify(data) });
+  },
+  async updateCalendarEvent(id, data) {
+    return apiFetch(`/api/calendar-events/${id}`, { method: 'PUT', body: JSON.stringify(data) });
   },
   async deleteCalendarEvent(id) {
     return apiFetch(`/api/calendar-events/${id}`, { method: 'DELETE' });

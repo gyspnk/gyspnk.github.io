@@ -981,14 +981,30 @@ function hideStatus() {
 }
 
 /* ===== Custom Events ===== */
+let editingEventId = null;   // null = add mode, number = edit mode
 
-/** Open the +Event modal (add form only) */
-function openAddEventModal() {
-  document.getElementById('cev-title').value = '';
-  document.getElementById('cev-desc').value = '';
-  document.getElementById('cev-start').value = '';
-  document.getElementById('cev-end').value = '';
-  document.getElementById('cev-color').value = '#ef4444';
+/** Open the +Event modal — add mode (default) or edit mode if event provided */
+function openAddEventModal(event) {
+  const isEdit = event && event.id;
+  editingEventId = isEdit ? event.id : null;
+  const titleEl = document.querySelector('#calendar-custom-modal .modal-header h3');
+  if (titleEl) titleEl.textContent = isEdit ? '✏️ Edit Event Khusus' : 'Tambah Event Khusus';
+  const saveBtn = document.getElementById('cev-save');
+  if (saveBtn) saveBtn.textContent = isEdit ? 'Simpan Perubahan' : 'Simpan';
+
+  if (isEdit) {
+    document.getElementById('cev-title').value = event.title || '';
+    document.getElementById('cev-desc').value = event.description || '';
+    document.getElementById('cev-start').value = event.start_date || '';
+    document.getElementById('cev-end').value = event.end_date || '';
+    document.getElementById('cev-color').value = event.color || '#ef4444';
+  } else {
+    document.getElementById('cev-title').value = '';
+    document.getElementById('cev-desc').value = '';
+    document.getElementById('cev-start').value = '';
+    document.getElementById('cev-end').value = '';
+    document.getElementById('cev-color').value = '#ef4444';
+  }
   document.getElementById('cev-msg').classList.add('hidden');
   document.getElementById('calendar-custom-modal').classList.remove('hidden');
   // Focus the title field
@@ -996,7 +1012,13 @@ function openAddEventModal() {
 }
 
 function closeAddEventModal() {
+  editingEventId = null;
   document.getElementById('calendar-custom-modal').classList.add('hidden');
+  // Reset title/button back to add mode for next open
+  const titleEl = document.querySelector('#calendar-custom-modal .modal-header h3');
+  if (titleEl) titleEl.textContent = 'Tambah Event Khusus';
+  const saveBtn = document.getElementById('cev-save');
+  if (saveBtn) saveBtn.textContent = 'Simpan';
 }
 
 /** Open the Kelola Event modal (list saved events) */
@@ -1009,7 +1031,7 @@ async function openManageEventsModal() {
 
 function closeManageEventsModal() {
   document.getElementById('calendar-manage-modal').classList.add('hidden');
-  // Refresh calendar view in case events were deleted
+  // Refresh calendar view in case events were changed
   if (calendarViewMode === 'grid') renderCalendarGrid(); else renderListView();
 }
 
@@ -1020,6 +1042,7 @@ async function saveCustomEvent() {
   const endDate = document.getElementById('cev-end').value;
   const color = document.getElementById('cev-color').value;
   const msgEl = document.getElementById('cev-msg');
+  const isEdit = editingEventId !== null;
 
   if (!title || !startDate || !endDate) {
     msgEl.textContent = 'Judul, Dari, dan Sampai wajib diisi.';
@@ -1033,8 +1056,13 @@ async function saveCustomEvent() {
   }
 
   try {
-    await api.addCalendarEvent({ academicYear: currentAcademicYear, title, description, startDate, endDate, color });
-    msgEl.textContent = '✅ Event berhasil ditambahkan.';
+    if (isEdit) {
+      await api.updateCalendarEvent(editingEventId, { title, description, startDate, endDate, color });
+      msgEl.textContent = '✅ Event berhasil diperbarui.';
+    } else {
+      await api.addCalendarEvent({ academicYear: currentAcademicYear, title, description, startDate, endDate, color });
+      msgEl.textContent = '✅ Event berhasil ditambahkan.';
+    }
     msgEl.className = 'info-msg'; msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';
     msgEl.classList.remove('hidden');
     document.getElementById('cev-title').value = '';
@@ -1075,10 +1103,25 @@ function renderCustomEventList() {
       <td>${evt.start_date}</td>
       <td>${evt.end_date}</td>
       <td><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${evt.color};vertical-align:middle"></span></td>
-      <td><button class="btn btn-danger btn-sm" data-del-cev="${evt.id}" title="Hapus event">🗑</button></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm btn-secondary" data-edit-cev="${evt.id}" title="Edit event">✏️</button>
+        <button class="btn btn-danger btn-sm" data-del-cev="${evt.id}" title="Hapus event">🗑</button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
+  // Edit handlers
+  tbody.querySelectorAll('[data-edit-cev]').forEach(btn => {
+    btn.onclick = async () => {
+      const id = parseInt(btn.dataset.editCev, 10);
+      const evt = customEvents.find(e => e.id === id);
+      if (!evt) return;
+      closeManageEventsModal();
+      // Small delay so manage modal closes before edit modal opens
+      setTimeout(() => openAddEventModal(evt), 200);
+    };
+  });
+  // Delete handlers
   tbody.querySelectorAll('[data-del-cev]').forEach(btn => {
     btn.onclick = async () => {
       if (!confirm('Hapus event ini?')) return;
