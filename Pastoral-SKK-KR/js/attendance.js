@@ -271,9 +271,14 @@ async function loadPresensiData() {
   try {
     const existing = await api.getAttendance({ date, academicYear: yearObj.label, presensiType: currentPresensiType });
     for (const rec of existing) {
+      let notes = rec.notes || '';
+      // Bersihkan keterangan "Otomatis: tidak hadir (belum diisi)" jika status sudah berubah
+      if (rec.status !== 'tidak_hadir_tk' && notes.includes('Otomatis: tidak hadir (belum diisi)')) {
+        notes = '';
+      }
       currentAttendance[rec.employee_name] = {
         status: rec.status,
-        notes: rec.notes || '',
+        notes,
         recorded_by: rec.recorded_by
       };
     }
@@ -402,12 +407,24 @@ function renderTable() {
       const statusCell = tr.querySelector('.status-cell');
       statusCell.querySelectorAll('label').forEach(label => {
         label.onclick = () => {
+          const newStatus = label.dataset.status;
+          const oldStatus = currentAttendance[emp.name]?.status || '';
+          let notes = currentAttendance[emp.name]?.notes || '';
+
+          // Hapus otomatis teks "belum diisi" dari keterangan jika status berubah dari tidak_hadir ke lain
+          if (notes.includes('Otomatis: tidak hadir (belum diisi)') && newStatus !== 'tidak_hadir_tk') {
+            notes = '';
+            const notesInput = tr.querySelector('.notes-input');
+            if (notesInput) notesInput.value = '';
+          }
+
           statusCell.querySelectorAll('label').forEach(l => l.classList.remove('selected'));
           label.classList.add('selected');
           label.querySelector('input').checked = true;
           currentAttendance[emp.name] = {
             ...(currentAttendance[emp.name] || {}),
-            status: label.dataset.status
+            status: newStatus,
+            notes
           };
         };
       });
@@ -442,9 +459,16 @@ function bulkMark(status) {
     return true;
   });
   filtered.forEach(emp => {
+    const oldNotes = currentAttendance[emp.name]?.notes || '';
+    let notes = oldNotes;
+    // Hapus teks "belum diisi" jika bulk mark bukan tidak_hadir
+    if (oldNotes.includes('Otomatis: tidak hadir (belum diisi)') && status !== 'tidak_hadir_tk') {
+      notes = '';
+    }
     currentAttendance[emp.name] = {
       ...(currentAttendance[emp.name] || {}),
-      status
+      status,
+      notes
     };
   });
   renderTable();
