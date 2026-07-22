@@ -950,6 +950,34 @@ tbody tr:hover { background: #f8fafc; }
   font-size: 11px;
 }
 
+/* Export column selector checkboxes */
+.export-col-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s;
+  user-select: none;
+}
+.export-col-item:hover { background: rgba(0,0,0,0.04); }
+.export-col-item input[type="checkbox"] {
+  width: 16px; height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.export-col-item .col-label {
+  font-size: 13px;
+  color: var(--text);
+}
+.export-col-item .col-key {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: auto;
+  font-family: monospace;
+}
+
 /* Legend */
 .calendar-legend {
   display: flex;

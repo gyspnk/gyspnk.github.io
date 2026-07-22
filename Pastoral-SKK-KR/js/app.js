@@ -554,6 +554,7 @@ function initAdminEmployees() {
   document.getElementById('emp-search').oninput = renderAdminEmployees;
   document.getElementById('emp-filter-active').onchange = renderAdminEmployees;
   document.getElementById('emp-import-btn').onclick = handleImportEmployees;
+  document.getElementById('export-employees-btn').onclick = () => showExportColumnSelector('employees');
 }
 
 function populateEmpYearSelect() {
@@ -1293,6 +1294,190 @@ async function exportUsersToExcel(users) {
   }
 }
 
+/* ===== Column definitions for export ===== */
+const EXPORT_COLUMNS = {
+  employees: [
+    { key: 'no', label: 'No', default: true },
+    { key: 'name', label: 'Nama', default: true },
+    { key: 'position', label: 'Jabatan', default: true },
+    { key: 'division', label: 'Divisi', default: true },
+    { key: 'employment_status', label: 'Status Karyawan', default: true },
+    { key: 'is_active_rh', label: 'Aktif RH', default: true },
+    { key: 'is_active_im', label: 'Aktif IM', default: true },
+    { key: 'is_active_kf', label: 'Aktif KF', default: true },
+  ],
+  kfs: [
+    { key: 'no', label: 'No', default: true },
+    { key: 'nis', label: 'NIS', default: true },
+    { key: 'name', label: 'Nama', default: true },
+    { key: 'class', label: 'Kelas', default: true },
+    { key: 'gender', label: 'Gender', default: true },
+    { key: 'religion', label: 'Agama', default: true },
+    { key: 'is_active', label: 'Aktif', default: true },
+  ],
+};
+
+/* ===== Export Column Selector Modal ===== */
+let _exportResolve = null;
+
+function showExportColumnSelector(dataType) {
+  const columns = EXPORT_COLUMNS[dataType];
+  if (!columns) return;
+
+  // Get current data & filter info
+  let data, filterInfo, title;
+  if (dataType === 'employees') {
+    const search = (document.getElementById('emp-search').value || '').toLowerCase();
+    const filter = document.getElementById('emp-filter-active').value;
+    let emps = adminData.employees;
+    if (filter === 'active') emps = emps.filter(e => (e.is_active_rh != false || e.is_active_im != false));
+    if (filter === 'inactive') emps = emps.filter(e => (e.is_active_rh == false && e.is_active_im == false));
+    if (search) emps = emps.filter(e => e.name.toLowerCase().includes(search) || (e.position || '').toLowerCase().includes(search) || (e.division || '').toLowerCase().includes(search));
+    data = emps;
+    const filterLabel = filter === 'active' ? 'Aktif' : filter === 'inactive' ? 'Nonaktif' : 'Semua';
+    filterInfo = `${emps.length} karyawan (Status: ${filterLabel})${search ? ' — Cari: "' + search + '"' : ''}`;
+    title = 'Export Karyawan';
+  } else if (dataType === 'kfs') {
+    const search = (document.getElementById('kfs-search').value || '').toLowerCase();
+    const filter = document.getElementById('kfs-filter-active').value;
+    const classFilter = document.getElementById('kfs-filter-class')?.value || 'all';
+    let students = kfsData;
+    if (filter === 'active') students = students.filter(s => s.is_active != false);
+    if (filter === 'inactive') students = students.filter(s => s.is_active == false);
+    if (classFilter !== 'all') students = students.filter(s => (s.class || '') === classFilter);
+    if (search) students = students.filter(s => s.name.toLowerCase().includes(search) || (s.class || '').toLowerCase().includes(search) || (s.nis || '').toLowerCase().includes(search));
+    data = students;
+    const filterLabel = filter === 'active' ? 'Aktif' : filter === 'inactive' ? 'Nonaktif' : 'Semua';
+    const classLabel = classFilter !== 'all' ? 'Kelas: ' + classFilter : 'Semua Kelas';
+    filterInfo = students.length + ' siswa (' + filterLabel + ', ' + classLabel + ')' + (search ? ' — Cari: "' + search + '"' : '');
+    title = 'Export Siswa KF';
+  } else return;
+
+  // Build checkboxes
+  const list = document.getElementById('export-col-list');
+  list.innerHTML = columns.map(col => {
+    const checked = col.default ? 'checked' : '';
+    return '<label class="export-col-item">' +
+      '<input type="checkbox" data-col-key="' + col.key + '" ' + checked + ' />' +
+      '<span class="col-label">' + col.label + '</span>' +
+      '<span class="col-key">' + col.key + '</span>' +
+    '</label>';
+  }).join('');
+
+  document.getElementById('export-col-title').textContent = title;
+  document.getElementById('export-col-filter-info').textContent = filterInfo;
+  document.getElementById('export-col-msg').classList.add('hidden');
+
+  // Wire up select/deselect all
+  document.getElementById('export-col-select-all').onclick = () => {
+    list.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+  };
+  document.getElementById('export-col-deselect-all').onclick = () => {
+    list.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+  };
+
+  // Wire up proceed
+  _exportResolve = null;
+  const proceedHandler = () => {
+    const selected = [];
+    list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      if (cb.checked) selected.push(cb.dataset.colKey);
+    });
+    if (selected.length === 0) {
+      const msg = document.getElementById('export-col-msg');
+      msg.textContent = 'Pilih minimal satu kolom.';
+      msg.className = 'info-msg';
+      msg.style.background = '#fee2e2';
+      msg.style.color = '#991b1b';
+      msg.classList.remove('hidden');
+      return;
+    }
+    closeExportColumnModal();
+    const activeCols = columns.filter(c => selected.includes(c.key));
+    doExportDataToExcel(dataType, data, activeCols);
+  };
+
+  document.getElementById('export-col-proceed').onclick = proceedHandler;
+
+  function closeExportColumnModal() {
+    document.getElementById('export-column-modal').classList.add('hidden');
+  }
+  document.getElementById('export-col-close').onclick = closeExportColumnModal;
+  document.getElementById('export-col-cancel').onclick = closeExportColumnModal;
+  document.getElementById('export-column-modal').onclick = (e) => {
+    if (e.target === document.getElementById('export-column-modal')) closeExportColumnModal();
+  };
+
+  document.getElementById('export-column-modal').classList.remove('hidden');
+}
+
+/* ===== Export to Excel from data ===== */
+async function doExportDataToExcel(dataType, data, columns) {
+  const ExcelJS = window.ExcelJS;
+  if (!ExcelJS) { alert('Library ExcelJS tidak tersedia.'); return; }
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Pastoral Hub SKKKR';
+  wb.created = new Date();
+
+  const sheetName = dataType === 'employees' ? 'Karyawan' : 'Siswa KF';
+  const ws = wb.addWorksheet(sheetName, { views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }] });
+
+  // Build excel columns
+  const widthMap = { no: 5, name: 28, nis: 14 };
+  const excelCols = columns.map(c => ({
+    header: c.label,
+    key: c.key,
+    width: widthMap[c.key] || 16,
+  }));
+  ws.columns = excelCols;
+
+  // Style header
+  const headerRow = ws.getRow(1);
+  headerRow.height = 26;
+  headerRow.eachCell(cell => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+  });
+
+  // Data rows
+  data.forEach((item, idx) => {
+    const rowData = {};
+    columns.forEach(col => {
+      if (col.key === 'no') { rowData.no = idx + 1; return; }
+      let val = item[col.key];
+      if (col.key.startsWith('is_')) {
+        val = val != false ? 'Aktif' : 'Nonaktif';
+      }
+      rowData[col.key] = val ?? '—';
+    });
+    const row = ws.addRow(rowData);
+    row.height = 20;
+    if (idx % 2 === 1) {
+      row.eachCell(cell => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } }; });
+    }
+    row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+  });
+
+  try {
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const dateStr = new Date().toISOString().split('T')[0];
+    const suffix = dataType === 'employees' ? 'Karyawan' : 'Siswa_KF';
+    a.download = 'Data_' + suffix + '_' + dateStr + '.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert('Gagal export: ' + e.message);
+  }
+}
+
 /* ===== Kanaan Fellowship Student Management ===== */
 let kfsData = [];
 
@@ -1307,6 +1492,7 @@ function initAdminKFStudents() {
   document.getElementById('add-kfs-form').onsubmit = handleAddKFStudent;
   document.getElementById('kfs-import-btn').onclick = handleImportKFStudents;
   document.getElementById('kfs-import-siswa-folder').onclick = handleImportSiswaFolder;
+  document.getElementById('export-kfs-btn').onclick = () => showExportColumnSelector('kfs');
   populateKFSYearSelect();
 }
 

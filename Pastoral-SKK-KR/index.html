@@ -644,7 +644,9 @@
               </div>
 
               <div class="admin-list-card">
-                <h3>Daftar Karyawan <span id="emp-count" class="muted"></span></h3>
+                <h3>Daftar Karyawan <span id="emp-count" class="muted"></span>
+                  <button id="export-employees-btn" class="btn btn-sm btn-primary" style="float:right;margin-top:-2px">📥 Export Excel</button>
+                </h3>
                 <div class="table-wrapper">
                   <table>
                     <thead><tr><th>No</th><th>Nama</th><th>Jabatan</th><th>Divisi</th><th>Status</th><th>RH</th><th>IM</th><th>KF</th><th>Aksi</th></tr></thead>
@@ -718,7 +720,9 @@
                 </div>
               </div>
               <div class="admin-list-card">
-                <h3>Daftar Siswa <span id="kfs-count" class="muted"></span></h3>
+                <h3>Daftar Siswa <span id="kfs-count" class="muted"></span>
+                  <button id="export-kfs-btn" class="btn btn-sm btn-primary" style="float:right;margin-top:-2px">📥 Export Excel</button>
+                </h3>
                 <div class="table-wrapper">
                   <table>
                     <thead><tr><th>No</th><th>NIS</th><th>Nama</th><th>Kelas</th><th>Gender</th><th>Agama</th><th>Aktif</th><th>Aksi</th></tr></thead>
@@ -771,6 +775,30 @@
               <h3>Konfigurasi Hari Presensi</h3>
               <p class="muted" style="margin-bottom:16px">Atur hari apa saja setiap presensi boleh diisi. Hari yang tidak dicentang akan <strong>digrey-out</strong> di kalender dan tidak bisa dipilih.</p>
               <div id="presensi-config-list"></div>
+            </div>
+          </div>
+
+          <!-- Export Column Selector Modal -->
+          <div id="export-column-modal" class="modal-overlay hidden">
+            <div class="modal-card" style="max-width:420px">
+              <div class="modal-header">
+                <h3 id="export-col-title">Pilih Kolom untuk Export</h3>
+                <button id="export-col-close" class="btn btn-sm btn-text">✕</button>
+              </div>
+              <div class="modal-body">
+                <p class="muted" style="margin-bottom:10px">Centang kolom yang ingin diexport:</p>
+                <div id="export-col-list" style="max-height:260px;overflow-y:auto;margin-bottom:12px"></div>
+                <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap">
+                  <button id="export-col-select-all" class="btn btn-sm btn-secondary">Pilih Semua</button>
+                  <button id="export-col-deselect-all" class="btn btn-sm btn-secondary">Hapus Semua</button>
+                </div>
+                <div id="export-col-filter-info" class="info-msg" style="margin-top:10px;font-size:12px;background:#f0f9ff;color:#1e40af;padding:6px 10px;border-radius:6px"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+                  <button id="export-col-cancel" class="btn btn-secondary btn-sm">Batal</button>
+                  <button id="export-col-proceed" class="btn btn-primary btn-sm">Export</button>
+                </div>
+                <div id="export-col-msg" class="info-msg hidden" style="margin-top:8px"></div>
+              </div>
             </div>
           </div>
         </section>
