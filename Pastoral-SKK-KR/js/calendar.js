@@ -699,14 +699,40 @@ function parseChapelKaryawan(sheet, columns, rows) {
 // Komsel Karyawan:
 // Sheets API returns: Hari/Tanggal(0), Jenjang(1), Petugas Pujian(2), Petugas Firman(3),
 //   Tema Utama(4), Tagline(5), Judul(6), Tujuan(7), Ayat(8), PAMS(9), Link(10)
-// NOTE: "Judul" column at index 6 shifts Tujuan→7, Ayat→8 vs the archive Excel
+// NOTE: PAMS column contains reference to PAMS document / bahan
+// NOTE: Link column contains URL to the PAMS document
 function parseKomselKaryawan(sheet, columns, rows) {
   const events = [];
   if (!rows || rows.length === 0) return events;
 
+  // Auto-detect column indices from header labels
+  const colMap = { date: 0, jenjang: 1, petugasPujian: 2, petugasFirman: 3,
+    tema: 4, tagline: 5, judul: 6, tujuan: 7, ayat: 8, pams: 9, link: 10 };
+  if (columns && columns.length > 0) {
+    columns.forEach((col, idx) => {
+      const label = (col || '').toLowerCase().trim();
+      if (/hari|tanggal|date/i.test(label)) colMap.date = idx;
+      else if (/jenjang/i.test(label)) colMap.jenjang = idx;
+      else if (/pujian/i.test(label)) colMap.petugasPujian = idx;
+      else if (/firman/i.test(label)) colMap.petugasFirman = idx;
+      else if (/tema\s|^tema$/i.test(label) && !/tagline|sub/i.test(label)) colMap.tema = idx;
+      else if (/tagline/i.test(label)) colMap.tagline = idx;
+      else if (/^judul$/i.test(label)) colMap.judul = idx;
+      else if (/tujuan/i.test(label)) colMap.tujuan = idx;
+      else if (/ayat/i.test(label)) colMap.ayat = idx;
+      else if (/pams/i.test(label)) colMap.pams = idx;
+      else if (/link|url|http/i.test(label)) colMap.link = idx;
+    });
+  }
+
+  const getCol = (row, key) => {
+    const idx = colMap[key];
+    return (idx !== undefined && row[idx] !== undefined && row[idx] !== null) ? String(row[idx]).trim() : '';
+  };
+
   rows.forEach(row => {
     if (!row || row.length === 0 || !row[0]) return;
-    const rawDate = String(row[0] || '').trim();
+    const rawDate = String(row[colMap.date] || '').trim();
     // Skip header/subtitle rows
     if (!rawDate) return;
     if (/^(Hari\/Tanggal|Jenjang|Petugas|Tema|Tagline|Judul|Tujuan|Ayat|PAMS|Link)/i.test(rawDate)) return;
@@ -721,14 +747,16 @@ function parseKomselKaryawan(sheet, columns, rows) {
 
     const dateStr = fmtDate(new Date(parsed.year || new Date().getFullYear(), parsed.month - 1, parsed.day));
 
-    const jenjang = row[1] ? String(row[1]).trim() : '';
-    const petugasPujian = row[2] ? String(row[2]).trim() : '';
-    const petugasFirman = row[3] ? String(row[3]).trim() : '';
-    const tema = row[4] ? String(row[4]).trim() : '';
-    const tagline = row[5] ? String(row[5]).trim() : '';
-    const judul = row[6] ? String(row[6]).trim() : '';
-    const tujuan = row[7] ? String(row[7]).trim() : '';
-    const ayat = row[8] ? String(row[8]).trim() : '';
+    const jenjang = getCol(row, 'jenjang');
+    const petugasPujian = getCol(row, 'petugasPujian');
+    const petugasFirman = getCol(row, 'petugasFirman');
+    const tema = getCol(row, 'tema');
+    const tagline = getCol(row, 'tagline');
+    const judul = getCol(row, 'judul');
+    const tujuan = getCol(row, 'tujuan');
+    const ayat = getCol(row, 'ayat');
+    const pams = getCol(row, 'pams');
+    const link = getCol(row, 'link');
 
     const shortLabel = petugasFirman || petugasPujian || jenjang || 'Komsel';
     let summary = 'Komsel Karyawan';
@@ -745,6 +773,16 @@ function parseKomselKaryawan(sheet, columns, rows) {
     if (petugasFirman) detailHtml += `<div class="event-field"><strong>Petugas Firman:</strong> ${petugasFirman}</div>`;
     if (tujuan) detailHtml += `<div class="event-field"><strong>Tujuan:</strong> ${tujuan}</div>`;
     if (ayat) detailHtml += `<div class="event-field"><strong>Ayat:</strong> ${ayat}</div>`;
+    if (pams) {
+      // If pams contains a URL, make it clickable; otherwise show as text
+      const isUrl = /^https?:\/\//i.test(pams);
+      detailHtml += isUrl
+        ? `<div class="event-field"><strong>📄 Bahan PAMS:</strong> <a href="${pams}" target="_blank" rel="noopener" style="color:var(--primary)">${pams}</a></div>`
+        : `<div class="event-field"><strong>📄 Bahan PAMS:</strong> ${pams}</div>`;
+    }
+    if (link) {
+      detailHtml += `<div class="event-field"><strong>🔗 Link Dokumen:</strong> <a href="${link}" target="_blank" rel="noopener" style="color:var(--primary)">${link}</a></div>`;
+    }
     detailHtml += '</div>';
 
     events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, shortLabel, detailHtml });
