@@ -909,6 +909,46 @@ tbody tr:hover { background: #f8fafc; }
 .filter-chip .chip-label { font-size: 12px; }
 .filter-chip .chip-warn { font-size: 11px; cursor: help; }
 
+/* Chart toggle chips (trend line selectors) */
+.chart-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.chart-toggles .chart-toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  color: var(--text-muted);
+  user-select: none;
+}
+.chart-toggles .chart-toggle-chip:hover {
+  border-color: #94a3b8;
+  background: rgba(0,0,0,0.03);
+}
+.chart-toggles .chart-toggle-chip.active {
+  border-color: var(--toggle-color);
+  background: color-mix(in srgb, var(--toggle-color) 12%, transparent);
+  color: var(--text);
+}
+.chart-toggles .chart-toggle-chip .toggle-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.chart-toggles .chart-toggle-chip .toggle-label {
+  font-size: 11px;
+}
+
 /* Legend */
 .calendar-legend {
   display: flex;
@@ -1222,6 +1262,8 @@ tbody tr:hover { background: #f8fafc; }
   .calendar-grid-header > div { font-size: 10px; padding: 7px 2px; }
   .filter-chip { padding: 3px 8px; }
   .filter-chip .chip-label { font-size: 11px; }
+  .chart-toggles .chart-toggle-chip { padding: 2px 6px; }
+  .chart-toggles .chart-toggle-chip .toggle-label { font-size: 10px; }
 }
 
 /* Calendar responsive: phone */

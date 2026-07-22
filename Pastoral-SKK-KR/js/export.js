@@ -2,6 +2,17 @@ import { CONFIG } from './config.js';
 import { api } from './api.js';
 import { getAvailableYears, getCurrentAcademicYear, loadKaryawanData } from './data-loader.js';
 
+/* ===== Trend toggle state for export ===== */
+const EXPORT_TREND_SERIES = [
+  { key: 'combined', label: 'Hadir+Terlambat', color: '#22c55e', borderDash: [], fill: true, bgColor: 'rgba(34,197,94,0.1)' },
+  { key: 'hadir', label: 'Hadir', color: '#1e40af', borderDash: [], fill: false, bgColor: 'transparent' },
+  { key: 'terlambat', label: 'Terlambat', color: '#f59e0b', borderDash: [5, 3], fill: false, bgColor: 'transparent' },
+  { key: 'izin', label: 'Izin', color: '#3b82f6', borderDash: [], fill: false, bgColor: 'transparent' },
+  { key: 'sakit', label: 'Sakit', color: '#a855f7', borderDash: [], fill: false, bgColor: 'transparent' },
+  { key: 'tidak_hadir', label: 'Tidak Hadir', color: '#ef4444', borderDash: [], fill: false, bgColor: 'transparent' },
+];
+let exportTrendState = Object.fromEntries(EXPORT_TREND_SERIES.map(s => [s.key, true]));
+
 export async function initExport() {
   const years = await getAvailableYears();
   const currentAY = getCurrentAcademicYear(years);
@@ -23,6 +34,28 @@ export async function initExport() {
   document.getElementById('export-end').value = fmtD(now);
 
   document.getElementById('export-btn').onclick = doExport;
+  renderExportTrendToggles();
+}
+
+function renderExportTrendToggles() {
+  const container = document.getElementById('export-trend-toggles');
+  if (!container) return;
+  container.innerHTML = '';
+  EXPORT_TREND_SERIES.forEach(series => {
+    const chip = document.createElement('button');
+    chip.className = 'chart-toggle-chip active';
+    chip.type = 'button';
+    chip.style.setProperty('--toggle-color', series.color);
+    chip.innerHTML = `
+      <span class="toggle-dot" style="background:${series.color}"></span>
+      <span class="toggle-label">${series.label}</span>
+    `;
+    chip.onclick = () => {
+      exportTrendState[series.key] = !exportTrendState[series.key];
+      chip.classList.toggle('active');
+    };
+    container.appendChild(chip);
+  });
 }
 
 function getExportPresensiType() {
@@ -122,9 +155,12 @@ export async function renderChartImages(records, startDate, endDate) {
   records.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
 
   const byDate = {};
+  const statusKeys = ['hadir', 'terlambat', 'izin', 'sakit', 'tidak_hadir_tk'];
   records.forEach(r => {
-    if (!byDate[r.attendance_date]) byDate[r.attendance_date] = { hadir: 0, terlambat: 0, total: 0 };
-    if (byDate[r.attendance_date][r.status] !== undefined) byDate[r.attendance_date][r.status]++;
+    if (!byDate[r.attendance_date]) {
+      byDate[r.attendance_date] = { hadir: 0, terlambat: 0, izin: 0, sakit: 0, tidak_hadir_tk: 0, total: 0 };
+    }
+    if (statusKeys.includes(r.status)) byDate[r.attendance_date][r.status]++;
     byDate[r.attendance_date].total++;
   });
 
@@ -151,24 +187,37 @@ export async function renderChartImages(records, startDate, endDate) {
   images.distribution = ch1.toBase64Image();
   ch1.destroy();
 
-  // Trend line (3 lines: combined, hadir, terlambat)
+  // Trend line — series based on export toggle state
   const dates = Object.keys(byDate).sort();
-  const combinedRates = dates.map(d => { const v = byDate[d]; return v.total > 0 ? Math.round(((v.hadir + v.terlambat) / v.total) * 100) : 0; });
-  const hadirRates = dates.map(d => { const v = byDate[d]; return v.total > 0 ? Math.round((v.hadir / v.total) * 100) : 0; });
-  const terlambatRates = dates.map(d => { const v = byDate[d]; return v.total > 0 ? Math.round((v.terlambat / v.total) * 100) : 0; });
+  const calcRate = (v, status) => v.total > 0 ? Math.round((v[status] / v.total) * 100) : 0;
+  const calcCombined = v => v.total > 0 ? Math.round(((v.hadir + v.terlambat) / v.total) * 100) : 0;
+  const trendDatasets = [];
+  EXPORT_TREND_SERIES.forEach(series => {
+    if (!exportTrendState[series.key]) return;
+    let data;
+    if (series.key === 'combined') {
+      data = dates.map(d => calcCombined(byDate[d]));
+    } else {
+      data = dates.map(d => calcRate(byDate[d], series.key === 'tidak_hadir' ? 'tidak_hadir_tk' : series.key));
+    }
+    trendDatasets.push({
+      label: series.key === 'combined' ? 'Hadir+Terlambat (%)' : `${series.label} (%)`,
+      data,
+      borderColor: series.color,
+      backgroundColor: series.bgColor,
+      fill: series.fill,
+      tension: 0.3,
+      borderWidth: series.key === 'combined' ? 2.5 : 2,
+      borderDash: series.borderDash,
+      pointRadius: 2,
+    });
+  });
   const c2 = document.createElement('canvas');
   c2.width = 700; c2.height = 300;
   container.appendChild(c2);
   const ch2 = new Chart(c2.getContext('2d'), {
     type: 'line',
-    data: {
-      labels: dates,
-      datasets: [
-        { label: 'Hadir + Terlambat (%)', data: combinedRates, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,.1)', fill: true, tension: 0.3, borderWidth: 2.5 },
-        { label: 'Hadir (%)', data: hadirRates, borderColor: '#1e40af', backgroundColor: 'transparent', fill: false, tension: 0.3, borderWidth: 2 },
-        { label: 'Terlambat (%)', data: terlambatRates, borderColor: '#f59e0b', backgroundColor: 'transparent', fill: false, tension: 0.3, borderWidth: 2, borderDash: [5, 3] }
-      ]
-    },
+    data: { labels: dates, datasets: trendDatasets },
     options: { responsive: false, animation: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, usePointStyle: true } } } }
   });
   images.trend = ch2.toBase64Image();
