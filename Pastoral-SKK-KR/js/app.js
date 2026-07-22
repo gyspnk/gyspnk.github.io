@@ -365,6 +365,7 @@ async function initAdmin() {
   try {
     const users = await api.getUsers();
     renderUsers(users);
+    document.getElementById('export-users-btn').onclick = () => exportUsersToExcel(users);
   } catch (e) {
     console.error('Failed to load users:', e);
   }
@@ -1193,6 +1194,102 @@ async function handleAddUser(e) {
     renderUsers(users);
   } catch (e) {
     alert('Gagal: ' + e.message);
+  }
+}
+
+/* ===== Export Users to Excel ===== */
+async function exportUsersToExcel(users) {
+  const ExcelJS = window.ExcelJS;
+  if (!ExcelJS) {
+    alert('Library ExcelJS tidak tersedia.');
+    return;
+  }
+
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Pastoral Hub SKKKR';
+  wb.created = new Date();
+  const ws = wb.addWorksheet('Data User', { views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }] });
+
+  // Define columns
+  const statusShort = { hadir: '✏️', terlambat: '✏️', izin: '👁️', sakit: '👁️', tidak_hadir_tk: '—' };
+
+  ws.columns = [
+    { header: 'No', key: 'no', width: 5 },
+    { header: 'Username', key: 'username', width: 16 },
+    { header: 'Nama Lengkap', key: 'fullName', width: 28 },
+    { header: 'Role', key: 'role', width: 18 },
+    { header: 'Izin Presensi', key: 'permissions', width: 45 },
+    { header: 'Tanggal Dibuat', key: 'createdAt', width: 20 },
+  ];
+
+  // Style header
+  const headerRow = ws.getRow(1);
+  headerRow.height = 28;
+  headerRow.eachCell(cell => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = {
+      top: { style: 'thin', color: { argb: 'FF000000' } },
+      bottom: { style: 'thin', color: { argb: 'FF000000' } },
+    };
+  });
+
+  // Data rows
+  const conifPresensiTypes = CONFIG.PRESENSI_TYPES;
+  users.forEach((u, i) => {
+    let perms = {};
+    try { perms = typeof u.permissions === 'string' ? JSON.parse(u.permissions) : (u.permissions || {}); } catch (e) {}
+
+    // Build permission summary text
+    const permParts = conifPresensiTypes.map(t => {
+      const p = perms[t.value];
+      let level = (typeof p === 'string') ? p : (p && p.level ? p.level : 'none');
+      const label = statusShort[level] || level;
+      const extra = (p && p.divisions && p.divisions.length > 0) ? ` (${p.divisions.length} div)` :
+                    (p && p.classes && p.classes.length > 0) ? ` (${p.classes.length} kls)` : '';
+      return `${t.label}: ${label}${extra}`;
+    }).join('; ');
+
+    let createdAt = u.created_at || '';
+    if (createdAt) {
+      try {
+        const d = new Date(createdAt);
+        if (!isNaN(d.getTime())) {
+          createdAt = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        }
+      } catch (e) {}
+    }
+
+    const row = ws.addRow({
+      no: i + 1,
+      username: u.username,
+      fullName: u.full_name,
+      role: getRoleLabel(u.role),
+      permissions: permParts || '—',
+      createdAt: createdAt || '—',
+    });
+    row.height = 20;
+
+    if (i % 2 === 1) {
+      row.eachCell(cell => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } }; });
+    }
+    row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+  });
+
+  try {
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Data_User_PastoralHub_${new Date().toISOString().split('T')[0]}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert('Gagal export: ' + e.message);
   }
 }
 

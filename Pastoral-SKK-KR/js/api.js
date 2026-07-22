@@ -68,7 +68,7 @@ const demoApi = {
   },
 
   async getUsers() {
-    return dbGet(DB_USERS).map(u => ({ id: u.id, username: u.username, full_name: u.full_name, role: u.role, permissions: u.permissions || null }));
+    return dbGet(DB_USERS).map(u => ({ id: u.id, username: u.username, full_name: u.full_name, role: u.role, permissions: u.permissions || null, created_at: u.created_at || null }));
   },
 
   async addUser(username, fullName, password, role, permissions) {

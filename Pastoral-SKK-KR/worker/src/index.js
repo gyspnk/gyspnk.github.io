@@ -312,7 +312,7 @@ export default {
 
       if (path === '/api/users' && request.method === 'GET') {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
-        const users = await query(env, 'SELECT id, username, full_name, role, permissions FROM users ORDER BY id');
+        const users = await query(env, 'SELECT id, username, full_name, role, permissions, created_at FROM users ORDER BY id');
         return json(users, 200, allowOrigin);
       }
 
