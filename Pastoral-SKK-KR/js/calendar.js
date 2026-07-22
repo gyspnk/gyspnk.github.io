@@ -61,14 +61,21 @@ export async function initCalendar() {
   document.getElementById('cal-view-grid').onclick = () => switchViewMode('grid');
   document.getElementById('cal-view-list').onclick = () => switchViewMode('list');
 
-  // Custom event modal
-  document.getElementById('cal-add-event-btn').onclick = () => openCustomEventModal();
-  document.getElementById('cal-manage-events-btn').onclick = () => openCustomEventModal();
-  document.getElementById('cal-custom-close').onclick = closeCustomEventModal;
-  document.getElementById('cev-cancel').onclick = closeCustomEventModal;
+  // Add Event modal (+Event) — form only
+  document.getElementById('cal-add-event-btn').onclick = () => openAddEventModal();
+  document.getElementById('cal-custom-close').onclick = closeAddEventModal;
+  document.getElementById('cev-cancel').onclick = closeAddEventModal;
   document.getElementById('cev-save').onclick = saveCustomEvent;
   document.getElementById('calendar-custom-modal').onclick = (e) => {
-    if (e.target === document.getElementById('calendar-custom-modal')) closeCustomEventModal();
+    if (e.target === document.getElementById('calendar-custom-modal')) closeAddEventModal();
+  };
+
+  // Manage Events modal (Kelola Event) — list saved events
+  document.getElementById('cal-manage-events-btn').onclick = () => openManageEventsModal();
+  document.getElementById('cal-manage-close').onclick = closeManageEventsModal;
+  document.getElementById('cal-manage-close-btn').onclick = closeManageEventsModal;
+  document.getElementById('calendar-manage-modal').onclick = (e) => {
+    if (e.target === document.getElementById('calendar-manage-modal')) closeManageEventsModal();
   };
 
   // Event modal close
@@ -90,8 +97,10 @@ export async function initCalendar() {
     if (e.key === 'Escape') {
       if (!document.getElementById('calendar-event-modal').classList.contains('hidden')) {
         closeEventModal();
+      } else if (!document.getElementById('calendar-manage-modal').classList.contains('hidden')) {
+        closeManageEventsModal();
       } else if (!document.getElementById('calendar-custom-modal').classList.contains('hidden')) {
-        closeCustomEventModal();
+        closeAddEventModal();
       } else if (searchInput && searchInput.value) {
         searchInput.value = '';
         searchInput.oninput();
@@ -972,20 +981,36 @@ function hideStatus() {
 }
 
 /* ===== Custom Events ===== */
-function openCustomEventModal() {
-  document.getElementById('calendar-custom-modal').classList.remove('hidden');
-  document.getElementById('cal-custom-title').textContent = 'Tambah Event Khusus';
+
+/** Open the +Event modal (add form only) */
+function openAddEventModal() {
   document.getElementById('cev-title').value = '';
   document.getElementById('cev-desc').value = '';
   document.getElementById('cev-start').value = '';
   document.getElementById('cev-end').value = '';
   document.getElementById('cev-color').value = '#ef4444';
   document.getElementById('cev-msg').classList.add('hidden');
-  renderCustomEventList();
+  document.getElementById('calendar-custom-modal').classList.remove('hidden');
+  // Focus the title field
+  setTimeout(() => document.getElementById('cev-title')?.focus(), 100);
 }
 
-function closeCustomEventModal() {
+function closeAddEventModal() {
   document.getElementById('calendar-custom-modal').classList.add('hidden');
+}
+
+/** Open the Kelola Event modal (list saved events) */
+async function openManageEventsModal() {
+  await loadCustomEvents();
+  renderCustomEventList();
+  document.getElementById('cal-manage-msg')?.classList.add('hidden');
+  document.getElementById('calendar-manage-modal').classList.remove('hidden');
+}
+
+function closeManageEventsModal() {
+  document.getElementById('calendar-manage-modal').classList.add('hidden');
+  // Refresh calendar view in case events were deleted
+  if (calendarViewMode === 'grid') renderCalendarGrid(); else renderListView();
 }
 
 async function saveCustomEvent() {
@@ -1017,9 +1042,12 @@ async function saveCustomEvent() {
     document.getElementById('cev-start').value = '';
     document.getElementById('cev-end').value = '';
     await loadCustomEvents();
-    renderCustomEventList();
+    // Refresh calendar display
     if (calendarViewMode === 'grid') renderCalendarGrid(); else renderListView();
-    setTimeout(() => msgEl.classList.add('hidden'), 2000);
+    // Close modal after brief success message
+    setTimeout(() => {
+      closeAddEventModal();
+    }, 1200);
   } catch (e) {
     msgEl.textContent = 'Gagal: ' + (e.message || 'Coba lagi');
     msgEl.className = 'info-msg'; msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
@@ -1046,10 +1074,8 @@ function renderCustomEventList() {
       <td><strong>${evt.title}</strong>${evt.description ? `<br><small style="color:var(--text-muted)">${evt.description}</small>` : ''}</td>
       <td>${evt.start_date}</td>
       <td>${evt.end_date}</td>
-      <td>
-        <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${evt.color};vertical-align:middle;margin-right:6px"></span>
-        <button class="btn btn-danger btn-sm" data-del-cev="${evt.id}">✕</button>
-      </td>
+      <td><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${evt.color};vertical-align:middle"></span></td>
+      <td><button class="btn btn-danger btn-sm" data-del-cev="${evt.id}" title="Hapus event">🗑</button></td>
     `;
     tbody.appendChild(tr);
   });
@@ -1060,12 +1086,22 @@ function renderCustomEventList() {
         await api.deleteCalendarEvent(parseInt(btn.dataset.delCev, 10));
         await loadCustomEvents();
         renderCustomEventList();
+        // Show success message inside manage modal
+        const msgEl = document.getElementById('cev-manage-msg');
+        if (msgEl) {
+          msgEl.textContent = '✅ Event berhasil dihapus.';
+          msgEl.className = 'info-msg';
+          msgEl.style.background = '#dcfce7';
+          msgEl.style.color = '#166534';
+          msgEl.classList.remove('hidden');
+          setTimeout(() => msgEl.classList.add('hidden'), 2000);
+        }
         if (calendarViewMode === 'grid') renderCalendarGrid(); else renderListView();
       } catch (e) { alert('Gagal: ' + e.message); }
     };
   });
   if (tbody.children.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:12px">Belum ada event khusus</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:12px">Belum ada event khusus</td></tr>';
   }
 }
 

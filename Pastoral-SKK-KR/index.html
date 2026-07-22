@@ -386,11 +386,11 @@
 
           <div class="calendar-list-view hidden" id="calendar-list-view"></div>
 
-          <!-- Custom Event Modal -->
+          <!-- Add Event Modal (+Event) — form only -->
           <div id="calendar-custom-modal" class="modal-overlay hidden">
-            <div class="modal-card" style="max-width:500px">
+            <div class="modal-card" style="max-width:480px">
               <div class="modal-header">
-                <h3 id="cal-custom-title">Tambah Event Khusus</h3>
+                <h3>Tambah Event Khusus</h3>
                 <button id="cal-custom-close" class="btn btn-sm btn-text">✕</button>
               </div>
               <div class="modal-body">
@@ -406,12 +406,29 @@
                   <button id="cev-save" class="btn btn-primary btn-sm">Simpan</button>
                 </div>
                 <div id="cev-msg" class="info-msg hidden" style="margin-top:8px"></div>
-                <hr style="margin:16px 0" />
-                <h4 style="margin-bottom:8px;font-size:14px">📋 Daftar Event Tersimpan</h4>
-                <div class="table-wrapper" style="max-height:200px;overflow-y:auto">
-                  <table><thead><tr><th>Judul</th><th>Dari</th><th>Sampai</th><th>Aksi</th></tr></thead>
-                  <tbody id="cev-tbody"></tbody></table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Manage Events Modal (Kelola Event) — list saved events only -->
+          <div id="calendar-manage-modal" class="modal-overlay hidden">
+            <div class="modal-card" style="max-width:560px">
+              <div class="modal-header">
+                <h3>⭐ Kelola Event Khusus</h3>
+                <button id="cal-manage-close" class="btn btn-sm btn-text">✕</button>
+              </div>
+              <div class="modal-body">
+                <p class="muted" style="margin-bottom:12px">Daftar event khusus yang tersimpan. Anda dapat menghapus event yang tidak diperlukan.</p>
+                <div class="table-wrapper" style="max-height:360px;overflow-y:auto">
+                  <table>
+                    <thead><tr><th>Judul</th><th>Dari</th><th>Sampai</th><th>Warna</th><th>Aksi</th></tr></thead>
+                    <tbody id="cev-tbody"></tbody>
+                  </table>
                 </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+                  <button id="cal-manage-close-btn" class="btn btn-secondary btn-sm">Tutup</button>
+                </div>
+                <div id="cev-manage-msg" class="info-msg hidden" style="margin-top:8px"></div>
               </div>
             </div>
           </div>
