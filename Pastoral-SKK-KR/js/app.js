@@ -682,7 +682,7 @@ function renderAdminEmployees() {
     const actionBtnsHtml = guruTypes.map(t => {
       const isActive = pa[t.key] !== false;
       const shortLabel = (t.key || '').replace(/kanaan_fellowship_guru/i, 'KF').replace(/renungan_harian/i, 'RH').replace(/ibadah_mingguan/i, 'IM').substring(0, 8);
-      return `<button class="btn btn-sm ${isActive ? 'btn-warn' : 'btn-success'}" data-toggle-presensi="${emp.id}" data-presensi-type="${t.key}" data-active="${isActive ? 1 : 0}">${shortLabel}: ${isActive ? 'Off' : 'On'}</button>`;
+      return `<button type="button" class="btn btn-sm ${isActive ? 'btn-warn' : 'btn-success'}" onclick="window._toggleEmpPresensi(${emp.id},'${t.key}',${isActive ? 1 : 0},this)" data-presensi-type="${t.key}">${shortLabel}: ${isActive ? 'Off' : 'On'}</button>`;
     }).join('');
 
     tr.innerHTML = `
@@ -749,29 +749,6 @@ function renderAdminEmployees() {
     };
   });
 
-  // Dynamic presensi toggle handlers — use event delegation on the tbody
-  if (!tbody._toggleHandlerAttached) {
-    tbody._toggleHandlerAttached = true;
-    tbody.addEventListener('click', async (e) => {
-      const btn = e.target.closest('[data-toggle-presensi]');
-      if (!btn) return;
-      e.preventDefault();
-      const id = parseInt(btn.getAttribute('data-toggle-presensi'), 10);
-      const presensiType = btn.getAttribute('data-presensi-type');
-      const isActive = btn.getAttribute('data-active') === '1';
-      console.log('[Toggle]', { id, presensiType, isActive });
-      try {
-        btn.disabled = true;
-        btn.textContent = '...';
-        await api.updateEmployee(id, { togglePresensi: !isActive, presensiType });
-        await loadAdminEmployees();
-      } catch (e) {
-        alert('Gagal: ' + e.message);
-        btn.disabled = false;
-      }
-    });
-  }
-
   tbody.querySelectorAll('[data-del-emp]').forEach(btn => {
     btn.onclick = async () => {
       if (!confirm('Hapus karyawan ini?')) return;
@@ -789,6 +766,23 @@ function renderAdminEmployees() {
     tbody.innerHTML = `<tr><td colspan="${totalCols}" style="text-align:center;color:var(--text-muted);padding:20px">Tidak ada data karyawan</td></tr>`;
   }
 }
+
+// Global toggle handler — dipanggil via onclick inline di tombol
+window._toggleEmpPresensi = async function(empId, presensiType, isActive, btnEl) {
+  console.log('[Toggle]', { empId, presensiType, isActive });
+  if (!btnEl) return;
+  btnEl.disabled = true;
+  const originalText = btnEl.textContent;
+  btnEl.textContent = '...';
+  try {
+    await api.updateEmployee(empId, { togglePresensi: isActive === 0, presensiType });
+    await loadAdminEmployees();
+  } catch (e) {
+    alert('Gagal: ' + e.message);
+    btnEl.disabled = false;
+    btnEl.textContent = originalText;
+  }
+};
 
 async function handleAddEmployee(e) {
   e.preventDefault();
