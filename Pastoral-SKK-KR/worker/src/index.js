@@ -18,14 +18,31 @@ async function ensureSchema(env) {
     if (!e.message.includes('Duplicate column')) console.error('Migration presensi_active_json:', e.message);
   }
   try {
-    // Populate existing NULL values with active defaults for all guru types
+    // Migrate legacy columns → presensi_active_json for each employee
     const allTypes = await query(env, 'SELECT type_key FROM presensi_types WHERE category = ? AND is_active = TRUE', ['guru']);
     if (allTypes.length > 0) {
-      const defaultMap = {};
-      allTypes.forEach(t => { defaultMap[t.type_key] = true; });
-      const defaultJson = JSON.stringify(defaultMap);
-      await execute(env, 'UPDATE employees SET presensi_active_json = ? WHERE presensi_active_json IS NULL OR presensi_active_json = ?',
-        [defaultJson, '']);
+      const employees = await query(env, 'SELECT id, is_active_rh, is_active_im, is_active_kf, presensi_active_json FROM employees');
+      for (const emp of employees) {
+        // Build active map — start with existing JSON if any, else empty
+        let activeMap = {};
+        try { activeMap = JSON.parse(emp.presensi_active_json || '{}'); } catch(e) {}
+        // Migrate legacy columns: is_active_rh → renungan_harian, etc.
+        if (emp.is_active_rh !== undefined && !('renungan_harian' in activeMap)) {
+          activeMap['renungan_harian'] = !!emp.is_active_rh;
+        }
+        if (emp.is_active_im !== undefined && !('ibadah_mingguan' in activeMap)) {
+          activeMap['ibadah_mingguan'] = !!emp.is_active_im;
+        }
+        if (emp.is_active_kf !== undefined && !('kanaan_fellowship_guru' in activeMap)) {
+          activeMap['kanaan_fellowship_guru'] = !!emp.is_active_kf;
+        }
+        // Set default true for other guru types not yet in the map
+        allTypes.forEach(t => {
+          if (!(t.type_key in activeMap)) activeMap[t.type_key] = true;
+        });
+        await execute(env, 'UPDATE employees SET presensi_active_json = ? WHERE id = ?',
+          [JSON.stringify(activeMap), emp.id]);
+      }
     }
   } catch (e) { console.error('Migration populate presensi_active_json:', e.message); }
 }
