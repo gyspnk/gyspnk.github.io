@@ -630,8 +630,24 @@ function renderAdminEmployees() {
   const filter = document.getElementById('emp-filter-active').value;
 
   let emps = adminData.employees;
-  if (filter === 'active') emps = emps.filter(e => (e.is_active_rh != false || e.is_active_im != false));
-  if (filter === 'inactive') emps = emps.filter(e => (e.is_active_rh == false && e.is_active_im == false));
+
+  // Get guru presensi types for dynamic toggle columns
+  const guruTypes = (CONFIG._allPresensiTypes || CONFIG.PRESENSI_TYPES)
+    .map(pt => ({ key: pt.type_key || pt.value, label: pt.type_label || pt.label, category: pt.category }))
+    .filter(pt => pt.category === 'guru');
+
+  // Update dynamic header colspan
+  const presensiHeader = document.getElementById('emp-presensi-headers');
+  if (presensiHeader) presensiHeader.setAttribute('colspan', guruTypes.length);
+
+  if (filter === 'active') emps = emps.filter(e => {
+    const pa = e._presensiActive || {};
+    return guruTypes.some(t => pa[t.key] !== false);
+  });
+  if (filter === 'inactive') emps = emps.filter(e => {
+    const pa = e._presensiActive || {};
+    return !guruTypes.some(t => pa[t.key] !== false);
+  });
   if (search) emps = emps.filter(e => e.name.toLowerCase().includes(search) || (e.position || '').toLowerCase().includes(search) || (e.division || '').toLowerCase().includes(search));
 
   document.getElementById('emp-count').textContent = `(${emps.length})`;
@@ -639,9 +655,19 @@ function renderAdminEmployees() {
   emps.forEach((emp, idx) => {
     const tr = document.createElement('tr');
     const divOptions = adminData.divisions.map(d => `<option value="${d.name}" ${d.name === emp.division ? 'selected' : ''}>${d.name}</option>`).join('');
-    const isActiveRH = emp.is_active_rh != false;
-    const isActiveIM = emp.is_active_im != false;
-    const isActiveKF = emp.is_active_kf != false;
+    const pa = emp._presensiActive || {};
+
+    const toggleColsHtml = guruTypes.map(t => {
+      const isActive = pa[t.key] !== false;
+      return `<td><span class="toggle-switch ${isActive ? 'toggle-active' : 'toggle-inactive'}">${isActive ? 'Aktif' : 'Nonaktif'}</span></td>`;
+    }).join('');
+
+    const actionBtnsHtml = guruTypes.map(t => {
+      const isActive = pa[t.key] !== false;
+      const shortLabel = (t.key || '').replace(/kanaan_fellowship_guru/i, 'KF').replace(/renungan_harian/i, 'RH').replace(/ibadah_mingguan/i, 'IM').substring(0, 8);
+      return `<button class="btn btn-sm ${isActive ? 'btn-warn' : 'btn-success'}" data-toggle-presensi="${emp.id}" data-presensi-type="${t.key}" data-active="${isActive ? 1 : 0}">${shortLabel}: ${isActive ? 'Off' : 'On'}</button>`;
+    }).join('');
+
     tr.innerHTML = `
       <td style="color:var(--text-muted);font-size:12px">${idx + 1}</td>
       <td>${emp.name}</td>
@@ -651,14 +677,10 @@ function renderAdminEmployees() {
         <select class="div-select hidden" data-emp-id="${emp.id}">${divOptions}</select>
       </td>
       <td>${emp.employment_status || ''}</td>
-      <td><span class="toggle-switch ${isActiveRH ? 'toggle-active' : 'toggle-inactive'}">${isActiveRH ? 'Aktif' : 'Nonaktif'}</span></td>
-      <td><span class="toggle-switch ${isActiveIM ? 'toggle-active' : 'toggle-inactive'}">${isActiveIM ? 'Aktif' : 'Nonaktif'}</span></td>
-      <td><span class="toggle-switch ${isActiveKF ? 'toggle-active' : 'toggle-inactive'}">${isActiveKF ? 'Aktif' : 'Nonaktif'}</span></td>
+      ${toggleColsHtml}
       <td>
         <div class="action-cell">
-          <button class="btn btn-sm ${isActiveRH ? 'btn-warn' : 'btn-success'}" data-toggle-rh="${emp.id}" data-active-rh="${isActiveRH ? 1 : 0}">RH: ${isActiveRH ? 'Off' : 'On'}</button>
-          <button class="btn btn-sm ${isActiveIM ? 'btn-warn' : 'btn-success'}" data-toggle-im="${emp.id}" data-active-im="${isActiveIM ? 1 : 0}">IM: ${isActiveIM ? 'Off' : 'On'}</button>
-          <button class="btn btn-sm ${isActiveKF ? 'btn-warn' : 'btn-success'}" data-toggle-kf="${emp.id}" data-active-kf="${isActiveKF ? 1 : 0}">KF: ${isActiveKF ? 'Off' : 'On'}</button>
+          ${actionBtnsHtml}
           <button class="btn btn-danger btn-sm" data-del-emp="${emp.id}">Hapus</button>
         </div>
       </td>
@@ -710,38 +732,14 @@ function renderAdminEmployees() {
     };
   });
 
-  tbody.querySelectorAll('[data-toggle-rh]').forEach(btn => {
+  // Dynamic presensi toggle handlers
+  tbody.querySelectorAll('[data-toggle-presensi]').forEach(btn => {
     btn.onclick = async () => {
-      const id = parseInt(btn.dataset.toggleRh, 10);
-      const isActive = btn.dataset.activeRh === '1';
+      const id = parseInt(btn.dataset.togglePresensi, 10);
+      const presensiType = btn.dataset.presensiType;
+      const isActive = btn.dataset.active === '1';
       try {
-        await api.updateEmployee(id, { toggleActiveRH: !isActive });
-        await loadAdminEmployees();
-      } catch (e) {
-        alert('Gagal: ' + e.message);
-      }
-    };
-  });
-
-  tbody.querySelectorAll('[data-toggle-im]').forEach(btn => {
-    btn.onclick = async () => {
-      const id = parseInt(btn.dataset.toggleIm, 10);
-      const isActive = btn.dataset.activeIm === '1';
-      try {
-        await api.updateEmployee(id, { toggleActiveIM: !isActive });
-        await loadAdminEmployees();
-      } catch (e) {
-        alert('Gagal: ' + e.message);
-      }
-    };
-  });
-
-  tbody.querySelectorAll('[data-toggle-kf]').forEach(btn => {
-    btn.onclick = async () => {
-      const id = parseInt(btn.dataset.toggleKf, 10);
-      const isActive = btn.dataset.activeKf === '1';
-      try {
-        await api.updateEmployee(id, { toggleActiveKF: !isActive });
+        await api.updateEmployee(id, { togglePresensi: !isActive, presensiType });
         await loadAdminEmployees();
       } catch (e) {
         alert('Gagal: ' + e.message);
@@ -762,7 +760,8 @@ function renderAdminEmployees() {
   });
 
   if (tbody.children.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px">Tidak ada data karyawan</td></tr>';
+    const totalCols = 6 + guruTypes.length + 1; // No+Nama+Jabatan+Divisi+Status + toggles + Aksi
+    tbody.innerHTML = `<tr><td colspan="${totalCols}" style="text-align:center;color:var(--text-muted);padding:20px">Tidak ada data karyawan</td></tr>`;
   }
 }
 

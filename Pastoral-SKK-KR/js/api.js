@@ -180,9 +180,18 @@ const demoApi = {
       const yr = years.find(y => y.year_label === params.academicYear);
       if (yr) emps = emps.filter(e => e.academic_year_id === yr.id);
     }
+    // Ensure _presensiActive is populated for all employees
+    emps = emps.map(e => {
+      if (!e._presensiActive) e._presensiActive = {};
+      return e;
+    });
     if (params.active === 'true') emps = emps.filter(e => (e.is_active_rh != false || e.is_active_im != false));
     if (params.activeRH === 'true') emps = emps.filter(e => e.is_active_rh != false);
     if (params.activeIM === 'true') emps = emps.filter(e => e.is_active_im != false);
+    if (params.activePresensi) emps = emps.filter(e => {
+      const pa = e._presensiActive || {};
+      return pa[params.activePresensi] !== false;
+    });
     return emps;
   },
   async addEmployee(data) {
@@ -190,7 +199,7 @@ const demoApi = {
     if (emps.find(e => e.name === data.name && e.academic_year_id === data.academicYearId))
       throw new Error('Karyawan sudah ada');
     const id = emps.length ? Math.max(...emps.map(e => e.id)) + 1 : 1;
-    emps.push({ id, ...data, is_active_rh: true, is_active_im: true });
+    emps.push({ id, ...data, is_active_rh: true, is_active_im: true, _presensiActive: {} });
     dbSet('pas_presensi_emp', emps);
     return { success: true };
   },
@@ -198,7 +207,10 @@ const demoApi = {
     const emps = dbGet('pas_presensi_emp');
     const idx = emps.findIndex(e => e.id === id);
     if (idx < 0) throw new Error('Karyawan tidak ditemukan');
-    if (data.toggleActiveRH !== undefined) emps[idx].is_active_rh = data.toggleActiveRH;
+    if (data.togglePresensi !== undefined && data.presensiType) {
+      if (!emps[idx]._presensiActive) emps[idx]._presensiActive = {};
+      emps[idx]._presensiActive[data.presensiType] = data.togglePresensi;
+    } else if (data.toggleActiveRH !== undefined) emps[idx].is_active_rh = data.toggleActiveRH;
     else if (data.toggleActiveIM !== undefined) emps[idx].is_active_im = data.toggleActiveIM;
     else { emps[idx].name = data.name; emps[idx].position = data.position; emps[idx].division = data.division; emps[idx].employment_status = data.employmentStatus; }
     dbSet('pas_presensi_emp', emps);

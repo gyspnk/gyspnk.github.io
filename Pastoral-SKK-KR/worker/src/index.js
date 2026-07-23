@@ -473,12 +473,36 @@ export default {
                    JOIN academic_years ay ON e.academic_year_id = ay.id WHERE 1=1`;
         const vals = [];
         if (params.get('academicYear')) { sql += ' AND ay.year_label = ?'; vals.push(params.get('academicYear')); }
-        if (params.get('active') === 'true') { sql += ' AND (e.is_active_rh = TRUE OR e.is_active_im = TRUE)'; }
-        if (params.get('activeRH') === 'true') { sql += ' AND e.is_active_rh = TRUE'; }
-        if (params.get('activeIM') === 'true') { sql += ' AND e.is_active_im = TRUE'; }
-        if (params.get('activeKF') === 'true') { sql += ' AND e.is_active_kf = TRUE'; }
-        sql += ' ORDER BY e.is_active_rh DESC, e.is_active_im DESC, e.name';
+
+        // Support legacy active flags AND new dynamic presensi active table
+        const activeFilter = params.get('activePresensi');
+        if (params.get('active') === 'true') {
+          sql += ' AND (e.is_active_rh = TRUE OR e.is_active_im = TRUE)';
+        } else if (activeFilter) {
+          // Filter employees active for a specific presensi type via the junction table
+          sql += ` AND e.id IN (SELECT employee_id FROM employee_presensi_active WHERE presensi_type = ? AND is_active = TRUE)`;
+          vals.push(activeFilter);
+        }
+        sql += ' ORDER BY e.name';
         const rows = await query(env, sql, vals);
+
+        // Fetch dynamic active flags for all returned employees
+        if (rows.length > 0) {
+          const empIds = rows.map(r => r.id);
+          const placeholders = empIds.map(() => '?').join(',');
+          const activeFlags = await query(env,
+            `SELECT employee_id, presensi_type, is_active FROM employee_presensi_active WHERE employee_id IN (${placeholders})`,
+            empIds);
+          // Merge into rows
+          const flagMap = {};
+          activeFlags.forEach(f => {
+            if (!flagMap[f.employee_id]) flagMap[f.employee_id] = {};
+            flagMap[f.employee_id][f.presensi_type] = !!f.is_active;
+          });
+          rows.forEach(r => {
+            r._presensi_active = flagMap[r.id] || {};
+          });
+        }
         return json(rows, 200, allowOrigin);
       }
 
@@ -488,16 +512,31 @@ export default {
         if (!name || !academicYearId) return json({ error: 'Field tidak lengkap' }, 400, allowOrigin);
         const existing = await query(env, 'SELECT id FROM employees WHERE name = ? AND academic_year_id = ?', [name, academicYearId]);
         if (existing.length > 0) return json({ error: 'Karyawan sudah ada di tahun ajaran ini' }, 409, allowOrigin);
-        await execute(env, 'INSERT INTO employees (name, position, division, employment_status, academic_year_id, is_active_rh, is_active_im) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        const result = await execute(env, 'INSERT INTO employees (name, position, division, employment_status, academic_year_id, is_active_rh, is_active_im) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [name, position || '', division || '', employmentStatus || '', academicYearId, true, true]);
-        return json({ success: true }, 201, allowOrigin);
+        // Create default active flags for all guru presensi types
+        const allTypes = await query(env, 'SELECT type_key FROM presensi_types WHERE category = ? AND is_active = TRUE', ['guru']);
+        const empId = result.insertId;
+        for (const t of allTypes) {
+          await execute(env,
+            'INSERT INTO employee_presensi_active (employee_id, presensi_type, is_active) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE is_active = TRUE',
+            [empId, t.type_key, 1]);
+        }
+        return json({ success: true, id: empId }, 201, allowOrigin);
       }
 
       if (path.startsWith('/api/employees/') && request.method === 'PUT') {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
         const id = parseInt(path.split('/').pop(), 10);
         const body = await request.json();
-        if (body.toggleActiveRH !== undefined) {
+        // Generic presensi type toggle (new dynamic approach)
+        if (body.togglePresensi !== undefined && body.presensiType) {
+          await execute(env,
+            `INSERT INTO employee_presensi_active (employee_id, presensi_type, is_active) VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE is_active = VALUES(is_active)`,
+            [id, body.presensiType, body.togglePresensi ? 1 : 0]);
+        // Legacy toggle support
+        } else if (body.toggleActiveRH !== undefined) {
           await execute(env, 'UPDATE employees SET is_active_rh = ? WHERE id = ?', [body.toggleActiveRH ? 1 : 0, id]);
         } else if (body.toggleActiveIM !== undefined) {
           await execute(env, 'UPDATE employees SET is_active_im = ? WHERE id = ?', [body.toggleActiveIM ? 1 : 0, id]);

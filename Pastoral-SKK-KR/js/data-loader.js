@@ -98,13 +98,11 @@ export async function loadKaryawanData(year, presensiType) {
         return result;
       }
 
-      const params = { academicYear: year.label, active: 'true' };
-      if (presensiType === 'ibadah_mingguan') {
-        params.activeIM = 'true';
-      } else if (presensiType === 'kanaan_fellowship_guru') {
-        params.activeKF = 'true';
-      } else {
-        params.activeRH = 'true';
+      // Use dynamic presensi type filter (via employee_presensi_active table)
+      const params = { academicYear: year.label };
+      const isGuru = presensiType && !CONFIG.isSiswaType(presensiType);
+      if (isGuru) {
+        params.activePresensi = presensiType;
       }
       const employees = await api.getEmployees(params);
       let result = employees.map(e => ({
@@ -113,9 +111,12 @@ export async function loadKaryawanData(year, presensiType) {
         position: e.position || '',
         division: e.division || '',
         status: e.employment_status || '',
+        // Legacy flags (backward compat)
         isActiveRH: e.is_active_rh != false,
         isActiveIM: e.is_active_im != false,
-        isActiveKF: e.is_active_kf != false
+        isActiveKF: e.is_active_kf != false,
+        // Dynamic presensi active flags
+        _presensiActive: e._presensi_active || {}
       }));
 
       // Apply division filter from user permissions (for non-student presensi types)

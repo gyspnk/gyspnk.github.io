@@ -146,6 +146,17 @@ export async function initSchema(env) {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       UNIQUE KEY uq_cal_config (academic_year, sheet_key)
     )`,
+    // Employee ↔ Presensi type active flags (replaces hardcoded is_active_rh/im/kf)
+    `CREATE TABLE IF NOT EXISTS employee_presensi_active (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      employee_id INT NOT NULL,
+      presensi_type VARCHAR(50) NOT NULL,
+      is_active BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY uq_emp_presensi (employee_id, presensi_type),
+      INDEX idx_emp (employee_id),
+      INDEX idx_type (presensi_type)
+    )`,
     // Migration: add columns if they don't exist (for existing installations)
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions TEXT DEFAULT NULL AFTER full_name`,
     `ALTER TABLE attendance ADD COLUMN IF NOT EXISTS presensi_type VARCHAR(30) NOT NULL DEFAULT 'renungan_harian' AFTER attendance_date`,
