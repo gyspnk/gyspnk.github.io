@@ -657,7 +657,7 @@ function renderAdminEmployees() {
     const first = emps[0];
     console.log('[EmpTable] first employee id=' + first.id + ' name=' + first.name,
       '_raw_json:', first._raw_json,
-      '_presensiActive:', JSON.stringify(first._presensiActive));
+      '_presensiActive:', JSON.stringify(first._presensi_active || first._presensiActive));
   }
 
   // Update dynamic header colspan
@@ -665,11 +665,11 @@ function renderAdminEmployees() {
   if (presensiHeader) presensiHeader.setAttribute('colspan', guruTypes.length);
 
   if (filter === 'active') emps = emps.filter(e => {
-    const pa = e._presensiActive || {};
+    const pa = e._presensi_active || e._presensiActive || {};
     return guruTypes.some(t => pa[t.key] !== false);
   });
   if (filter === 'inactive') emps = emps.filter(e => {
-    const pa = e._presensiActive || {};
+    const pa = e._presensi_active || e._presensiActive || {};
     return !guruTypes.some(t => pa[t.key] !== false);
   });
   if (search) emps = emps.filter(e => e.name.toLowerCase().includes(search) || (e.position || '').toLowerCase().includes(search) || (e.division || '').toLowerCase().includes(search));
