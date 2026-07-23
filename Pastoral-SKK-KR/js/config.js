@@ -39,6 +39,11 @@ export const CONFIG = {
   PRESENSI_ICONS: { guru: '👤', siswa: '🎓' },
   // Dynamic presensi types (loaded from API, falls back to PRESENSI_TYPES)
   _presensiTypes: null,
+  // Helper: check if a presensi type is for students
+  isSiswaType(typeKey) {
+    const t = this.PRESENSI_TYPES.find(p => p.value === typeKey);
+    return t ? t.category === 'siswa' : typeKey === 'kanaan_fellowship_siswa';
+  },
   IBADAH_MINGGUAN_DAY: 5, // Friday (0=Sun, 1=Mon, ..., 5=Fri, 6=Sat)
   DAY_NAMES: ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'],
   DAY_SHORT: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'],

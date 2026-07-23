@@ -583,6 +583,21 @@ tbody tr:hover { background: #f8fafc; }
 .toggle-active { background: #dcfce7; color: var(--green); }
 .toggle-inactive { background: #fee2e2; color: var(--red); }
 
+/* Clickable toggle button (presensi types table) */
+.toggle-btn {
+  padding: 4px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 20px;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.toggle-btn:hover { opacity: 0.85; transform: scale(1.03); }
+.toggle-active-btn { background: #dcfce7; color: var(--green); border-color: var(--green); }
+.toggle-inactive-btn { background: #fee2e2; color: var(--red); border-color: var(--red); }
+
 /* Action cells */
 .action-cell { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
 .action-cell .btn { white-space: nowrap; font-size: 11px; padding: 5px 8px; }

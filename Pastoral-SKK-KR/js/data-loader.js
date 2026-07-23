@@ -76,7 +76,7 @@ export async function loadKaryawanData(year, presensiType) {
   if (!isDemoMode() && year.id) {
     try {
       // Kanaan Fellowship — load students, not employees
-      if (presensiType === 'kanaan_fellowship_siswa') {
+      if (CONFIG.isSiswaType(presensiType)) {
         const students = await api.getKFStudents({ academicYear: year.label, active: 'true' });
         let result = students.map(s => ({
           id: s.id,

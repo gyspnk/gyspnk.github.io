@@ -52,18 +52,38 @@ async function loadGlobalPresensiTypes() {
   try {
     const types = await api.getPresensiTypes();
     if (types && types.length > 0) {
-      CONFIG.PRESENSI_TYPES = types.map(pt => ({
-        value: pt.type_key, label: pt.type_label,
-        icon: pt.category === 'siswa' ? '🎓' : '👤',
-        group: pt.category === 'siswa' ? 'Siswa' : 'Guru',
-        category: pt.category
-      }));
-      CONFIG.PRESENSI_TYPE_LABELS = {};
-      types.forEach(pt => { CONFIG.PRESENSI_TYPE_LABELS[pt.type_key] = pt.type_label; });
+      // Store ALL types (including inactive) for admin use
+      CONFIG._allPresensiTypes = types;
+      // CONFIG.PRESENSI_TYPES = active only (for dropdowns, forms)
+      const activeTypes = types.filter(pt => pt.is_active != false);
+      if (activeTypes.length > 0) {
+        CONFIG.PRESENSI_TYPES = activeTypes.map(pt => ({
+          value: pt.type_key, label: pt.type_label,
+          icon: pt.category === 'siswa' ? '🎓' : '👤',
+          group: pt.category === 'siswa' ? 'Siswa' : 'Guru',
+          category: pt.category
+        }));
+        CONFIG.PRESENSI_TYPE_LABELS = {};
+        activeTypes.forEach(pt => { CONFIG.PRESENSI_TYPE_LABELS[pt.type_key] = pt.type_label; });
+      }
     }
   } catch(e) {
     console.warn('Failed to load presensi types, using defaults:', e.message);
   }
+}
+
+// Get all presensi types (including inactive) for admin/permission panels
+function getPresensiTypesForAdmin() {
+  if (CONFIG._allPresensiTypes && CONFIG._allPresensiTypes.length > 0) {
+    return CONFIG._allPresensiTypes.map(pt => ({
+      value: pt.type_key, label: pt.type_label,
+      icon: pt.category === 'siswa' ? '🎓' : '👤',
+      group: pt.category === 'siswa' ? 'Siswa' : 'Guru',
+      category: pt.category,
+      is_active: pt.is_active
+    }));
+  }
+  return CONFIG.PRESENSI_TYPES;
 }
 
 /* ===== Demo Data Migration ===== */
@@ -361,6 +381,15 @@ async function initAdmin() {
   } catch (e) {
     console.error('Failed to load roles:', e);
   }
+
+  // Sync dynamic presensi types BEFORE rendering user list
+  try {
+    const types = await api.getPresensiTypes();
+    if (types && types.length > 0) {
+      presensiTypesData = types;
+      await syncPresensiTypes();
+    }
+  } catch(e) { /* use hardcoded fallback */ }
 
   try {
     const users = await api.getUsers();
@@ -990,7 +1019,8 @@ function renderUsers(users) {
 }
 
 function showPermissionModal(targetId, targetName, currentPerms, isRole = false, roleKey = null) {
-  const types = CONFIG.PRESENSI_TYPES;
+  // Use admin types (all, including inactive) for permission modal
+  const types = getPresensiTypesForAdmin();
   const levels = CONFIG.PERMISSION_LEVELS;
   const labels = CONFIG.PERMISSION_LABELS;
 
@@ -1024,7 +1054,7 @@ function showPermissionModal(targetId, targetName, currentPerms, isRole = false,
 
   types.forEach((t, idx) => {
     const perm = normalized[t.value];
-    const isStudent = t.value === 'kanaan_fellowship_siswa';
+    const isStudent = t.category === 'siswa';
     const filterItems = isStudent ? allClasses : allDivisions;
     const filterLabel = isStudent ? 'Kelas' : 'Divisi';
     const filterKey = isStudent ? 'classes' : 'divisions';
@@ -1135,7 +1165,7 @@ function showPermissionModal(targetId, targetName, currentPerms, isRole = false,
     types.forEach(t => {
       const levelRadio = overlay.querySelector(`input[name="perm_${t.value}_level"]:checked`);
       const level = levelRadio ? levelRadio.value : 'none';
-      const isStudent = t.value === 'kanaan_fellowship_siswa';
+      const isStudent = t.category === 'siswa';
       const filterDiv = overlay.querySelector(`[data-perm-filter="${t.value}"]`);
       const selected = filterDiv ? [...filterDiv.querySelectorAll('input:checked')].map(cb => cb.value) : [];
       newPerms[t.value] = {
@@ -1799,15 +1829,34 @@ function renderPresensiTypesTable() {
   presensiTypesData.forEach(pt => {
     const tr = document.createElement('tr');
     const catIcon = pt.category === 'siswa' ? '🎓' : '👤';
+    const isActive = pt.is_active != false;
     tr.innerHTML = `
       <td><code>${pt.type_key}</code></td>
       <td>${pt.type_label}</td>
       <td>${catIcon} ${pt.category === 'siswa' ? 'Siswa' : 'Guru'}</td>
-      <td><span class="toggle-switch ${pt.is_active != false ? 'toggle-active' : 'toggle-inactive'}">${pt.is_active != false ? 'Aktif' : 'Nonaktif'}</span></td>
+      <td><button class="btn btn-sm toggle-btn ${isActive ? 'toggle-active-btn' : 'toggle-inactive-btn'}" data-toggle-pt="${pt.id}" data-active="${isActive ? 1 : 0}">${isActive ? 'Aktif' : 'Nonaktif'}</button></td>
       <td><button class="btn btn-danger btn-sm" data-del-pt="${pt.id}">Hapus</button></td>
     `;
     tbody.appendChild(tr);
   });
+
+  // Toggle handlers
+  tbody.querySelectorAll('[data-toggle-pt]').forEach(btn => {
+    btn.onclick = async () => {
+      const id = parseInt(btn.dataset.togglePt, 10);
+      const isActive = btn.dataset.active === '1';
+      try {
+        await api.togglePresensiType(id, !isActive);
+        await loadPresensiTypes();
+        await syncPresensiTypes();
+        await loadPresensiConfig();
+        await loadGlobalPresensiTypes(); // Refresh CONFIG.PRESENSI_TYPES for dropdowns
+        if (typeof filterPresensiTypeSelectors === 'function') filterPresensiTypeSelectors();
+      } catch(e) { alert('Gagal: ' + e.message); }
+    };
+  });
+
+  // Delete handlers
   tbody.querySelectorAll('[data-del-pt]').forEach(btn => {
     btn.onclick = async () => {
       if (!confirm('Hapus kategori presensi ini?')) return;
@@ -1815,7 +1864,8 @@ function renderPresensiTypesTable() {
         await api.deletePresensiType(parseInt(btn.dataset.delPt, 10));
         await loadPresensiTypes();
         await syncPresensiTypes();
-        await loadPresensiConfig();  // re-renders with updated types
+        await loadPresensiConfig();
+        await loadGlobalPresensiTypes();
         if (typeof filterPresensiTypeSelectors === 'function') filterPresensiTypeSelectors();
       } catch(e) { alert('Gagal: ' + e.message); }
     };
@@ -1841,23 +1891,24 @@ async function handleAddPresensiType() {
 }
 
 async function syncPresensiTypes() {
-  // Update CONFIG.PRESENSI_TYPES dynamically from API data
+  // Update CONFIG.PRESENSI_TYPES dynamically from API data (all types for admin)
   if (presensiTypesData.length > 0) {
-    CONFIG._presensiTypes = presensiTypesData.map(pt => ({
+    CONFIG._allPresensiTypes = presensiTypesData;
+    const allTypes = presensiTypesData.map(pt => ({
       value: pt.type_key, label: pt.type_label,
       icon: pt.category === 'siswa' ? '🎓' : '👤',
       group: pt.category === 'siswa' ? 'Siswa' : 'Guru',
-      category: pt.category
+      category: pt.category,
+      is_active: pt.is_active
     }));
-    CONFIG.PRESENSI_TYPES = CONFIG._presensiTypes;
+    CONFIG._presensiTypes = allTypes;
+    CONFIG.PRESENSI_TYPES = allTypes; // Admin context: show all
     CONFIG.PRESENSI_TYPE_LABELS = {};
     presensiTypesData.forEach(pt => { CONFIG.PRESENSI_TYPE_LABELS[pt.type_key] = pt.type_label; });
     // Also update PERMISSION_DEFAULTS for new types
     presensiTypesData.forEach(pt => {
-      if (!CONFIG.PERMISSION_DEFAULTS[pt.type_key]) {
-        CONFIG.PERMISSION_DEFAULTS[pt.type_key] = pt.category === 'siswa'
-          ? { level: 'write', divisions: [], classes: [] }
-          : { level: 'write', divisions: [], classes: [] };
+      if (!(pt.type_key in CONFIG.PERMISSION_DEFAULTS)) {
+        CONFIG.PERMISSION_DEFAULTS[pt.type_key] = { level: 'write', divisions: [], classes: [] };
       }
     });
   }

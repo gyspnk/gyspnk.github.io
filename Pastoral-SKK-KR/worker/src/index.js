@@ -576,7 +576,7 @@ export default {
 
       // ===== Presensi Types =====
       if (path === '/api/presensi-types' && request.method === 'GET') {
-        const rows = await query(env, 'SELECT * FROM presensi_types WHERE is_active = TRUE ORDER BY sort_order, id');
+        const rows = await query(env, 'SELECT * FROM presensi_types ORDER BY sort_order, id');
         if (rows.length === 0) {
           // Fallback to hardcoded types
           return json([

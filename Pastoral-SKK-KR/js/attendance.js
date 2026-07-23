@@ -74,7 +74,7 @@ function updatePresensiTitle() {
   // Update table headers
   const headerRow = document.getElementById('presensi-table-header');
   if (!headerRow) return;
-  const isSiswa = currentPresensiType === 'kanaan_fellowship_siswa';
+  const isSiswa = CONFIG.isSiswaType(currentPresensiType);
   const isAdmin = hasRole('admin');
   headerRow.innerHTML = isSiswa
     ? `<th>No</th><th>Nama</th><th>NIS</th><th>Kelas</th><th>Status</th><th>Keterangan</th>${isAdmin ? '<th>Aksi</th>' : ''}`
@@ -346,7 +346,7 @@ function renderTable() {
   });
 
   const readOnly = isReadOnly() || !canWrite(currentPresensiType);
-  const isSiswa = currentPresensiType === 'kanaan_fellowship_siswa';
+  const isSiswa = CONFIG.isSiswaType(currentPresensiType);
   const isAdmin = hasRole('admin');
 
   filtered.forEach((emp, i) => {

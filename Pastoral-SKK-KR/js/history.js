@@ -33,7 +33,7 @@ export async function initHistory() {
     try {
       const years = await getAvailableYears();
       const currentAY2 = getCurrentAcademicYear(years);
-      if (presensiType === 'kanaan_fellowship_siswa') {
+      if (CONFIG.isSiswaType(presensiType)) {
         allStudents = await api.getKFStudents({ academicYear: currentAY2.label, active: 'true' });
       } else {
         allEmployees = await loadKaryawanData(currentAY2, presensiType);
@@ -65,7 +65,7 @@ export async function initHistory() {
   try {
     // Load employees for the initially selected presensi type
     const initialType = document.getElementById('history-type')?.value || 'renungan_harian';
-    if (initialType === 'kanaan_fellowship_siswa') {
+    if (CONFIG.isSiswaType(initialType)) {
       allEmployees = [];
       allStudents = await api.getKFStudents({ academicYear: currentAY.label, active: 'true' });
     } else {
@@ -93,7 +93,7 @@ function updateHistoryFilterLabel() {
   const label = document.getElementById('history-employee-label');
   const select = document.getElementById('history-employee');
 
-  if (type === 'kanaan_fellowship_siswa') {
+  if (CONFIG.isSiswaType(type)) {
     if (label) label.textContent = 'Kelas';
     select.innerHTML = '<option value="all">Semua Kelas</option>';
     const classes = [...new Set(allStudents.map(s => s.class).filter(Boolean))].sort((a,b) => a.localeCompare(b,'id',{numeric:true}));
@@ -119,7 +119,7 @@ function updateHistoryTableHeaders() {
   const headerRow = document.getElementById('history-table-header');
   if (!headerRow) return;
   const type = document.getElementById('history-type')?.value || 'renungan_harian';
-  const isSiswa = type === 'kanaan_fellowship_siswa';
+  const isSiswa = CONFIG.isSiswaType(type);
   headerRow.innerHTML = isSiswa
     ? '<th>No</th><th>Tanggal</th><th>Nama</th><th>NIS</th><th>Kelas</th><th>Status</th><th>Keterangan</th><th>Tipe</th><th>Diisi Oleh</th>'
     : '<th>No</th><th>Tanggal</th><th>Nama</th><th>Jabatan</th><th>Divisi</th><th>Status</th><th>Keterangan</th><th>Tipe</th><th>Diisi Oleh (Nama / Username / Role)</th>';
@@ -176,7 +176,7 @@ async function loadHistory() {
 
   const typeLabel = CONFIG.PRESENSI_TYPE_LABELS[presensiType] || '';
   const count = allRecords.length;
-  const isSiswa = presensiType === 'kanaan_fellowship_siswa';
+  const isSiswa = CONFIG.isSiswaType(presensiType);
   const filterLabel = employee === 'all' ? (isSiswa ? 'semua kelas' : 'semua karyawan') : employee;
   statusMsg.textContent = `${count} record ${typeLabel} ditemukan untuk ${filterLabel}.`;
   currentPage = 1;
@@ -192,7 +192,7 @@ function getFilteredRecords() {
 
   return allRecords.filter(r => {
     // For KF-Siswa, filter by class; for others, filter by employee name
-    if (presensiType === 'kanaan_fellowship_siswa') {
+    if (CONFIG.isSiswaType(presensiType)) {
       if (employee !== 'all' && r.employee_division !== employee) return false;
     } else {
       if (employee !== 'all' && r.employee_name !== employee) return false;
@@ -239,7 +239,7 @@ function renderHistoryTable() {
       kanaan_fellowship_siswa: 'presensi-type-kf'
     };
     const presensiTypeClass = presensiTypeClassMap[r.presensi_type] || 'presensi-type-rh';
-    const isSiswa = r.presensi_type === 'kanaan_fellowship_siswa';
+    const isSiswa = CONFIG.isSiswaType(r.presensi_type);
     tr.innerHTML = `
       <td>${startIdx + i + 1}</td>
       <td>${r.attendance_date || ''}</td>
@@ -399,7 +399,7 @@ async function exportHistory() {
       kanaan_fellowship_siswa: 'Kanaan_Fellowship_Siswa'
     };
     const typeSlug = typeSlugMap[presensiType] || 'Presensi';
-    const isSiswa = presensiType === 'kanaan_fellowship_siswa';
+    const isSiswa = CONFIG.isSiswaType(presensiType);
     const meta = {
       startDate,
       endDate,
