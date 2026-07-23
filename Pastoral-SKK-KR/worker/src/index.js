@@ -9,6 +9,17 @@ async function ensureSchema(env) {
     try { await initSchema(env); } catch (e) { console.error('Schema init:', e.message); }
     _schemaReady = true;
   }
+  // Always run migrations (idempotent DDL) — catches tables added after initial deploy
+  try {
+    await execute(env,
+      `CREATE TABLE IF NOT EXISTS employee_presensi_active (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        employee_id INT NOT NULL,
+        presensi_type VARCHAR(50) NOT NULL,
+        is_active INT DEFAULT 1,
+        UNIQUE KEY uq_emp_presensi (employee_id, presensi_type)
+      )`);
+  } catch (e) { console.error('Migration employee_presensi_active:', e.message); }
 }
 
 // Simple CSV line parser
