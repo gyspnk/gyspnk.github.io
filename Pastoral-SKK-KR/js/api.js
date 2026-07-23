@@ -282,6 +282,43 @@ const demoApi = {
     dbSet('pas_presensi_kf_students', existing);
     return { success: true, count };
   },
+  async getPresensiTypes() {
+    // Return all presensi types from localStorage (demo) or use hardcoded fallback
+    let types = dbGet('pas_presensi_types');
+    if (!types || types.length === 0) {
+      types = [
+        { id: 1, type_key: 'renungan_harian', type_label: 'Renungan Harian', category: 'guru', is_active: 1, sort_order: 1 },
+        { id: 2, type_key: 'ibadah_mingguan', type_label: 'Ibadah Mingguan (Tiap Jumat)', category: 'guru', is_active: 1, sort_order: 2 },
+        { id: 3, type_key: 'kanaan_fellowship_guru', type_label: 'Kanaan Fellowship (Sabat Ceria) - Guru', category: 'guru', is_active: 1, sort_order: 3 },
+        { id: 4, type_key: 'kanaan_fellowship_siswa', type_label: 'Kanaan Fellowship (Sabat Ceria) - Siswa', category: 'siswa', is_active: 1, sort_order: 4 },
+      ];
+      dbSet('pas_presensi_types', types);
+    }
+    return types;
+  },
+  async addPresensiType(typeKey, typeLabel, category) {
+    let types = dbGet('pas_presensi_types');
+    if (types.find(t => t.type_key === typeKey)) throw new Error('Key presensi sudah ada');
+    const id = types.length ? Math.max(...types.map(t => t.id)) + 1 : 1;
+    const sortOrder = (Math.max(0, ...types.map(t => t.sort_order || 0))) + 1;
+    types.push({ id, type_key: typeKey, type_label: typeLabel, category: category || 'guru', is_active: 1, sort_order: sortOrder });
+    dbSet('pas_presensi_types', types);
+    return { success: true };
+  },
+  async togglePresensiType(id, isActive) {
+    let types = dbGet('pas_presensi_types');
+    const idx = types.findIndex(t => t.id === id);
+    if (idx < 0) throw new Error('Tipe tidak ditemukan');
+    types[idx].is_active = isActive ? 1 : 0;
+    dbSet('pas_presensi_types', types);
+    return { success: true };
+  },
+  async deletePresensiType(id) {
+    let types = dbGet('pas_presensi_types');
+    types = types.filter(t => t.id !== id);
+    dbSet('pas_presensi_types', types);
+    return { success: true };
+  },
   async getPresensiConfig() {
     let config = dbGet('pas_presensi_config');
     if (config.length === 0) {
