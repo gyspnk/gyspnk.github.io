@@ -383,13 +383,21 @@ async function initAdmin() {
   }
 
   // Sync dynamic presensi types BEFORE rendering user list
+  console.log('[Admin] Memuat tipe presensi dari API...');
   try {
     const types = await api.getPresensiTypes();
+    console.log('[Admin] API getPresensiTypes response:', types ? types.length : 0, 'types', types ? types.map(t => t.type_key).join(', ') : 'null');
     if (types && types.length > 0) {
       presensiTypesData = types;
       await syncPresensiTypes();
+      console.log('[Admin] Sync selesai, CONFIG.PRESENSI_TYPES now:', CONFIG.PRESENSI_TYPES.length, 'types:', CONFIG.PRESENSI_TYPES.map(t => t.value).join(', '));
+      console.log('[Admin] _allPresensiTypes:', CONFIG._allPresensiTypes ? CONFIG._allPresensiTypes.length : 0, 'items');
+    } else {
+      console.warn('[Admin] API returned empty types, using fallback');
     }
-  } catch(e) { /* use hardcoded fallback */ }
+  } catch(e) {
+    console.error('[Admin] Gagal load presensi types:', e.message);
+  }
 
   try {
     const users = await api.getUsers();
@@ -1018,9 +1026,30 @@ function renderUsers(users) {
   });
 }
 
-function showPermissionModal(targetId, targetName, currentPerms, isRole = false, roleKey = null) {
+async function showPermissionModal(targetId, targetName, currentPerms, isRole = false, roleKey = null) {
   // Use admin types (all, including inactive) for permission modal
+  // If _allPresensiTypes not set yet, try loading on-demand
+  if (!CONFIG._allPresensiTypes || CONFIG._allPresensiTypes.length === 0) {
+    console.log('[PermModal] _allPresensiTypes not set, loading on-demand...');
+    try {
+      const types = await api.getPresensiTypes();
+      if (types && types.length > 0) {
+        presensiTypesData = types;
+        CONFIG._allPresensiTypes = types;
+        CONFIG.PRESENSI_TYPES = types.map(pt => ({
+          value: pt.type_key, label: pt.type_label,
+          icon: pt.category === 'siswa' ? '🎓' : '👤',
+          group: pt.category === 'siswa' ? 'Siswa' : 'Guru',
+          category: pt.category
+        }));
+        CONFIG.PRESENSI_TYPE_LABELS = {};
+        types.forEach(pt => { CONFIG.PRESENSI_TYPE_LABELS[pt.type_key] = pt.type_label; });
+        console.log('[PermModal] Loaded', types.length, 'types:', types.map(t => t.type_key).join(', '));
+      }
+    } catch(e) { console.error('[PermModal] Failed to load types:', e.message); }
+  }
   const types = getPresensiTypesForAdmin();
+  console.log('[PermModal] Using', types.length, 'types:', types.map(t => t.value).join(', '));
   const levels = CONFIG.PERMISSION_LEVELS;
   const labels = CONFIG.PERMISSION_LABELS;
 
@@ -1851,6 +1880,8 @@ function renderPresensiTypesTable() {
         await syncPresensiTypes();
         await loadPresensiConfig();
         await loadGlobalPresensiTypes(); // Refresh CONFIG.PRESENSI_TYPES for dropdowns
+        // Re-render user list with updated types
+        try { const users = await api.getUsers(); renderUsers(users); renderRoles(); } catch(e) {}
         if (typeof filterPresensiTypeSelectors === 'function') filterPresensiTypeSelectors();
       } catch(e) { alert('Gagal: ' + e.message); }
     };
@@ -1866,6 +1897,8 @@ function renderPresensiTypesTable() {
         await syncPresensiTypes();
         await loadPresensiConfig();
         await loadGlobalPresensiTypes();
+        // Re-render user list with updated types
+        try { const users = await api.getUsers(); renderUsers(users); renderRoles(); } catch(e) {}
         if (typeof filterPresensiTypeSelectors === 'function') filterPresensiTypeSelectors();
       } catch(e) { alert('Gagal: ' + e.message); }
     };
@@ -1885,6 +1918,12 @@ async function handleAddPresensiType() {
     await syncPresensiTypes();
     // Reload config and re-render — now includes new type
     await loadPresensiConfig();
+    // Re-render user list with new types
+    try {
+      const users = await api.getUsers();
+      renderUsers(users);
+      renderRoles();
+    } catch(e) {}
     // Also refresh all presensi type selectors on other pages
     if (typeof filterPresensiTypeSelectors === 'function') filterPresensiTypeSelectors();
   } catch(e) { alert('Gagal: ' + e.message); }
