@@ -9,10 +9,15 @@ async function ensureSchema(env) {
     try { await initSchema(env); } catch (e) { console.error('Schema init:', e.message); }
     _schemaReady = true;
   }
-  // Always run migrations (idempotent DDL) — catches tables added after initial deploy
+  // Always run migrations (idempotent) — catches tables/columns added after initial deploy
   try {
-    await execute(env,
-      `ALTER TABLE employees ADD COLUMN IF NOT EXISTS presensi_active_json TEXT DEFAULT '{}'`);
+    // TiDB doesn't support ADD COLUMN IF NOT EXISTS — use try/catch instead
+    await execute(env, `ALTER TABLE employees ADD COLUMN presensi_active_json TEXT DEFAULT '{}'`);
+  } catch (e) {
+    // Column already exists (or other DDL error) — safe to ignore
+    if (!e.message.includes('Duplicate column')) console.error('Migration presensi_active_json:', e.message);
+  }
+  try {
     // Populate existing NULL values with active defaults for all guru types
     const allTypes = await query(env, 'SELECT type_key FROM presensi_types WHERE category = ? AND is_active = TRUE', ['guru']);
     if (allTypes.length > 0) {
@@ -22,7 +27,7 @@ async function ensureSchema(env) {
       await execute(env, 'UPDATE employees SET presensi_active_json = ? WHERE presensi_active_json IS NULL OR presensi_active_json = ?',
         [defaultJson, '']);
     }
-  } catch (e) { console.error('Migration presensi_active_json:', e.message); }
+  } catch (e) { console.error('Migration populate presensi_active_json:', e.message); }
 }
 
 // Simple CSV line parser
