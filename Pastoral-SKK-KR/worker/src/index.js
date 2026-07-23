@@ -13,6 +13,15 @@ async function ensureSchema(env) {
   try {
     await execute(env,
       `ALTER TABLE employees ADD COLUMN IF NOT EXISTS presensi_active_json TEXT DEFAULT '{}'`);
+    // Populate existing NULL values with active defaults for all guru types
+    const allTypes = await query(env, 'SELECT type_key FROM presensi_types WHERE category = ? AND is_active = TRUE', ['guru']);
+    if (allTypes.length > 0) {
+      const defaultMap = {};
+      allTypes.forEach(t => { defaultMap[t.type_key] = true; });
+      const defaultJson = JSON.stringify(defaultMap);
+      await execute(env, 'UPDATE employees SET presensi_active_json = ? WHERE presensi_active_json IS NULL OR presensi_active_json = ?',
+        [defaultJson, '']);
+    }
   } catch (e) { console.error('Migration presensi_active_json:', e.message); }
 }
 
