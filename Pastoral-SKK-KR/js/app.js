@@ -679,7 +679,7 @@ function renderAdminEmployees() {
   emps.forEach((emp, idx) => {
     const tr = document.createElement('tr');
     const divOptions = adminData.divisions.map(d => `<option value="${d.name}" ${d.name === emp.division ? 'selected' : ''}>${d.name}</option>`).join('');
-    const pa = emp._presensiActive || {};
+    const pa = emp._presensi_active || emp._presensiActive || {};
 
     const toggleColsHtml = guruTypes.map(t => {
       const isActive = pa[t.key] !== false;
