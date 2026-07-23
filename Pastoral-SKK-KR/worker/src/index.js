@@ -11,8 +11,8 @@ async function ensureSchema(env) {
   }
   // Always run migrations (idempotent) — catches tables/columns added after initial deploy
   try {
-    // TiDB doesn't support ADD COLUMN IF NOT EXISTS — use try/catch instead
-    await execute(env, `ALTER TABLE employees ADD COLUMN presensi_active_json TEXT DEFAULT '{}'`);
+    // TiDB doesn't support ADD COLUMN IF NOT EXISTS nor DEFAULT for TEXT columns
+    await execute(env, `ALTER TABLE employees ADD COLUMN presensi_active_json TEXT`);
   } catch (e) {
     // Column already exists (or other DDL error) — safe to ignore
     if (!e.message.includes('Duplicate column')) console.error('Migration presensi_active_json:', e.message);
@@ -515,10 +515,11 @@ export default {
         sql += ' ORDER BY e.name';
         const rows = await query(env, sql, vals);
 
-        // Parse presensi_active_json for each row
+        // Parse presensi_active_json for each row (handle NULL or empty)
         rows.forEach(r => {
           try {
-            r._presensi_active = r.presensi_active_json ? JSON.parse(r.presensi_active_json) : {};
+            r._presensi_active = (r.presensi_active_json && r.presensi_active_json !== 'null')
+              ? JSON.parse(r.presensi_active_json) : {};
           } catch(e) { r._presensi_active = {}; }
           // Clean up internal field
           delete r.presensi_active_json;
@@ -545,9 +546,10 @@ export default {
         const allTypes = await query(env, 'SELECT type_key FROM presensi_types WHERE category = ? AND is_active = TRUE', ['guru']);
         const activeMap = {};
         allTypes.forEach(t => { activeMap[t.type_key] = true; });
+        const activeJson = JSON.stringify(activeMap);
         const result = await execute(env,
-          'INSERT INTO employees (name, position, division, employment_status, academic_year_id, is_active_rh, is_active_im, presensi_active_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          [name, position || '', division || '', employmentStatus || '', academicYearId, true, true, JSON.stringify(activeMap)]);
+          'INSERT INTO employees (name, position, division, employment_status, academic_year_id, is_active_rh, is_active_im, is_active_kf, presensi_active_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [name, position || '', division || '', employmentStatus || '', academicYearId, true, true, true, activeJson]);
         return json({ success: true, id: result.insertId }, 201, allowOrigin);
       }
 
@@ -560,7 +562,8 @@ export default {
           const rows = await query(env, 'SELECT presensi_active_json FROM employees WHERE id = ?', [id]);
           if (rows.length === 0) return json({ error: 'Karyawan tidak ditemukan' }, 404, allowOrigin);
           let activeMap = {};
-          try { activeMap = JSON.parse(rows[0].presensi_active_json || '{}'); } catch(e) {}
+          const raw = rows[0].presensi_active_json;
+          try { activeMap = (raw && raw !== 'null') ? JSON.parse(raw) : {}; } catch(e) {}
           activeMap[body.presensiType] = !!body.togglePresensi;
           await execute(env, 'UPDATE employees SET presensi_active_json = ? WHERE id = ?',
             [JSON.stringify(activeMap), id]);
