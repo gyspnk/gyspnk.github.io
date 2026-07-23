@@ -12,14 +12,8 @@ async function ensureSchema(env) {
   // Always run migrations (idempotent DDL) — catches tables added after initial deploy
   try {
     await execute(env,
-      `CREATE TABLE IF NOT EXISTS employee_presensi_active (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        employee_id INT NOT NULL,
-        presensi_type VARCHAR(50) NOT NULL,
-        is_active INT DEFAULT 1,
-        UNIQUE KEY uq_emp_presensi (employee_id, presensi_type)
-      )`);
-  } catch (e) { console.error('Migration employee_presensi_active:', e.message); }
+      `ALTER TABLE employees ADD COLUMN IF NOT EXISTS presensi_active_json TEXT DEFAULT '{}'`);
+  } catch (e) { console.error('Migration presensi_active_json:', e.message); }
 }
 
 // Simple CSV line parser
@@ -484,35 +478,28 @@ export default {
                    JOIN academic_years ay ON e.academic_year_id = ay.id WHERE 1=1`;
         const vals = [];
         if (params.get('academicYear')) { sql += ' AND ay.year_label = ?'; vals.push(params.get('academicYear')); }
-
-        // Support legacy active flags AND new dynamic presensi active table
-        const activeFilter = params.get('activePresensi');
         if (params.get('active') === 'true') {
           sql += ' AND (e.is_active_rh = TRUE OR e.is_active_im = TRUE)';
-        } else if (activeFilter) {
-          // Filter employees active for a specific presensi type via the junction table
-          sql += ` AND e.id IN (SELECT employee_id FROM employee_presensi_active WHERE presensi_type = ? AND is_active = TRUE)`;
-          vals.push(activeFilter);
         }
         sql += ' ORDER BY e.name';
         const rows = await query(env, sql, vals);
 
-        // Fetch dynamic active flags for all returned employees
-        if (rows.length > 0) {
-          const empIds = rows.map(r => r.id);
-          const placeholders = empIds.map(() => '?').join(',');
-          const activeFlags = await query(env,
-            `SELECT employee_id, presensi_type, is_active FROM employee_presensi_active WHERE employee_id IN (${placeholders})`,
-            empIds);
-          // Merge into rows
-          const flagMap = {};
-          activeFlags.forEach(f => {
-            if (!flagMap[f.employee_id]) flagMap[f.employee_id] = {};
-            flagMap[f.employee_id][f.presensi_type] = !!f.is_active;
-          });
-          rows.forEach(r => {
-            r._presensi_active = flagMap[r.id] || {};
-          });
+        // Parse presensi_active_json for each row
+        rows.forEach(r => {
+          try {
+            r._presensi_active = r.presensi_active_json ? JSON.parse(r.presensi_active_json) : {};
+          } catch(e) { r._presensi_active = {}; }
+          // Clean up internal field
+          delete r.presensi_active_json;
+        });
+
+        // Optional: filter by activePresensi
+        const activeFilter = params.get('activePresensi');
+        if (activeFilter) {
+          return json(rows.filter(r => {
+            const pa = r._presensi_active || {};
+            return pa[activeFilter] !== false;
+          }), 200, allowOrigin);
         }
         return json(rows, 200, allowOrigin);
       }
@@ -523,29 +510,29 @@ export default {
         if (!name || !academicYearId) return json({ error: 'Field tidak lengkap' }, 400, allowOrigin);
         const existing = await query(env, 'SELECT id FROM employees WHERE name = ? AND academic_year_id = ?', [name, academicYearId]);
         if (existing.length > 0) return json({ error: 'Karyawan sudah ada di tahun ajaran ini' }, 409, allowOrigin);
-        const result = await execute(env, 'INSERT INTO employees (name, position, division, employment_status, academic_year_id, is_active_rh, is_active_im) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [name, position || '', division || '', employmentStatus || '', academicYearId, true, true]);
-        // Create default active flags for all guru presensi types
+        // Initialize presensi_active_json with all guru types active
         const allTypes = await query(env, 'SELECT type_key FROM presensi_types WHERE category = ? AND is_active = TRUE', ['guru']);
-        const empId = result.insertId;
-        for (const t of allTypes) {
-          await execute(env,
-            'INSERT INTO employee_presensi_active (employee_id, presensi_type, is_active) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE is_active = TRUE',
-            [empId, t.type_key, 1]);
-        }
-        return json({ success: true, id: empId }, 201, allowOrigin);
+        const activeMap = {};
+        allTypes.forEach(t => { activeMap[t.type_key] = true; });
+        const result = await execute(env,
+          'INSERT INTO employees (name, position, division, employment_status, academic_year_id, is_active_rh, is_active_im, presensi_active_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [name, position || '', division || '', employmentStatus || '', academicYearId, true, true, JSON.stringify(activeMap)]);
+        return json({ success: true, id: result.insertId }, 201, allowOrigin);
       }
 
       if (path.startsWith('/api/employees/') && request.method === 'PUT') {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
         const id = parseInt(path.split('/').pop(), 10);
         const body = await request.json();
-        // Generic presensi type toggle (new dynamic approach)
+        // Generic presensi type toggle — update JSON column on employees table
         if (body.togglePresensi !== undefined && body.presensiType) {
-          await execute(env,
-            `INSERT INTO employee_presensi_active (employee_id, presensi_type, is_active) VALUES (?, ?, ?)
-             ON DUPLICATE KEY UPDATE is_active = VALUES(is_active)`,
-            [id, body.presensiType, body.togglePresensi ? 1 : 0]);
+          const rows = await query(env, 'SELECT presensi_active_json FROM employees WHERE id = ?', [id]);
+          if (rows.length === 0) return json({ error: 'Karyawan tidak ditemukan' }, 404, allowOrigin);
+          let activeMap = {};
+          try { activeMap = JSON.parse(rows[0].presensi_active_json || '{}'); } catch(e) {}
+          activeMap[body.presensiType] = !!body.togglePresensi;
+          await execute(env, 'UPDATE employees SET presensi_active_json = ? WHERE id = ?',
+            [JSON.stringify(activeMap), id]);
         // Legacy toggle support
         } else if (body.toggleActiveRH !== undefined) {
           await execute(env, 'UPDATE employees SET is_active_rh = ? WHERE id = ?', [body.toggleActiveRH ? 1 : 0, id]);
