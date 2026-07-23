@@ -632,9 +632,26 @@ function renderAdminEmployees() {
   let emps = adminData.employees;
 
   // Get guru presensi types for dynamic toggle columns
-  const guruTypes = (CONFIG._allPresensiTypes || CONFIG.PRESENSI_TYPES)
-    .map(pt => ({ key: pt.type_key || pt.value, label: pt.type_label || pt.label, category: pt.category }))
-    .filter(pt => pt.category === 'guru');
+  let guruTypes = [];
+  const rawTypes = CONFIG._allPresensiTypes || CONFIG._presensiTypes || CONFIG.PRESENSI_TYPES;
+  if (Array.isArray(rawTypes) && rawTypes.length > 0) {
+    guruTypes = rawTypes
+      .map(pt => ({
+        key: pt.type_key || pt.value,
+        label: pt.type_label || pt.label,
+        category: pt.category
+      }))
+      .filter(pt => pt.category === 'guru');
+  }
+  // Fallback: if no guru types found, use at least the legacy 3
+  if (guruTypes.length === 0) {
+    guruTypes = [
+      { key: 'renungan_harian', label: 'RH', category: 'guru' },
+      { key: 'ibadah_mingguan', label: 'IM', category: 'guru' },
+      { key: 'kanaan_fellowship_guru', label: 'KF', category: 'guru' },
+    ];
+  }
+  console.log('[EmpTable] guruTypes:', guruTypes.map(t => t.key).join(', '), '| count:', emps.length);
 
   // Update dynamic header colspan
   const presensiHeader = document.getElementById('emp-presensi-headers');
@@ -732,20 +749,28 @@ function renderAdminEmployees() {
     };
   });
 
-  // Dynamic presensi toggle handlers
-  tbody.querySelectorAll('[data-toggle-presensi]').forEach(btn => {
-    btn.onclick = async () => {
-      const id = parseInt(btn.dataset.togglePresensi, 10);
-      const presensiType = btn.dataset.presensiType;
-      const isActive = btn.dataset.active === '1';
+  // Dynamic presensi toggle handlers — use event delegation on the tbody
+  if (!tbody._toggleHandlerAttached) {
+    tbody._toggleHandlerAttached = true;
+    tbody.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-toggle-presensi]');
+      if (!btn) return;
+      e.preventDefault();
+      const id = parseInt(btn.getAttribute('data-toggle-presensi'), 10);
+      const presensiType = btn.getAttribute('data-presensi-type');
+      const isActive = btn.getAttribute('data-active') === '1';
+      console.log('[Toggle]', { id, presensiType, isActive });
       try {
+        btn.disabled = true;
+        btn.textContent = '...';
         await api.updateEmployee(id, { togglePresensi: !isActive, presensiType });
         await loadAdminEmployees();
       } catch (e) {
         alert('Gagal: ' + e.message);
+        btn.disabled = false;
       }
-    };
-  });
+    });
+  }
 
   tbody.querySelectorAll('[data-del-emp]').forEach(btn => {
     btn.onclick = async () => {

@@ -468,6 +468,7 @@ const realApi = {
     const qs = new URLSearchParams();
     if (params.academicYear) qs.set('academicYear', params.academicYear);
     if (params.active) qs.set('active', params.active);
+    if (params.activePresensi) qs.set('activePresensi', params.activePresensi);
     if (params.activeRH) qs.set('activeRH', params.activeRH);
     if (params.activeIM) qs.set('activeIM', params.activeIM);
     if (params.activeKF) qs.set('activeKF', params.activeKF);
