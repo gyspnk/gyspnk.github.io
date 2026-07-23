@@ -698,7 +698,7 @@ function parseChapelKaryawan(sheet, columns, rows) {
 
 // Komsel Karyawan:
 // Sheets API returns: Hari/Tanggal(0), Jenjang(1), Petugas Pujian(2), Petugas Firman(3),
-//   Tema Utama(4), Tagline(5), Judul(6), Tujuan(7), Ayat(8), PAMS(9), Link(10)
+//   Tema Utama(4), Tagline(5), PAMS(6), Link(7)
 // NOTE: PAMS column contains reference to PAMS document / bahan
 // NOTE: Link column contains URL to the PAMS document
 function parseKomselKaryawan(sheet, columns, rows) {
@@ -707,7 +707,7 @@ function parseKomselKaryawan(sheet, columns, rows) {
 
   // Auto-detect column indices from header labels
   const colMap = { date: 0, jenjang: 1, petugasPujian: 2, petugasFirman: 3,
-    tema: 4, tagline: 5, judul: 6, tujuan: 7, ayat: 8, pams: 9, link: 10 };
+    tema: 4, tagline: 5, pams: 6, link: 7 };
   if (columns && columns.length > 0) {
     columns.forEach((col, idx) => {
       const label = (col || '').toLowerCase().trim();
@@ -717,9 +717,6 @@ function parseKomselKaryawan(sheet, columns, rows) {
       else if (/firman/i.test(label)) colMap.petugasFirman = idx;
       else if (/tema\s|^tema$/i.test(label) && !/tagline|sub/i.test(label)) colMap.tema = idx;
       else if (/tagline/i.test(label)) colMap.tagline = idx;
-      else if (/^judul$/i.test(label)) colMap.judul = idx;
-      else if (/tujuan/i.test(label)) colMap.tujuan = idx;
-      else if (/ayat/i.test(label)) colMap.ayat = idx;
       else if (/pams/i.test(label)) colMap.pams = idx;
       else if (/link|url|http/i.test(label)) colMap.link = idx;
     });
@@ -735,7 +732,7 @@ function parseKomselKaryawan(sheet, columns, rows) {
     const rawDate = String(row[colMap.date] || '').trim();
     // Skip header/subtitle rows
     if (!rawDate) return;
-    if (/^(Hari\/Tanggal|Jenjang|Petugas|Tema|Tagline|Judul|Tujuan|Ayat|PAMS|Link)/i.test(rawDate)) return;
+    if (/^(Hari\/Tanggal|Jenjang|Petugas|Tema|Tagline|PAMS|Link)/i.test(rawDate)) return;
     if (/jadwal komsel|setiap|character building|minggu ke|bahan pams/i.test(rawDate)) return;
 
     const parsed = parseDateFlexible(rawDate);
@@ -752,9 +749,6 @@ function parseKomselKaryawan(sheet, columns, rows) {
     const petugasFirman = getCol(row, 'petugasFirman');
     const tema = getCol(row, 'tema');
     const tagline = getCol(row, 'tagline');
-    const judul = getCol(row, 'judul');
-    const tujuan = getCol(row, 'tujuan');
-    const ayat = getCol(row, 'ayat');
     const pams = getCol(row, 'pams');
     const link = getCol(row, 'link');
 
@@ -768,11 +762,8 @@ function parseKomselKaryawan(sheet, columns, rows) {
     if (jenjang) detailHtml += `<div class="event-field"><strong>Jenjang:</strong> ${jenjang}</div>`;
     if (tema) detailHtml += `<div class="event-field"><strong>Tema:</strong> ${tema}</div>`;
     if (tagline) detailHtml += `<div class="event-field"><strong>Tagline:</strong> ${tagline}</div>`;
-    if (judul) detailHtml += `<div class="event-field"><strong>Judul:</strong> ${judul}</div>`;
     if (petugasPujian) detailHtml += `<div class="event-field"><strong>Petugas Pujian:</strong> ${petugasPujian}</div>`;
     if (petugasFirman) detailHtml += `<div class="event-field"><strong>Petugas Firman:</strong> ${petugasFirman}</div>`;
-    if (tujuan) detailHtml += `<div class="event-field"><strong>Tujuan:</strong> ${tujuan}</div>`;
-    if (ayat) detailHtml += `<div class="event-field"><strong>Ayat:</strong> ${ayat}</div>`;
     if (pams) {
       // If pams contains a URL, make it clickable; otherwise show as text
       const isUrl = /^https?:\/\//i.test(pams);
