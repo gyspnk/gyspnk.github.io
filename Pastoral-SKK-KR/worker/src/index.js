@@ -11,10 +11,15 @@ async function ensureSchema(env) {
   }
   // Always run migrations (idempotent) — catches tables/columns added after initial deploy
   try {
-    await execute(env, `ALTER TABLE employees ADD COLUMN presensi_active_json TEXT`);
+    await execute(env, `ALTER TABLE employees ADD COLUMN presensi_active_json JSON`);
   } catch (e) {
-    // Column already exists — safe to ignore
-    if (!e.message.includes('Duplicate column')) console.error('Migration presensi_active_json:', e.message);
+    if (!e.message.includes('Duplicate column')) {
+      // Try TEXT as fallback (some TiDB versions don't support JSON type)
+      try { await execute(env, `ALTER TABLE employees ADD COLUMN presensi_active_json TEXT`); }
+      catch (e2) {
+        if (!e2.message.includes('Duplicate column')) console.error('Migration presensi_active_json:', e.message, e2.message);
+      }
+    }
   }
 }
 
@@ -488,9 +493,10 @@ export default {
 
         // Parse presensi_active_json + lazy fallback to legacy columns
         rows.forEach(r => {
+          const rawJson = r.presensi_active_json;
           try {
-            r._presensi_active = (r.presensi_active_json && r.presensi_active_json !== 'null')
-              ? JSON.parse(r.presensi_active_json) : {};
+            r._presensi_active = (rawJson && rawJson !== 'null')
+              ? JSON.parse(rawJson) : {};
           } catch(e) { r._presensi_active = {}; }
           // Lazy migration: if JSON is empty, use legacy columns as fallback
           if (Object.keys(r._presensi_active).length === 0) {
@@ -499,6 +505,8 @@ export default {
             if (r.is_active_kf !== undefined) r._presensi_active['kanaan_fellowship_guru'] = !!r.is_active_kf;
             // Other guru types default to true (will be saved on first toggle)
           }
+          // Keep raw value for debugging (first employee only)
+          r._raw_json = rawJson;
           delete r.presensi_active_json;
         });
 
@@ -541,9 +549,12 @@ export default {
           let activeMap = {};
           const raw = rows[0].presensi_active_json;
           try { activeMap = (raw && raw !== 'null') ? JSON.parse(raw) : {}; } catch(e) {}
+          const oldVal = activeMap[body.presensiType];
           activeMap[body.presensiType] = !!body.togglePresensi;
+          const newJson = JSON.stringify(activeMap);
           await execute(env, 'UPDATE employees SET presensi_active_json = ? WHERE id = ?',
-            [JSON.stringify(activeMap), id]);
+            [newJson, id]);
+          return json({ success: true, presensiType: body.presensiType, oldValue: oldVal, newValue: !!body.togglePresensi, saved: newJson }, 200, allowOrigin);
         // Legacy toggle support
         } else if (body.toggleActiveRH !== undefined) {
           await execute(env, 'UPDATE employees SET is_active_rh = ? WHERE id = ?', [body.toggleActiveRH ? 1 : 0, id]);

@@ -652,6 +652,13 @@ function renderAdminEmployees() {
     ];
   }
   console.log('[EmpTable] guruTypes:', guruTypes.map(t => t.key).join(', '), '| count:', emps.length);
+  // Debug: show raw JSON & parsed active state for first employee
+  if (emps.length > 0) {
+    const first = emps[0];
+    console.log('[EmpTable] first employee id=' + first.id + ' name=' + first.name,
+      '_raw_json:', first._raw_json,
+      '_presensiActive:', JSON.stringify(first._presensiActive));
+  }
 
   // Update dynamic header colspan
   const presensiHeader = document.getElementById('emp-presensi-headers');
@@ -775,7 +782,8 @@ window._toggleEmpPresensi = async function(empId, presensiType, isActive, btnEl)
   const originalText = btnEl.textContent;
   btnEl.textContent = '...';
   try {
-    await api.updateEmployee(empId, { togglePresensi: isActive === 0, presensiType });
+    const result = await api.updateEmployee(empId, { togglePresensi: isActive === 0, presensiType });
+    console.log('[Toggle] API response:', result);
     await loadAdminEmployees();
   } catch (e) {
     alert('Gagal: ' + e.message);
