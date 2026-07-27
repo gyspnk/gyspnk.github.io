@@ -7,6 +7,16 @@ function safeParseJSON(str) {
   try { return JSON.parse(str); } catch (e) { return null; }
 }
 
+/** Parse repeat_days from DB — bisa string JSON atau array langsung */
+function parseRepeatDays(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    try { const r = JSON.parse(val); return Array.isArray(r) ? r : []; } catch (e) { return []; }
+  }
+  return [];
+}
+
 /* ===== Calendar State ===== */
 let currentMonth, currentYear;
 let scheduleData = {};    // { sheetKey: { columns, rows, accessible, error } }
@@ -492,10 +502,7 @@ function buildEventMap() {
     const start = new Date(cev.start_date + 'T00:00:00');
     const end = new Date(cev.end_date + 'T00:00:00');
     const isRepeating = cev.is_repeating == true;
-    let repeatDays = [];
-    if (isRepeating && cev.repeat_days) {
-      try { repeatDays = JSON.parse(cev.repeat_days); } catch (e) {}
-    }
+    const repeatDays = parseRepeatDays(cev.repeat_days);
 
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       // Skip if repeating and this day-of-week is not selected
@@ -1168,10 +1175,7 @@ function openAddEventModal(event) {
   if (saveBtn) saveBtn.textContent = isEdit ? 'Simpan Perubahan' : 'Simpan';
 
   // Parse repeat days
-  let repeatDays = [];
-  if (isEdit && event.repeat_days) {
-    try { repeatDays = JSON.parse(event.repeat_days); } catch (e) {}
-  }
+  const repeatDays = parseRepeatDays(isEdit ? event.repeat_days : null);
   const isRepeating = isEdit && event.is_repeating == true;
 
   if (isEdit) {
@@ -1313,13 +1317,10 @@ function renderCustomEventList() {
   tbody.innerHTML = '';
   customEvents.forEach(evt => {
     const isRepeating = evt.is_repeating == true;
-    let repeatDays = [];
     let repeatLabel = '';
-    if (isRepeating && evt.repeat_days) {
-      try { repeatDays = JSON.parse(evt.repeat_days); } catch (e) {}
-      if (repeatDays.length > 0) {
-        repeatLabel = ' 🔁 ' + repeatDays.map(d => DAY_LABELS[d]).join(', ');
-      }
+    const repeatDays = parseRepeatDays(evt.repeat_days);
+    if (repeatDays.length > 0) {
+      repeatLabel = ' 🔁 ' + repeatDays.map(d => DAY_LABELS[d]).join(', ');
     }
     const titleHtml = `<strong>${evt.title}</strong>${repeatLabel ? `<br><small style="color:var(--text-muted)">${repeatLabel}</small>` : ''}${evt.description ? `<br><small style="color:var(--text-muted)">${evt.description}</small>` : ''}`;
     const tr = document.createElement('tr');

@@ -668,6 +668,47 @@ tbody tr:hover { background: #f8fafc; }
   outline: none; border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
 }
 
+/* ===== Repeat Event UI ===== */
+.cev-repeat-label {
+  display: flex; align-items: center; gap: 6px;
+  cursor: pointer; font-weight: 600; font-size: 14px;
+  padding: 6px 0;
+}
+.cev-repeat-label input { width: 16px; height: 16px; cursor: pointer; }
+.repeat-config {
+  border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px;
+  margin-bottom: 10px;
+  background: var(--bg-secondary);
+}
+.repeat-days-title {
+  font-size: 13px; font-weight: 600;
+  margin-bottom: 8px;
+}
+.repeat-days-grid {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.day-check-label {
+  display: inline-flex; align-items: center; gap: 4px;
+  cursor: pointer; font-size: 13px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  transition: all 0.15s;
+  user-select: none;
+}
+.day-check-label:hover {
+  border-color: var(--primary);
+  background: #f0f9ff;
+}
+.day-check-label:has(input:checked) {
+  border-color: var(--primary);
+  background: #dbeafe;
+  font-weight: 500;
+}
+.day-check-label input { display: none; }
+
 /* ================================================================
    RESPONSIVE — Tablet (≤ 1024px)
    ================================================================ */
