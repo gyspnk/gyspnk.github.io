@@ -2556,7 +2556,6 @@ function initBotView() {
   document.getElementById('bot-groups-reload').onclick = loadBotGroups;
   document.getElementById('bot-groups-sync').onclick = handleBotSync;
   document.getElementById('bot-group-add-btn').onclick = () => openBotGroupModal();
-  document.getElementById('bot-config-save').onclick = handleBotConfigSave;
   document.getElementById('bot-group-modal-close').onclick = closeBotGroupModal;
   document.getElementById('bot-group-modal-cancel').onclick = closeBotGroupModal;
   document.getElementById('bot-group-modal-save').onclick = handleBotGroupSave;
@@ -2564,7 +2563,6 @@ function initBotView() {
     if (e.target === document.getElementById('bot-group-modal')) closeBotGroupModal();
   };
   loadBotGroups();
-  loadBotConfig();
 }
 
 async function loadBotGroups() {
@@ -2630,37 +2628,6 @@ function renderBotGroups() {
   });
   if (tbody.children.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px">Belum ada grup. Tambah grup Telegram atau ketik /start di bot di grup.</td></tr>';
-  }
-}
-
-async function loadBotConfig() {
-  try {
-    const cfg = await api.getBotConfig() || {};
-    document.getElementById('bot-sheet-id').value = cfg.sheet_id || '';
-    document.getElementById('bot-sheet-range').value = cfg.sheet_range || '';
-  } catch (e) { /* ignore */ }
-}
-
-async function handleBotConfigSave() {
-  const msgEl = document.getElementById('bot-config-msg');
-  const sheetId = document.getElementById('bot-sheet-id').value.trim();
-  const sheetRange = document.getElementById('bot-sheet-range').value.trim();
-  if (!sheetId || !sheetRange) {
-    msgEl.textContent = 'Sheet ID dan Range wajib diisi.';
-    msgEl.className = 'info-msg'; msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
-    msgEl.classList.remove('hidden'); return;
-  }
-  msgEl.textContent = 'Menyimpan...';
-  msgEl.className = 'info-msg'; msgEl.style.background = '#dbeafe'; msgEl.style.color = '#1e40af';
-  msgEl.classList.remove('hidden');
-  try {
-    await api.saveBotConfig({ sheetId, sheetRange });
-    msgEl.textContent = '✅ Konfigurasi berhasil disimpan.';
-    msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';
-    setTimeout(() => msgEl.classList.add('hidden'), 2000);
-  } catch (e) {
-    msgEl.textContent = 'Gagal: ' + e.message;
-    msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
   }
 }
 
