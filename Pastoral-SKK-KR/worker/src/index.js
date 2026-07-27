@@ -157,7 +157,8 @@ async function pushGroupToFirestore(env, chatId, groupName, isEnabled, announceH
       announce_minute: { integerValue: announceMinute || 0 },
     };
     if (activeSchedules !== undefined) {
-      fields.active_schedules = { stringValue: JSON.stringify(activeSchedules) };
+      const schedStr = typeof activeSchedules === "string" ? activeSchedules : JSON.stringify(activeSchedules);
+      fields.active_schedules = { stringValue: schedStr };
     }
     const body = { fields };
     await fetch(fbUrl, {
