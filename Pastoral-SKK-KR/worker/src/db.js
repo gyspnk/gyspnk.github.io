@@ -198,6 +198,8 @@ export async function initSchema(env) {
     // Add repeat support for custom events
     `ALTER TABLE calendar_custom_events ADD COLUMN IF NOT EXISTS is_repeating BOOLEAN DEFAULT FALSE`,
     `ALTER TABLE calendar_custom_events ADD COLUMN IF NOT EXISTS repeat_days TEXT DEFAULT NULL`,
+    // Notes for sheet-level keterangan (shown on every event from this sheet)
+    `ALTER TABLE calendar_sheet_configs ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT NULL AFTER column_config`,
   ];
   for (const sql of statements) {
     try {

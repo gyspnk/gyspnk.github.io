@@ -162,6 +162,7 @@ async function loadCalendarConfig() {
         gid: c.gid || '0',
         color: c.color || '#3b82f6',
         columnConfig: safeParseJSON(c.column_config),
+        notes: c.notes || '',
         defaultVisible: true
       }));
       return;
@@ -494,6 +495,12 @@ function buildEventMap() {
     if (!data || !data.rows || data.rows.length === 0) return;
 
     const events = parseSheetEvents(sheet, data.columns, data.rows);
+    // Inject sheet notes into each event detail
+    if (sheet.notes) {
+      events.forEach(evt => {
+        evt.detailHtml = evt.detailHtml.replace('</div>', `<hr class="event-separator" /><div class="event-notes">${sheet.notes}</div></div>`);
+      });
+    }
     events.forEach(evt => {
       // Apply search filter: match shortLabel, summary, or detailHtml
       if (searchQuery) {

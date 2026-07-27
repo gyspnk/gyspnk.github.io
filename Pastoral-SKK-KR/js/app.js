@@ -2323,6 +2323,9 @@ function openColumnEditor(configId) {
   document.getElementById('cal-col-editor-title').textContent = `📋 Atur Kolom — ${config.sheet_label}`;
   document.getElementById('cal-col-editor-info').textContent = `Key: ${config.sheet_key} | Tahun: ${config.academic_year}`;
   renderColumnEditorList();
+  // Load notes
+  const notesEl = document.getElementById('cal-col-notes');
+  if (notesEl) notesEl.innerHTML = config.notes || '';
   document.getElementById('cal-col-msg').classList.add('hidden');
   document.getElementById('cal-column-editor-modal').classList.remove('hidden');
 }
@@ -2331,6 +2334,7 @@ function closeColumnEditor() {
   _colEditorConfigId = null;
   _colEditorData = [];
   document.getElementById('cal-column-editor-modal').classList.add('hidden');
+  document.getElementById('cal-col-notes').innerHTML = '';
 }
 
 function renderColumnEditorList() {
@@ -2456,13 +2460,18 @@ async function saveColumnEditor() {
   msgEl.classList.remove('hidden');
 
   try {
-    await api.updateCalendarColumns(_colEditorConfigId, columnConfig);
+    const notesEl = document.getElementById('cal-col-notes');
+    const notes = (notesEl.innerHTML === '<br>' || !notesEl.innerHTML.trim()) ? '' : notesEl.innerHTML;
+    await api.updateCalendarColumns(_colEditorConfigId, columnConfig, notes);
     msgEl.textContent = '✅ Konfigurasi kolom berhasil disimpan.';
     msgEl.style.background = '#dcfce7';
     msgEl.style.color = '#166534';
     // Update local data
     const config = calendarConfigData.find(c => c.id === _colEditorConfigId);
-    if (config) config.column_config = JSON.stringify(columnConfig);
+    if (config) {
+      config.column_config = JSON.stringify(columnConfig);
+      config.notes = notes;
+    }
     setTimeout(() => closeColumnEditor(), 1200);
   } catch (e) {
     msgEl.textContent = 'Gagal: ' + (e.message || 'Coba lagi');

@@ -925,9 +925,15 @@ export default {
       if (calConfigColumnsMatch && request.method === 'PUT') {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
         const id = parseInt(calConfigColumnsMatch[1], 10);
-        const { columnConfig } = await request.json();
+        const { columnConfig, notes } = await request.json();
         const columnConfigJson = columnConfig ? JSON.stringify(columnConfig) : null;
-        await execute(env, 'UPDATE calendar_sheet_configs SET column_config = ? WHERE id = ?', [columnConfigJson, id]);
+        if (columnConfig !== undefined && notes !== undefined) {
+          await execute(env, 'UPDATE calendar_sheet_configs SET column_config = ?, notes = ? WHERE id = ?', [columnConfigJson, notes || null, id]);
+        } else if (columnConfig !== undefined) {
+          await execute(env, 'UPDATE calendar_sheet_configs SET column_config = ? WHERE id = ?', [columnConfigJson, id]);
+        } else if (notes !== undefined) {
+          await execute(env, 'UPDATE calendar_sheet_configs SET notes = ? WHERE id = ?', [notes || null, id]);
+        }
         return json({ success: true }, 200, allowOrigin);
       }
 
