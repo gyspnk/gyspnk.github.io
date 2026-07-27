@@ -276,6 +276,18 @@ function updateSidebarPermissions() {
     calendarNav.parentElement.style.display = hasCalAccess ? '' : 'none';
   }
 
+  // Bot Telegram visibility: admin only
+  const botNav = document.getElementById('bot-nav');
+  if (botNav) {
+    botNav.style.display = (user.role === 'admin') ? '' : 'none';
+  }
+
+  // Calendar settings gear: admin only
+  const calSettingsBtn = document.getElementById('cal-settings-btn');
+  if (calSettingsBtn) {
+    const hasCalAccess = (typeof perms._kalender_pastoral === 'boolean') ? perms._kalender_pastoral : (user.role === 'admin' || user.role === 'pastoral');
+    calSettingsBtn.style.display = (hasCalAccess && user.role === 'admin') ? '' : 'none';
+  }
 }
 
 function filterPresensiTypeSelectors() {

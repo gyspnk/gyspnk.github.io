@@ -127,6 +127,49 @@ async function getGoogleAccessToken(env) {
   return _cachedAccessToken;
 }
 
+/** Push group config to Firestore so the bot reads it immediately */
+async function pushGroupToFirestore(env, chatId, groupName, isEnabled, announceHour, announceMinute, activeSchedules) {
+  if (!env.GSA_JSON) return;
+  try {
+    let sa;
+    try { sa = parseGSAJson(env.GSA_JSON); } catch (e) { return; }
+    const now = Math.floor(Date.now() / 1000);
+    const jwt = await signJWT(
+      { alg: 'RS256', typ: 'JWT' },
+      { iss: sa.client_email, scope: 'https://www.googleapis.com/auth/datastore',
+        aud: 'https://oauth2.googleapis.com/token', exp: now + 3600, iat: now },
+      sa.private_key
+    );
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${encodeURIComponent(jwt)}`
+    });
+    if (!tokenRes.ok) return;
+    const tokenData = await tokenRes.json();
+    const projectId = sa.project_id;
+    const fbUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/bot_groups/${encodeURIComponent(String(chatId))}`;
+    const fields = {
+      chat_id: { stringValue: String(chatId) },
+      title: { stringValue: groupName || '' },
+      enabled: { booleanValue: isEnabled },
+      announce_hour: { integerValue: announceHour || 13 },
+      announce_minute: { integerValue: announceMinute || 0 },
+    };
+    if (activeSchedules !== undefined) {
+      fields.active_schedules = { stringValue: JSON.stringify(activeSchedules) };
+    }
+    const body = { fields };
+    await fetch(fbUrl, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${tokenData.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+  } catch (e) {
+    console.error('pushGroupToFirestore error:', e.message);
+  }
+}
+
 async function fetchSheetViaSheetsAPI(sheetId, gid, accessToken) {
   // Get sheet name from gid via metadata
   const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties`;
