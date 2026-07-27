@@ -365,6 +365,11 @@
             </div>
           </div>
 
+          <!-- Search bar -->
+          <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+            <input type="text" id="cal-search" placeholder="🔍 Cari nama petugas..." style="width:220px;padding:5px 10px;border:1px solid var(--border);border-radius:16px;font-size:12px" />
+          </div>
+
           <!-- Month Navigation -->
           <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px">
             <button id="cal-prev-month" class="btn btn-sm btn-secondary" title="Bulan sebelumnya">◀</button>
@@ -377,9 +382,6 @@
           <div class="calendar-filters" id="calendar-filters">
             <span class="filter-label">Tampilkan:</span>
             <div id="calendar-filter-chips" class="filter-chips"></div>
-            <div style="flex:1;min-width:140px;max-width:220px;margin-left:auto">
-              <input type="text" id="cal-search" placeholder="🔍 Cari nama petugas..." style="width:100%;padding:5px 10px;border:1px solid var(--border);border-radius:16px;font-size:12px" />
-            </div>
           </div>
 
           <!-- Loading & Status -->
