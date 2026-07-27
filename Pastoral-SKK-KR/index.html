@@ -873,6 +873,54 @@
               </div>
             </div>
           </div>
+<!-- Tab: Presensi Config -->
+          <div id="admin-tab-presensi-config" class="admin-tab-content hidden">
+            <div class="admin-form-card" style="max-width:700px;margin-bottom:16px">
+              <h3>Kelola Kategori Presensi</h3>
+              <p class="muted" style="margin-bottom:12px">Tambah/hapus kategori presensi. Tandai <strong>Guru</strong> atau <strong>Siswa</strong>.</p>
+              <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:12px">
+                <div class="form-group" style="flex:1;min-width:110px"><label>Key</label><input type="text" id="new-pt-key" placeholder="contoh: retreat_guru" style="font-family:monospace" /></div>
+                <div class="form-group" style="flex:2;min-width:150px"><label>Nama</label><input type="text" id="new-pt-label" placeholder="contoh: Retreat Guru" /></div>
+                <div class="form-group" style="min-width:90px"><label>Tipe</label><select id="new-pt-category"><option value="guru">Guru</option><option value="siswa">Siswa</option></select></div>
+                <button id="add-pt-btn" class="btn btn-primary btn-sm">Tambah</button>
+              </div>
+              <div class="table-wrapper"><table>
+                <thead><tr><th>Key</th><th>Nama</th><th>Tipe</th><th>Status</th><th>Aksi</th></tr></thead>
+                <tbody id="presensi-types-tbody"></tbody>
+              </table></div>
+            </div>
+            <div class="admin-form-card" style="max-width:700px">
+              <h3>Konfigurasi Hari Presensi</h3>
+              <p class="muted" style="margin-bottom:16px">Atur hari apa saja setiap presensi boleh diisi. Hari yang tidak dicentang akan <strong>digrey-out</strong> di kalender dan tidak bisa dipilih.</p>
+              <div id="presensi-config-list"></div>
+            </div>
+          </div>
+
+          <!-- Export Column Selector Modal -->
+          <div id="export-column-modal" class="modal-overlay hidden">
+            <div class="modal-card" style="max-width:420px">
+              <div class="modal-header">
+                <h3 id="export-col-title">Pilih Kolom untuk Export</h3>
+                <button id="export-col-close" class="btn btn-sm btn-text">✕</button>
+              </div>
+              <div class="modal-body">
+                <p class="muted" style="margin-bottom:10px">Centang kolom yang ingin diexport:</p>
+                <div id="export-col-list" style="max-height:260px;overflow-y:auto;margin-bottom:12px"></div>
+                <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap">
+                  <button id="export-col-select-all" class="btn btn-sm btn-secondary">Pilih Semua</button>
+                  <button id="export-col-deselect-all" class="btn btn-sm btn-secondary">Hapus Semua</button>
+                </div>
+                <div id="export-col-filter-info" class="info-msg" style="margin-top:10px;font-size:12px;background:#f0f9ff;color:#1e40af;padding:6px 10px;border-radius:6px"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+                  <button id="export-col-cancel" class="btn btn-secondary btn-sm">Batal</button>
+                  <button id="export-col-proceed" class="btn btn-primary btn-sm">Export</button>
+                </div>
+                <div id="export-col-msg" class="info-msg hidden" style="margin-top:8px"></div>
+              </div>
+            </div>
+          </div>
+
+          
         </section>
 
       </main>
