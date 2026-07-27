@@ -227,6 +227,7 @@ export async function initSchema(env) {
     `INSERT IGNORE INTO bot_config (config_key, config_value) VALUES ('sheet_range', 'Jadwal Renungan Guru!A6:F1000')`,
     // Active schedules per group (JSON array of sheet_key + 'custom_event')
     `ALTER TABLE bot_groups ADD COLUMN IF NOT EXISTS active_schedules TEXT DEFAULT NULL`,
+    `ALTER TABLE bot_groups ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT NULL`,
   ];
   for (const sql of statements) {
     try {

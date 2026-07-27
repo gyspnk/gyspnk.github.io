@@ -2674,6 +2674,7 @@ function openBotGroupModal(group) {
   document.getElementById('bot-group-hour').value = group ? (group.announce_hour || 13) : 13;
   document.getElementById('bot-group-minute').value = group ? (group.announce_minute || 0) : 0;
   document.getElementById('bot-group-enabled').checked = group ? (group.is_enabled != false) : true;
+  document.getElementById('bot-group-notes').value = group ? (group.notes || '') : '';
   document.getElementById('bot-group-modal-msg').classList.add('hidden');
 
   // Populate schedule checkboxes
@@ -2706,6 +2707,7 @@ async function handleBotGroupSave() {
   const announceMinute = parseInt(document.getElementById('bot-group-minute').value, 10) || 0;
   const isEnabled = document.getElementById('bot-group-enabled').checked;
   const activeSchedules = [...document.querySelectorAll('.bot-sched-cb:checked')].map(cb => cb.value);
+  const notes = document.getElementById('bot-group-notes').value.trim();
 
   if (!chatId) {
     msgEl.textContent = 'Chat ID wajib diisi.';
@@ -2719,9 +2721,9 @@ async function handleBotGroupSave() {
 
   try {
     if (_editingBotGroupId) {
-      await api.updateBotGroup(_editingBotGroupId, { groupName, announceHour, announceMinute, isEnabled, activeSchedules });
+      await api.updateBotGroup(_editingBotGroupId, { groupName, announceHour, announceMinute, isEnabled, activeSchedules, notes });
     } else {
-      await api.saveBotGroup({ chatId, groupName, announceHour, announceMinute, isEnabled, activeSchedules });
+      await api.saveBotGroup({ chatId, groupName, announceHour, announceMinute, isEnabled, activeSchedules, notes });
     }
     msgEl.textContent = '✅ Grup berhasil disimpan.';
     msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';

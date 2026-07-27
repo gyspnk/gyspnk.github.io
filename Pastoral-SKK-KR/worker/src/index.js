@@ -181,7 +181,7 @@ async function pushSheetConfigsToFirestore(env) {
 }
 
 /** Push group config to Firestore so the bot reads it immediately */
-async function pushGroupToFirestore(env, chatId, groupName, isEnabled, announceHour, announceMinute, activeSchedules) {
+async function pushGroupToFirestore(env, chatId, groupName, isEnabled, announceHour, announceMinute, activeSchedules, notes) {
   if (!env.GSA_JSON) return;
   try {
     let sa;
@@ -212,6 +212,9 @@ async function pushGroupToFirestore(env, chatId, groupName, isEnabled, announceH
     if (activeSchedules !== undefined) {
       const schedStr = typeof activeSchedules === "string" ? activeSchedules : JSON.stringify(activeSchedules);
       fields.active_schedules = { stringValue: schedStr };
+    }
+    if (notes !== undefined) {
+      fields.notes = { stringValue: notes || '' };
     }
     const body = { fields };
     await fetch(fbUrl, {
@@ -431,7 +434,7 @@ export default {
             const textCols = colCfg.length > 0 ? colCfg.filter(c => c.type === 'text' || c.type === 'link') : [];
             const shortCol = colCfg.length > 0 ? colCfg.find(c => c.short === true) : null;
             const label = cfg.sheet_label || sk;
-            const notes = cfg.notes || '';
+            const notes = (g.notes ? g.notes + '\n' : '') + (cfg.notes || '');
 
             // Handle multi-group sheets (columns with group > 0 = sub-events)
             const groups = new Set();
@@ -1331,6 +1334,7 @@ export default {
         if (body.announceHour !== undefined) { updates.push('announce_hour = ?'); params.push(body.announceHour); }
         if (body.announceMinute !== undefined) { updates.push('announce_minute = ?'); params.push(body.announceMinute); }
         if (body.activeSchedules !== undefined) { updates.push('active_schedules = ?'); params.push(JSON.stringify(body.activeSchedules)); }
+        if (body.notes !== undefined) { updates.push('notes = ?'); params.push(body.notes); }
         if (updates.length > 0) {
           params.push(id);
           await execute(env, `UPDATE bot_groups SET ${updates.join(', ')} WHERE id = ?`, params);
@@ -1340,7 +1344,7 @@ export default {
           const updated = await query(env, 'SELECT * FROM bot_groups WHERE id = ?', [id]);
           if (updated.length > 0) {
             const g = updated[0];
-            await pushGroupToFirestore(env, g.chat_id, g.group_name, g.is_enabled == true, g.announce_hour, g.announce_minute, g.active_schedules);
+            await pushGroupToFirestore(env, g.chat_id, g.group_name, g.is_enabled == true, g.announce_hour, g.announce_minute, g.active_schedules, g.notes);
           }
         } catch (_) { /* non-blocking */ }
         return json({ success: true }, 200, allowOrigin);
