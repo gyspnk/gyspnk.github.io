@@ -557,7 +557,7 @@ function parseWithColumnConfig(sheet, columns, rows) {
       groups.forEach(g => {
         const gCols = colConfig.filter(c => c.group === g);
         const gDate = gCols.find(c => c.type === 'date');
-        const gTexts = gCols.filter(c => c.type === 'text' || c.type === 'link');
+        const gTexts = gCols.filter(c => (c.type === 'text' || c.type === 'link') && c.show_calendar !== false);
         if (!gDate) return;
         const rawDate = row[gDate.idx] !== undefined ? String(row[gDate.idx]).trim() : '';
         if (!rawDate) return;
@@ -588,7 +588,7 @@ function parseWithColumnConfig(sheet, columns, rows) {
   // Single-date mode
   const dateCol = colConfig.find(c => c.type === 'date');
   const shortCol = colConfig.find(c => c.short === true);
-  const textCols = colConfig.filter(c => c.type === 'text' || c.type === 'link');
+  const textCols = colConfig.filter(c => (c.type === 'text' || c.type === 'link') && c.show_calendar !== false);
 
   if (!dateCol) return events;
 

@@ -2428,8 +2428,11 @@ function renderColumnEditorList() {
       </select>
       <input type="number" class="col-group" value="${col.group || 0}" min="0" max="99" style="width:38px;padding:4px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:monospace" placeholder="Grp" title="Grup (0=tidak, >0=sub-event)" />
       <input type="text" class="col-notes" value="${(col.notes || '').replace(/"/g,'&quot;').replace(/</g,'&lt;')}" style="width:60px;padding:4px;border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:monospace" placeholder="Notes" title="Keterangan grup ini" />
-      <label title="Label singkat di sel kalender" style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;white-space:nowrap">
-        <input type="checkbox" class="col-short" ${col.short ? 'checked' : ''} /> Short
+      <label title="Tampil di Kalender" style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;white-space:nowrap">
+        <input type="checkbox" class="col-show-cal" ${col.show_calendar !== false ? 'checked' : ''} /> 📅
+      </label>
+      <label title="Tampil di Telegram Bot" style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;white-space:nowrap">
+        <input type="checkbox" class="col-show-bot" ${col.show_bot !== false ? 'checked' : ''} /> 📱
       </label>
       <button class="btn btn-danger btn-sm col-del-btn" type="button" title="Hapus kolom" style="padding:2px 6px;font-size:14px;line-height:1">✕</button>
     </div>`;
@@ -2499,11 +2502,15 @@ async function saveColumnEditor() {
     const short = row.querySelector('.col-short').checked;
     const group = parseInt(row.querySelector('.col-group').value, 10) || 0;
     const notes = (row.querySelector('.col-notes')?.value || '').trim();
+    const showCal = row.querySelector('.col-show-cal')?.checked !== false;
+    const showBot = row.querySelector('.col-show-bot')?.checked !== false;
     if (label) {
       const col = { idx, label, type };
       if (short) col.short = true;
       if (group > 0) col.group = group;
       if (notes) col.notes = notes;
+      if (!showCal) col.show_calendar = false;
+      if (!showBot) col.show_bot = false;
       columnConfig.push(col);
     }
   });
