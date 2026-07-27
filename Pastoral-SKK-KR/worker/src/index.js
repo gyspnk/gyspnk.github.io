@@ -160,7 +160,7 @@ async function pushSheetConfigsToFirestore(env) {
         gid: r.gid || '0',
         sheet_label: r.sheet_label,
         date_col: dateCol ? dateCol.idx : (r.sheet_key === 'ibadah_mingguan_karyawan' ? 1 : 0),
-        text_cols: colCfg.filter(c => c.type === 'text' || c.type === 'link').map(c => ({ idx: c.idx, label: c.label, type: c.type }))
+        text_cols: colCfg.filter(c => c.type === 'text' || c.type === 'link' || (c.group && c.group > 0)).map(c => ({ idx: c.idx, label: c.label, type: c.type, notes: c.notes || '', group: c.group || 0 }))
       };
     }
 
@@ -483,7 +483,7 @@ export default {
             if (textCols.length > 0) {
               for (const tc of textCols) {
                 const val = matchedRow[tc.idx] !== undefined && matchedRow[tc.idx] !== null ? String(matchedRow[tc.idx]).trim() : '';
-                if (val) msg += '\n' + tc.label + ': ' + val;
+                if (val) { msg += '\n' + tc.label + ': ' + val; if (tc.notes) msg += ' (' + tc.notes + ')'; }
               }
             } else {
               for (let i = dateIdx + 1; i < Math.min(matchedRow.length, 8); i++) {
