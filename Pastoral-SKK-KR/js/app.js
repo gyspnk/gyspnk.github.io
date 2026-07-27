@@ -2237,6 +2237,14 @@ function initAdminCalendarConfig() {
   document.getElementById('cal-column-editor-modal').onclick = (e) => {
     if (e.target === document.getElementById('cal-column-editor-modal')) closeColumnEditor();
   };
+  // Notes format toolbar — target #cal-col-notes
+  document.querySelectorAll('.notes-fmt-btn').forEach(btn => {
+    btn.onmousedown = (e) => {
+      e.preventDefault();
+      document.getElementById('cal-col-notes').focus();
+      document.execCommand(btn.dataset.fmt, false, null);
+    };
+  });
   loadCalendarConfigTable();
 }
 

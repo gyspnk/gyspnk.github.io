@@ -576,13 +576,14 @@ function parseWithColumnConfig(sheet, columns, rows) {
 
     // Build short label
     let shortLabel = '';
-    if (shortIdx !== null && row[shortIdx] !== undefined && String(row[shortIdx]).trim()) {
+    if (shortIdx !== null && row[shortIdx] != null && String(row[shortIdx]).trim()) {
       shortLabel = String(row[shortIdx]).trim().substring(0, 22);
     } else {
       // Fallback to first non-empty text column
       for (const tc of textCols) {
         if (tc.type === 'ignore') continue;
-        const val = row[tc.idx] !== undefined ? String(row[tc.idx]).trim() : '';
+              const raw = row[tc.idx];
+        const val = (raw !== null && raw !== undefined) ? String(raw).trim() : '';
         if (val) { shortLabel = val.substring(0, 22); break; }
       }
     }
@@ -594,7 +595,8 @@ function parseWithColumnConfig(sheet, columns, rows) {
     detailHtml += `<div class="event-source" style="color:${sheet.color}">${sheet.label}</div>`;
 
     textCols.forEach(tc => {
-      const val = row[tc.idx] !== undefined ? String(row[tc.idx]).trim() : '';
+            const raw = row[tc.idx];
+        const val = (raw !== null && raw !== undefined) ? String(raw).trim() : '';
       if (!val) return;
       if (tc.type === 'link') {
         const isUrl = /^https?:\/\//i.test(val);
