@@ -315,6 +315,45 @@ export default {
     }
 
     try {
+      // ===== Bot schedule proxy — OAuth only (3 subrequests) =====
+      if (path === '/api/bot/schedule-data' && request.method === 'GET') {
+        const sheetId = url.searchParams.get('sheetId');
+        const gid = url.searchParams.get('gid') || '0';
+        if (!sheetId) return json({ error: 'sheetId diperlukan' }, 400, allowOrigin);
+        if (!env.GSA_JSON) return json({ error: 'GSA_JSON not configured' }, 400, allowOrigin);
+        const cacheKey = 'bot:' + sheetId + ':' + gid;
+        const cached = _calendarCache.get(cacheKey);
+        if (cached && (Date.now() - cached.ts) < 300000) {
+          return json(cached.data, 200, allowOrigin);
+        }
+        try {
+          const sa = parseGSAJson(env.GSA_JSON);
+          if (sa) {
+            const now = Math.floor(Date.now() / 1000);
+            const jwt = await signJWT(
+              { alg: 'RS256', typ: 'JWT' },
+              { iss: sa.client_email, scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+                aud: 'https://oauth2.googleapis.com/token', exp: now + 3600, iat: now },
+              sa.private_key
+            );
+            const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${encodeURIComponent(jwt)}`
+            });
+            if (tokenRes.ok) {
+              const tokenData = await tokenRes.json();
+              const apiData = await fetchSheetViaSheetsAPI(sheetId, gid, tokenData.access_token);
+              if (apiData) {
+                const result = { success: true, ...apiData, accessible: true };
+                _calendarCache.set(cacheKey, { ts: Date.now(), data: result });
+                return json(result, 200, allowOrigin);
+              }
+            }
+          }
+        } catch (e) { /* fall through */ }
+        return json({ success: false, accessible: false, error: 'Sheet tidak dapat diakses' }, 200, allowOrigin);
+      }
       await ensureSchema(env);
 
       if (path === '/api/auth/status' && request.method === 'GET') {
@@ -413,45 +452,7 @@ export default {
         return json({ success: true, steps }, 200, allowOrigin);
       }
 
-      // ===== Bot schedule proxy — OAuth only (3 subrequests) =====
-      if (path === '/api/bot/schedule-data' && request.method === 'GET') {
-        const sheetId = url.searchParams.get('sheetId');
-        const gid = url.searchParams.get('gid') || '0';
-        if (!sheetId) return json({ error: 'sheetId diperlukan' }, 400, allowOrigin);
-        if (!env.GSA_JSON) return json({ error: 'GSA_JSON not configured' }, 400, allowOrigin);
-        const cacheKey = 'bot:' + sheetId + ':' + gid;
-        const cached = _calendarCache.get(cacheKey);
-        if (cached && (Date.now() - cached.ts) < 300000) {
-          return json(cached.data, 200, allowOrigin);
-        }
-        try {
-          const sa = parseGSAJson(env.GSA_JSON);
-          if (sa) {
-            const now = Math.floor(Date.now() / 1000);
-            const jwt = await signJWT(
-              { alg: 'RS256', typ: 'JWT' },
-              { iss: sa.client_email, scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
-                aud: 'https://oauth2.googleapis.com/token', exp: now + 3600, iat: now },
-              sa.private_key
-            );
-            const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${encodeURIComponent(jwt)}`
-            });
-            if (tokenRes.ok) {
-              const tokenData = await tokenRes.json();
-              const apiData = await fetchSheetViaSheetsAPI(sheetId, gid, tokenData.access_token);
-              if (apiData) {
-                const result = { success: true, ...apiData, accessible: true };
-                _calendarCache.set(cacheKey, { ts: Date.now(), data: result });
-                return json(result, 200, allowOrigin);
-              }
-            }
-          }
-        } catch (e) { /* fall through */ }
-        return json({ success: false, accessible: false, error: 'Sheet tidak dapat diakses' }, 200, allowOrigin);
-      }
+
 
       // Auth required below — bot bypass via X-Bot-Key header
       const botKey = request.headers.get('X-Bot-Key') || '';
