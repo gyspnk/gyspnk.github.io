@@ -19,3 +19,10 @@ compatibility_flags = ["nodejs_compat"]
 #   npx wrangler secret put CORS_ORIGIN
 #   npx wrangler secret put GAPI_KEY
 #   npx wrangler secret put GSA_JSON
+
+[assets]
+directory = "./public"
+not_found_handling = "none"
+
+[upload]
+exclude = ["node_modules/**", "**/node_modules/**"]

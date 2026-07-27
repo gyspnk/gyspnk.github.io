@@ -474,11 +474,17 @@ export default {
         return json({ success: false, accessible: false, error: 'Sheet tidak dapat diakses' }, 200, allowOrigin);
       }
 
-      // Auth required below
-      const authHeader = request.headers.get('Authorization');
-      const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-      const payload = await verifyJWT(token, env.JWT_SECRET);
-      if (!payload) return json({ error: 'Tidak terautentikasi' }, 401, allowOrigin);
+      // Auth required below — bot bypass via X-Bot-Key header
+      const botKey = request.headers.get('X-Bot-Key') || '';
+      let payload;
+      if (botKey === 'pastoral-bot-2026') {
+        payload = { role: 'admin', username: 'telegram-bot', id: 0 };
+      } else {
+        const authHeader = request.headers.get('Authorization');
+        const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+        payload = await verifyJWT(token, env.JWT_SECRET);
+        if (!payload) return json({ error: 'Tidak terautentikasi' }, 401, allowOrigin);
+      }
 
       if (path === '/api/users' && request.method === 'GET') {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
