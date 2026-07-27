@@ -2249,7 +2249,6 @@ let _colEditorData = [];
 function initCalendarSettings() {
   const btn = document.getElementById('cal-settings-btn');
   if (!btn) return;
-  // Only wire up once
   if (!btn._wired) {
     btn._wired = true;
     document.getElementById('cal-settings-btn').onclick = () => {
@@ -2265,8 +2264,24 @@ function initCalendarSettings() {
       }
     };
     document.getElementById('cal-set-add-btn').onclick = handleAddCalendarConfig;
+    // Column editor modal buttons (open via 📋 Kolom button in table)
+    document.getElementById('cal-col-editor-close').onclick = closeColumnEditor;
+    document.getElementById('cal-col-cancel').onclick = closeColumnEditor;
+    document.getElementById('cal-col-save').onclick = saveColumnEditor;
+    document.getElementById('cal-col-add-row').onclick = addColumnEditorRow;
+    document.getElementById('cal-col-detect').onclick = detectColumnHeaders;
+    document.getElementById('cal-column-editor-modal').onclick = (e) => {
+      if (e.target === document.getElementById('cal-column-editor-modal')) closeColumnEditor();
+    };
+    // Notes format toolbar
+    document.querySelectorAll('.notes-fmt-btn').forEach(b => {
+      b.onmousedown = (e) => {
+        e.preventDefault();
+        document.getElementById('cal-col-notes').focus();
+        document.execCommand(b.dataset.fmt, false, null);
+      };
+    });
   }
-  // Keep data fresh every time panel opens
   loadCalendarConfigTable();
 }
 
