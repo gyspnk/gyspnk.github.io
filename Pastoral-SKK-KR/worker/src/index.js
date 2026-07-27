@@ -457,7 +457,7 @@ export default {
                   if (gDate.notes) m += '\n  ' + gDate.notes;
                   gTexts.forEach(tc => {
                     const val = row[tc.idx] !== undefined && row[tc.idx] !== null ? String(row[tc.idx]).trim() : '';
-                    if (val) m += ' - ' + tc.label + ': ' + val;
+                    if (val) { m += " - " + tc.label + ": " + val; if (tc.notes) m += " (" + tc.notes + ")"; }
                   });
                   parts.push(label + ':\n' + m);
                 });
