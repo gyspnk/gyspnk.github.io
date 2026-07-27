@@ -60,6 +60,7 @@ export async function initCalendar() {
       renderFilters();
       renderCalendar();
       fetchAllSchedules();
+      loadCustomEvents();
     };
   }
 
