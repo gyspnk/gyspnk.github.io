@@ -412,6 +412,7 @@ const demoApi = {
   async saveBotGroup(data) { return { success: true }; },
   async updateBotGroup(id, data) { return { success: true }; },
   async deleteBotGroup(id) { return { success: true }; },
+  async syncBotGroups() { return { success: true, imported: 0 }; },
   async getBotConfig() { return {}; },
   async saveBotConfig(data) { return { success: true }; },
 };
@@ -601,6 +602,9 @@ const realApi = {
   },
   async deleteBotGroup(id) {
     return apiFetch(`/api/bot/groups/${id}`, { method: 'DELETE' });
+  },
+  async syncBotGroups() {
+    return apiFetch('/api/bot/sync-groups', { method: 'POST' });
   },
   async getBotConfig() {
     return apiFetch('/api/bot/config');

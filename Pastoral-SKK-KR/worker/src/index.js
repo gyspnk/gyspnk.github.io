@@ -1008,6 +1008,7 @@ export default {
         if (body.isEnabled !== undefined) { updates.push('is_enabled = ?'); params.push(body.isEnabled ? 1 : 0); }
         if (body.announceHour !== undefined) { updates.push('announce_hour = ?'); params.push(body.announceHour); }
         if (body.announceMinute !== undefined) { updates.push('announce_minute = ?'); params.push(body.announceMinute); }
+        if (body.activeSchedules !== undefined) { updates.push('active_schedules = ?'); params.push(JSON.stringify(body.activeSchedules)); }
         if (updates.length > 0) {
           params.push(id);
           await execute(env, `UPDATE bot_groups SET ${updates.join(', ')} WHERE id = ?`, params);
@@ -1040,6 +1041,66 @@ export default {
           await execute(env, 'INSERT INTO bot_config (config_key, config_value) VALUES (\'sheet_range\', ?) ON DUPLICATE KEY UPDATE config_value = ?', [sheetRange, sheetRange]);
         }
         return json({ success: true }, 200, allowOrigin);
+      }
+
+      // POST /api/bot/sync-groups — sync groups dari Firestore
+      if (path === '/api/bot/sync-groups' && request.method === 'POST') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        if (!env.GSA_JSON) return json({ error: 'GSA_JSON tidak dikonfigurasi' }, 400, allowOrigin);
+
+        try {
+          let sa;
+          try { sa = parseGSAJson(env.GSA_JSON); } catch (e) { return json({ error: 'GSA_JSON parse error: ' + e.message }, 400, allowOrigin); }
+
+          const now = Math.floor(Date.now() / 1000);
+          const jwt = await signJWT(
+            { alg: 'RS256', typ: 'JWT' },
+            { iss: sa.client_email, scope: 'https://www.googleapis.com/auth/datastore',
+              aud: 'https://oauth2.googleapis.com/token', exp: now + 3600, iat: now },
+            sa.private_key
+          );
+
+          const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${encodeURIComponent(jwt)}`
+          });
+
+          if (!tokenRes.ok) return json({ error: 'Gagal mendapatkan token Firestore' }, 500, allowOrigin);
+          const tokenData = await tokenRes.json();
+
+          const projectId = sa.project_id;
+          const fbUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/bot_groups`;
+          const fbRes = await fetch(fbUrl, { headers: { 'Authorization': `Bearer ${tokenData.access_token}` } });
+
+          let imported = 0;
+          if (fbRes.ok) {
+            const fbData = await fbRes.json();
+            const documents = fbData.documents || [];
+            for (const doc of documents) {
+              const fields = doc.fields || {};
+              const docId = doc.name.split('/').pop();
+              const chatId = fields.chat_id?.stringValue || docId;
+              const groupName = fields.title?.stringValue || '';
+              const isEnabled = fields.enabled?.booleanValue !== false;
+              const announceHour = parseInt(fields.announce_hour?.integerValue || '13', 10);
+              const announceMinute = parseInt(fields.announce_minute?.integerValue || '0', 10);
+              const lastSentDate = fields.last_sent_date?.stringValue || '';
+
+              await execute(env,
+                `INSERT INTO bot_groups (chat_id, group_name, is_enabled, announce_hour, announce_minute, last_sent_date)
+                 VALUES (?, ?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE group_name=VALUES(group_name), is_enabled=VALUES(is_enabled),
+                   announce_hour=VALUES(announce_hour), announce_minute=VALUES(announce_minute), last_sent_date=VALUES(last_sent_date)`,
+                [chatId, groupName, isEnabled ? 1 : 0, announceHour, announceMinute, lastSentDate]);
+              imported++;
+            }
+          }
+
+          return json({ success: true, imported, firestoreAvailable: fbRes.ok }, 200, allowOrigin);
+        } catch (e) {
+          return json({ error: 'Sync gagal: ' + e.message }, 500, allowOrigin);
+        }
       }
 
       return json({ error: 'Endpoint tidak ditemukan' }, 404, allowOrigin);

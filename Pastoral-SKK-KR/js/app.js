@@ -2495,6 +2495,7 @@ let _editingBotGroupId = null;
 
 function initAdminBotConfig() {
   document.getElementById('bot-groups-reload').onclick = loadBotGroups;
+  document.getElementById('bot-groups-sync').onclick = handleBotSync;
   document.getElementById('bot-group-add-btn').onclick = () => openBotGroupModal();
   document.getElementById('bot-config-save').onclick = handleBotConfigSave;
   document.getElementById('bot-group-modal-close').onclick = closeBotGroupModal;
@@ -2521,12 +2522,18 @@ function renderBotGroups() {
   botGroupsData.forEach(g => {
     const isEnabled = g.is_enabled == true;
     const timeStr = `${String(g.announce_hour || 13).padStart(2, '0')}:${String(g.announce_minute || 0).padStart(2, '0')} WIB`;
+    let activeSched = [];
+    if (g.active_schedules) {
+      try { activeSched = JSON.parse(g.active_schedules); } catch (e) {}
+    }
+    const schedLabel = activeSched.length ? activeSched.map(s => s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).substring(0, 12)).join(', ') : 'Semua';
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><code style="font-size:11px">${g.chat_id}</code></td>
       <td>${g.group_name || '—'}</td>
       <td><span class="toggle-switch ${isEnabled ? 'toggle-active' : 'toggle-inactive'}">${isEnabled ? 'Aktif' : 'Nonaktif'}</span></td>
       <td>${timeStr}</td>
+      <td style="font-size:11px;color:var(--text-muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${schedLabel}">${schedLabel}</td>
       <td style="font-size:12px;color:var(--text-muted)">${g.last_sent_date || '—'}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-sm btn-secondary" data-bot-edit="${g.id}">✏️</button>
@@ -2563,7 +2570,7 @@ function renderBotGroups() {
     };
   });
   if (tbody.children.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px">Belum ada grup. Tambah grup Telegram atau ketik /start di bot di grup.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px">Belum ada grup. Tambah grup Telegram atau ketik /start di bot di grup.</td></tr>';
   }
 }
 
@@ -2598,6 +2605,36 @@ async function handleBotConfigSave() {
   }
 }
 
+/** Available schedule types for bot */
+const BOT_SCHEDULE_TYPES = [
+  { key: 'renungan_harian_siswa', label: '📖 Renungan Harian Siswa' },
+  { key: 'ibadah_mingguan_siswa', label: '⛪ Ibadah Mingguan Siswa' },
+  { key: 'ibadah_mingguan_karyawan', label: '🙏 Ibadah Mingguan Karyawan' },
+  { key: 'komsel_karyawan', label: '🤝 Komsel Karyawan' },
+  { key: 'custom_event', label: '⭐ Event Khusus' },
+];
+
+/** Sync groups from Firestore (bot's database) */
+async function handleBotSync() {
+  const btn = document.getElementById('bot-groups-sync');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Sync...';
+  try {
+    const result = await api.syncBotGroups();
+    const msg = result.firestoreAvailable
+      ? `✅ Sync selesai: ${result.imported} grup diimport.`
+      : `⚠️ Firestore tidak dapat diakses. Pastikan Service Account memiliki akses. (${result.imported} grup terproses)`;
+    alert(msg);
+    await loadBotGroups();
+  } catch (e) {
+    alert('Gagal sync: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
 function openBotGroupModal(group) {
   _editingBotGroupId = group ? group.id : null;
   document.getElementById('bot-group-modal-title').textContent = group ? '✏️ Edit Grup Telegram' : 'Tambah Grup Telegram';
@@ -2608,6 +2645,21 @@ function openBotGroupModal(group) {
   document.getElementById('bot-group-minute').value = group ? (group.announce_minute || 0) : 0;
   document.getElementById('bot-group-enabled').checked = group ? (group.is_enabled != false) : true;
   document.getElementById('bot-group-modal-msg').classList.add('hidden');
+
+  // Populate schedule checkboxes
+  let activeSched = [];
+  if (group && group.active_schedules) {
+    try { activeSched = JSON.parse(group.active_schedules); } catch (e) {}
+  }
+  const schedulesContainer = document.getElementById('bot-group-schedules');
+  if (schedulesContainer) {
+    const allChecked = !activeSched || activeSched.length === 0;
+    schedulesContainer.innerHTML = BOT_SCHEDULE_TYPES.map(st => {
+      const checked = allChecked || activeSched.includes(st.key);
+      return `<label class="day-check-label" style="margin:0"><input type="checkbox" class="bot-sched-cb" value="${st.key}" ${checked ? 'checked' : ''} /> ${st.label}</label>`;
+    }).join('');
+  }
+
   document.getElementById('bot-group-modal').classList.remove('hidden');
 }
 
@@ -2623,6 +2675,7 @@ async function handleBotGroupSave() {
   const announceHour = parseInt(document.getElementById('bot-group-hour').value, 10) || 13;
   const announceMinute = parseInt(document.getElementById('bot-group-minute').value, 10) || 0;
   const isEnabled = document.getElementById('bot-group-enabled').checked;
+  const activeSchedules = [...document.querySelectorAll('.bot-sched-cb:checked')].map(cb => cb.value);
 
   if (!chatId) {
     msgEl.textContent = 'Chat ID wajib diisi.';
@@ -2636,9 +2689,9 @@ async function handleBotGroupSave() {
 
   try {
     if (_editingBotGroupId) {
-      await api.updateBotGroup(_editingBotGroupId, { groupName, announceHour, announceMinute, isEnabled });
+      await api.updateBotGroup(_editingBotGroupId, { groupName, announceHour, announceMinute, isEnabled, activeSchedules });
     } else {
-      await api.saveBotGroup({ chatId, groupName, announceHour, announceMinute, isEnabled });
+      await api.saveBotGroup({ chatId, groupName, announceHour, announceMinute, isEnabled, activeSchedules });
     }
     msgEl.textContent = '✅ Grup berhasil disimpan.';
     msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';
