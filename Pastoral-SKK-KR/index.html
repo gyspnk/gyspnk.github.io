@@ -409,6 +409,23 @@
                   <div class="form-group" style="flex:1"><label>Sampai</label><input type="date" id="cev-end" /></div>
                 </div>
                 <div class="form-group"><label>Warna</label><input type="color" id="cev-color" value="#ef4444" style="width:48px;height:30px" /></div>
+                <div class="form-group" style="margin-top:6px">
+                  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;font-size:14px">
+                    <input type="checkbox" id="cev-repeat" /> 🔁 Ulangi
+                  </label>
+                </div>
+                <div id="cev-repeat-config" class="hidden" style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:var(--bg-secondary)">
+                  <div style="font-size:13px;font-weight:600;margin-bottom:6px">Ulangi setiap hari:</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <label class="day-check-label" style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><input type="checkbox" class="cev-day-cb" value="1" /> Senin</label>
+                    <label class="day-check-label" style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><input type="checkbox" class="cev-day-cb" value="2" /> Selasa</label>
+                    <label class="day-check-label" style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><input type="checkbox" class="cev-day-cb" value="3" /> Rabu</label>
+                    <label class="day-check-label" style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><input type="checkbox" class="cev-day-cb" value="4" /> Kamis</label>
+                    <label class="day-check-label" style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><input type="checkbox" class="cev-day-cb" value="5" /> Jumat</label>
+                    <label class="day-check-label" style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><input type="checkbox" class="cev-day-cb" value="6" /> Sabtu</label>
+                    <label class="day-check-label" style="display:flex;align-items:center;gap:3px;cursor:pointer;font-size:13px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg)"><input type="checkbox" class="cev-day-cb" value="0" /> Minggu</label>
+                  </div>
+                </div>
                 <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
                   <button id="cev-cancel" class="btn btn-secondary btn-sm">Batal</button>
                   <button id="cev-save" class="btn btn-primary btn-sm">Simpan</button>

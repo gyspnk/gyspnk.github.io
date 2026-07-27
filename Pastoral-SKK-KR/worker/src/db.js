@@ -195,6 +195,9 @@ export async function initSchema(env) {
     `UPDATE calendar_sheet_configs SET column_config = '[{"idx":0,"label":"No.","type":"ignore"},{"idx":1,"label":"Hari/Tanggal","type":"date"},{"idx":2,"label":"Tema","type":"text"},{"idx":3,"label":"Lokasi","type":"text"},{"idx":4,"label":"Pemimpin Pujian","type":"text"},{"idx":5,"label":"Pemimpin Firman","type":"text","short":true},{"idx":6,"label":"Sumbangan Pujian","type":"text"}]' WHERE sheet_key = 'ibadah_mingguan_karyawan' AND column_config IS NULL`,
     `UPDATE calendar_sheet_configs SET column_config = '[{"idx":0,"label":"Hari/Tanggal","type":"date"},{"idx":1,"label":"Jenjang","type":"text"},{"idx":2,"label":"Petugas Pujian","type":"text"},{"idx":3,"label":"Petugas Firman","type":"text","short":true},{"idx":4,"label":"Tema","type":"text"},{"idx":5,"label":"Tagline","type":"text"},{"idx":6,"label":"Bahan PAMS","type":"link"},{"idx":7,"label":"Link Dokumen","type":"link"}]' WHERE sheet_key = 'komsel_karyawan' AND column_config IS NULL`,
     `UPDATE calendar_sheet_configs SET column_config = '[{"idx":0,"label":"Tanggal","type":"date"},{"idx":1,"label":"Jadwal","type":"text"},{"idx":2,"label":"Petugas TK-SD","type":"text","short":true},{"idx":3,"label":"Petugas SMP","type":"text","short":true},{"idx":4,"label":"Keterangan","type":"text"}]' WHERE sheet_key = 'renungan_harian_siswa' AND column_config IS NULL`,
+    // Add repeat support for custom events
+    `ALTER TABLE calendar_custom_events ADD COLUMN IF NOT EXISTS is_repeating BOOLEAN DEFAULT FALSE`,
+    `ALTER TABLE calendar_custom_events ADD COLUMN IF NOT EXISTS repeat_days TEXT DEFAULT NULL`,
   ];
   for (const sql of statements) {
     try {

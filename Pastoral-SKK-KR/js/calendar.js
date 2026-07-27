@@ -76,6 +76,10 @@ export async function initCalendar() {
   document.getElementById('calendar-custom-modal').onclick = (e) => {
     if (e.target === document.getElementById('calendar-custom-modal')) closeAddEventModal();
   };
+  // Repeat checkbox toggle
+  document.getElementById('cev-repeat').onchange = function() {
+    document.getElementById('cev-repeat-config').classList.toggle('hidden', !this.checked);
+  };
 
   // Manage Events modal (Kelola Event) — list saved events
   document.getElementById('cal-manage-events-btn').onclick = () => openManageEventsModal();
@@ -487,7 +491,16 @@ function buildEventMap() {
   customEvents.forEach(cev => {
     const start = new Date(cev.start_date + 'T00:00:00');
     const end = new Date(cev.end_date + 'T00:00:00');
+    const isRepeating = cev.is_repeating == true;
+    let repeatDays = [];
+    if (isRepeating && cev.repeat_days) {
+      try { repeatDays = JSON.parse(cev.repeat_days); } catch (e) {}
+    }
+
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      // Skip if repeating and this day-of-week is not selected
+      if (isRepeating && repeatDays.length > 0 && !repeatDays.includes(d.getDay())) continue;
+
       const ds = fmtDate(d);
       if (!eventMap[ds]) eventMap[ds] = [];
       eventMap[ds].push({
@@ -1154,6 +1167,13 @@ function openAddEventModal(event) {
   const saveBtn = document.getElementById('cev-save');
   if (saveBtn) saveBtn.textContent = isEdit ? 'Simpan Perubahan' : 'Simpan';
 
+  // Parse repeat days
+  let repeatDays = [];
+  if (isEdit && event.repeat_days) {
+    try { repeatDays = JSON.parse(event.repeat_days); } catch (e) {}
+  }
+  const isRepeating = isEdit && event.is_repeating == true;
+
   if (isEdit) {
     document.getElementById('cev-title').value = event.title || '';
     document.getElementById('cev-desc').value = event.description || '';
@@ -1163,10 +1183,27 @@ function openAddEventModal(event) {
   } else {
     document.getElementById('cev-title').value = '';
     document.getElementById('cev-desc').value = '';
-    document.getElementById('cev-start').value = '';
-    document.getElementById('cev-end').value = '';
     document.getElementById('cev-color').value = '#ef4444';
+    // Default date range: 1 Juli AY awal – 30 Juni AY akhir
+    const ayMatch = currentAcademicYear.match(/^(\d{4})/);
+    if (ayMatch) {
+      const startYear = parseInt(ayMatch[1], 10);
+      document.getElementById('cev-start').value = `${startYear}-07-01`;
+      document.getElementById('cev-end').value = `${startYear + 1}-06-30`;
+    } else {
+      document.getElementById('cev-start').value = '';
+      document.getElementById('cev-end').value = '';
+    }
   }
+
+  // Populate repeat state
+  const repeatCb = document.getElementById('cev-repeat');
+  repeatCb.checked = isRepeating;
+  document.querySelectorAll('.cev-day-cb').forEach(cb => {
+    cb.checked = repeatDays.includes(parseInt(cb.value, 10));
+  });
+  document.getElementById('cev-repeat-config').classList.toggle('hidden', !isRepeating);
+
   document.getElementById('cev-msg').classList.add('hidden');
   document.getElementById('calendar-custom-modal').classList.remove('hidden');
   // Focus the title field
@@ -1181,6 +1218,9 @@ function closeAddEventModal() {
   if (titleEl) titleEl.textContent = 'Tambah Event Khusus';
   const saveBtn = document.getElementById('cev-save');
   if (saveBtn) saveBtn.textContent = 'Simpan';
+  // Reset repeat state
+  document.getElementById('cev-repeat').checked = false;
+  document.getElementById('cev-repeat-config').classList.add('hidden');
 }
 
 /** Open the Kelola Event modal (list saved events) */
@@ -1203,6 +1243,13 @@ async function saveCustomEvent() {
   const startDate = document.getElementById('cev-start').value;
   const endDate = document.getElementById('cev-end').value;
   const color = document.getElementById('cev-color').value;
+  const isRepeating = document.getElementById('cev-repeat').checked;
+  const repeatDays = [];
+  if (isRepeating) {
+    document.querySelectorAll('.cev-day-cb:checked').forEach(cb => {
+      repeatDays.push(parseInt(cb.value, 10));
+    });
+  }
   const msgEl = document.getElementById('cev-msg');
   const isEdit = editingEventId !== null;
 
@@ -1216,13 +1263,18 @@ async function saveCustomEvent() {
     msgEl.className = 'info-msg'; msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
     msgEl.classList.remove('hidden'); return;
   }
+  if (isRepeating && repeatDays.length === 0) {
+    msgEl.textContent = 'Pilih minimal satu hari untuk event berulang.';
+    msgEl.className = 'info-msg'; msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
+    msgEl.classList.remove('hidden'); return;
+  }
 
   try {
     if (isEdit) {
-      await api.updateCalendarEvent(editingEventId, { title, description, startDate, endDate, color });
+      await api.updateCalendarEvent(editingEventId, { title, description, startDate, endDate, color, isRepeating, repeatDays });
       msgEl.textContent = '✅ Event berhasil diperbarui.';
     } else {
-      await api.addCalendarEvent({ academicYear: currentAcademicYear, title, description, startDate, endDate, color });
+      await api.addCalendarEvent({ academicYear: currentAcademicYear, title, description, startDate, endDate, color, isRepeating, repeatDays });
       msgEl.textContent = '✅ Event berhasil ditambahkan.';
     }
     msgEl.className = 'info-msg'; msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';
@@ -1257,11 +1309,22 @@ async function loadCustomEvents() {
 function renderCustomEventList() {
   const tbody = document.getElementById('cev-tbody');
   if (!tbody) return;
+  const DAY_LABELS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
   tbody.innerHTML = '';
   customEvents.forEach(evt => {
+    const isRepeating = evt.is_repeating == true;
+    let repeatDays = [];
+    let repeatLabel = '';
+    if (isRepeating && evt.repeat_days) {
+      try { repeatDays = JSON.parse(evt.repeat_days); } catch (e) {}
+      if (repeatDays.length > 0) {
+        repeatLabel = ' 🔁 ' + repeatDays.map(d => DAY_LABELS[d]).join(', ');
+      }
+    }
+    const titleHtml = `<strong>${evt.title}</strong>${repeatLabel ? `<br><small style="color:var(--text-muted)">${repeatLabel}</small>` : ''}${evt.description ? `<br><small style="color:var(--text-muted)">${evt.description}</small>` : ''}`;
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><strong>${evt.title}</strong>${evt.description ? `<br><small style="color:var(--text-muted)">${evt.description}</small>` : ''}</td>
+      <td>${titleHtml}</td>
       <td>${evt.start_date}</td>
       <td>${evt.end_date}</td>
       <td><span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:${evt.color};vertical-align:middle"></span></td>

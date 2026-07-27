@@ -941,21 +941,23 @@ export default {
       }
 
       if (path === '/api/calendar-events' && request.method === 'POST') {
-        const { academicYear, title, description, startDate, endDate, color } = await request.json();
+        const { academicYear, title, description, startDate, endDate, color, isRepeating, repeatDays } = await request.json();
         if (!academicYear || !title || !startDate || !endDate) return json({ error: 'Field tidak lengkap' }, 400, allowOrigin);
+        const repeatDaysJson = repeatDays ? JSON.stringify(repeatDays) : null;
         const result = await execute(env,
-          'INSERT INTO calendar_custom_events (academic_year, title, description, start_date, end_date, color, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [academicYear, title, description || '', startDate, endDate, color || '#ef4444', payload.username]);
+          'INSERT INTO calendar_custom_events (academic_year, title, description, start_date, end_date, color, created_by, is_repeating, repeat_days) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [academicYear, title, description || '', startDate, endDate, color || '#ef4444', payload.username, !!isRepeating, repeatDaysJson]);
         return json({ success: true, id: result.insertId }, 201, allowOrigin);
       }
 
       if (path.startsWith('/api/calendar-events/') && request.method === 'PUT') {
         const id = parseInt(path.split('/').pop(), 10);
-        const { title, description, startDate, endDate, color } = await request.json();
+        const { title, description, startDate, endDate, color, isRepeating, repeatDays } = await request.json();
         if (!title || !startDate || !endDate) return json({ error: 'Field tidak lengkap' }, 400, allowOrigin);
+        const repeatDaysJson = repeatDays ? JSON.stringify(repeatDays) : null;
         await execute(env,
-          'UPDATE calendar_custom_events SET title = ?, description = ?, start_date = ?, end_date = ?, color = ? WHERE id = ?',
-          [title, description || '', startDate, endDate, color || '#ef4444', id]);
+          'UPDATE calendar_custom_events SET title = ?, description = ?, start_date = ?, end_date = ?, color = ?, is_repeating = ?, repeat_days = ? WHERE id = ?',
+          [title, description || '', startDate, endDate, color || '#ef4444', !!isRepeating, repeatDaysJson, id]);
         return json({ success: true }, 200, allowOrigin);
       }
 
