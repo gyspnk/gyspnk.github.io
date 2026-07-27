@@ -637,8 +637,8 @@ function parseIbadahSiswa(sheet, columns, rows) {
 }
 
 // Ibadah Mingguan Karyawan (Chapel):
-// Sheets API returns: No.(0), Hari/Tanggal(1), Tema(2), Judul(3), Indikator(4),
-//   Lokasi(5), Pemimpin Pujian(6), Pemimpin Firman(7), Sumbangan Pujian(8)
+// Sheets API returns: No.(0), Hari/Tanggal(1), Tema(2),
+//   Lokasi(3), Pemimpin Pujian(4), Pemimpin Firman(5), Sumbangan Pujian(6)
 // NOTE: "No." column at index 0 shifts everything by +1 vs the archive Excel
 function parseChapelKaryawan(sheet, columns, rows) {
   const events = [];
@@ -652,7 +652,7 @@ function parseChapelKaryawan(sheet, columns, rows) {
     const rawDate = row[1] ? String(row[1]).trim() : '';
     if (!rawDate) return;
     // Skip header/subtitle rows
-    if (/^(No\.|Hari\/Tanggal|Tema|Judul|Indikator|Lokasi|Pemimpin|Sumbangan)/i.test(rawDate)) return;
+    if (/^(No\.|Hari\/Tanggal|Tema|Lokasi|Pemimpin|Sumbangan)/i.test(rawDate)) return;
     if (/jadwal ibadah|setiap|ruang|character building|minggu ke/i.test(rawDate)) return;
 
     const parsed = parseDateFlexible(rawDate);
@@ -662,29 +662,27 @@ function parseChapelKaryawan(sheet, columns, rows) {
     }
 
     // Avoid subtitle rows with year range
-    const fullText = row.slice(1, 5).map(c => String(c || '')).join(' ');
+    const fullText = row.slice(1, 4).map(c => String(c || '')).join(' ');
     if (/\d{4}\s*[-–]\s*\d{4}/.test(fullText)) {
       if (rowIdx <= 6) console.log(`[Chapel] row ${rowIdx} year range skip:`, fullText.substring(0, 80));
       return;
     }
 
     const dateStr = fmtDate(new Date(parsed.year || new Date().getFullYear(), parsed.month - 1, parsed.day));
-    if (rowIdx <= 6) console.log(`[Chapel] row ${rowIdx} OK: date=${dateStr} firman=${String(row[7] || '').trim()}`);
+    if (rowIdx <= 6) console.log(`[Chapel] row ${rowIdx} OK: date=${dateStr} firman=${String(row[5] || '').trim()}`);
 
-    // Column indices shifted by +1 due to "No." at index 0
+    // Column indices shifted by +1 due to "No." at index 0 (minus 2 removed columns: Judul, Indikator)
     const tema = row[2] ? String(row[2]).trim() : '';
-    const judul = row[3] ? String(row[3]).trim() : '';
-    const pemimpinPujian = row[6] ? String(row[6]).trim() : '';
-    const pemimpinFirman = row[7] ? String(row[7]).trim() : '';
-    const sumbanganPujian = row[8] ? String(row[8]).trim() : '';
+    const pemimpinPujian = row[4] ? String(row[4]).trim() : '';
+    const pemimpinFirman = row[5] ? String(row[5]).trim() : '';
+    const sumbanganPujian = row[6] ? String(row[6]).trim() : '';
 
-    const shortLabel = pemimpinFirman || pemimpinPujian || (judul ? judul.substring(0, 18) : 'Ibadah');
-    const summary = judul ? `🙏 ${judul}` : 'Ibadah Karyawan';
+    const shortLabel = pemimpinFirman || pemimpinPujian || 'Ibadah';
+    const summary = tema ? `🙏 ${tema}` : 'Ibadah Karyawan';
 
     let detailHtml = '<div class="event-detail">';
     detailHtml += `<div class="event-source" style="color:${sheet.color}">${sheet.label}</div>`;
     if (tema) detailHtml += `<div class="event-field"><strong>Tema:</strong> ${tema}</div>`;
-    if (judul) detailHtml += `<div class="event-field"><strong>Judul:</strong> ${judul}</div>`;
     if (pemimpinPujian) detailHtml += `<div class="event-field"><strong>Pemimpin Pujian:</strong> ${pemimpinPujian}</div>`;
     if (pemimpinFirman) detailHtml += `<div class="event-field"><strong>Pemimpin Firman:</strong> ${pemimpinFirman}</div>`;
     if (sumbanganPujian) detailHtml += `<div class="event-field"><strong>Sumbangan Pujian:</strong> ${sumbanganPujian}</div>`;
