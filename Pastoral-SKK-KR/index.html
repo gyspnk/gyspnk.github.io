@@ -524,6 +524,39 @@
               </div>
             </div>
           </div>
+          <!-- Column Editor Modal -->
+          <div id="cal-column-editor-modal" class="modal-overlay hidden">
+            <div class="modal-card" style="max-width:640px">
+              <div class="modal-header">
+                <h3 id="cal-col-editor-title">📋 Atur Kolom Sheet</h3>
+                <button id="cal-col-editor-close" class="btn btn-sm btn-text">✕</button>
+              </div>
+              <div class="modal-body">
+                <p class="muted" style="margin-bottom:8px">Tentukan bagaimana kolom dari Google Sheets dibaca. Kolom <strong>date</strong> sumber tanggal, <strong>text</strong> detail, <strong>link</strong> tautan.</p>
+                <div id="cal-col-editor-info" style="font-size:12px;color:var(--text-muted);margin-bottom:12px"></div>
+                <div id="cal-col-editor-list"></div>
+                <div style="margin-top:12px">
+                  <label style="font-weight:600;font-size:13px;display:block;margin-bottom:4px">📝 Keterangan (tampil di semua event sheet ini)</label>
+                  <div class="cev-desc-toolbar">
+                    <button type="button" class="notes-fmt-btn" data-fmt="bold"><b>B</b></button>
+                    <button type="button" class="notes-fmt-btn" data-fmt="italic"><i>I</i></button>
+                    <button type="button" class="notes-fmt-btn" data-fmt="underline"><u>U</u></button>
+                    <button type="button" class="notes-fmt-btn" data-fmt="strikeThrough"><s>S</s></button>
+                  </div>
+                  <div id="cal-col-notes" class="cev-desc-editor" contenteditable="true" data-placeholder="Contoh: Materi diupload di Google Drive..."></div>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:12px">
+                  <button id="cal-col-add-row" class="btn btn-sm btn-secondary">+ Tambah Kolom</button>
+                  <button id="cal-col-detect" class="btn btn-sm btn-secondary">🔍 Deteksi Otomatis</button>
+                </div>
+                <div id="cal-col-msg" class="info-msg hidden" style="margin-top:10px"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+                  <button id="cal-col-cancel" class="btn btn-secondary btn-sm">Batal</button>
+                  <button id="cal-col-save" class="btn btn-primary btn-sm">Simpan</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- Telegram Bot View -->
