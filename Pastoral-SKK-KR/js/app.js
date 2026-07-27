@@ -2432,7 +2432,7 @@ function renderColumnEditorList() {
         <input type="checkbox" class="col-show-cal" ${col.show_calendar !== false ? 'checked' : ''} /> 📅
       </label>
       <label title="Tampil di Telegram Bot" style="display:flex;align-items:center;gap:2px;font-size:11px;cursor:pointer;white-space:nowrap">
-        <input type="checkbox" class="col-show-bot" ${col.show_bot !== false ? 'checked' : ''} /> 📱
+        <input type="checkbox" class="col-show-bot" ${(col.show_bot !== undefined ? col.show_bot : !!col.short) ? 'checked' : ''} /> 📱
       </label>
       <button class="btn btn-danger btn-sm col-del-btn" type="button" title="Hapus kolom" style="padding:2px 6px;font-size:14px;line-height:1">✕</button>
     </div>`;
@@ -2510,7 +2510,7 @@ async function saveColumnEditor() {
       if (group > 0) col.group = group;
       if (notes) col.notes = notes;
       if (!showCal) col.show_calendar = false;
-      if (!showBot) col.show_bot = false;
+      col.show_bot = showBot;
       columnConfig.push(col);
     }
   });
