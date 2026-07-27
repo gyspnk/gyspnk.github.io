@@ -431,7 +431,7 @@ export default {
             try { if (cfg.column_config) colCfg = JSON.parse(cfg.column_config); } catch (_) {}
             const dateCol = colCfg.length > 0 ? colCfg.find(c => c.type === 'date') : null;
             const dateIdx = dateCol ? dateCol.idx : (sk === 'ibadah_mingguan_karyawan' ? 1 : 0);
-            const textCols = colCfg.length > 0 ? colCfg.filter(c => c.type === 'text' || c.type === 'link') : [];
+            const textCols = colCfg.length > 0 ? colCfg.filter(c => (c.type === 'text' || c.type === 'link') && c.show_bot !== false) : [];
             const shortCol = colCfg.length > 0 ? colCfg.find(c => c.short === true) : null;
             const label = cfg.sheet_label || sk;
             const notes = (g.notes ? g.notes + '\n' : '') + (cfg.notes || '');
@@ -445,7 +445,7 @@ export default {
                 groups.forEach(g => {
                   const gCols = colCfg.filter(c => c.group === g);
                   const gDate = gCols.find(c => c.type === 'date');
-                  const gTexts = gCols.filter(c => c.type === 'text' || c.type === 'link');
+                  const gTexts = gCols.filter(c => (c.type === 'text' || c.type === 'link') && c.show_bot !== false);
                   if (!gDate) return;
                   const dRaw = String(row[gDate.idx] || '').trim();
                   if (!dRaw) return;
