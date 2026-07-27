@@ -1285,24 +1285,7 @@ export default {
       return json({ error: err.message || 'Server error' }, 500, allowOrigin);
     }
   }
-};      if (path === "/api/bot/schedule-data" && request.method === "GET") {
-        const sheetId = url.searchParams.get("sheetId");
-        const gid = url.searchParams.get("gid") || "0";
-        if (!sheetId) return json({ error: "sheetId diperlukan" }, 400, allowOrigin);
-        if (!env.GSA_JSON) return json({ error: "GSA_JSON not configured" }, 400, allowOrigin);
-        try {
-          const accessToken = await getGoogleAccessToken(env);
-          if (!accessToken) return json({ error: "OAuth token failed" }, 500, allowOrigin);
-          const apiData = await fetchSheetViaSheetsAPI(sheetId, gid, accessToken);
-          if (apiData) {
-            return json({ success: true, ...apiData, accessible: true }, 200, allowOrigin);
-          }
-        } catch (e) { /* fall through */ }
-        return json({ success: false, accessible: false, error: "Sheet tidak dapat diakses" }, 200, allowOrigin);
-      }
-    }
-  }
-}
+};
 
 // Simple CSV line parser
 function parseCSVLine(line) {
