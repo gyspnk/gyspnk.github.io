@@ -692,15 +692,28 @@ function renderAdminEmployees() {
       return `<button type="button" class="btn btn-sm ${isActive ? 'btn-warn' : 'btn-success'}" onclick="window._toggleEmpPresensi(${emp.id},'${t.key}',${isActive ? 1 : 0},this)" data-presensi-type="${t.key}">${shortLabel}: ${isActive ? 'Off' : 'On'}</button>`;
     }).join('');
 
+    const escName = (emp.name || '').replace(/"/g, '&quot;');
+    const escPos = (emp.position || '').replace(/"/g, '&quot;');
+    const escStat = (emp.employment_status || '').replace(/"/g, '&quot;');
+
     tr.innerHTML = `
       <td style="color:var(--text-muted);font-size:12px">${idx + 1}</td>
-      <td>${emp.name}</td>
-      <td>${emp.position || ''}</td>
-      <td class="editable-div" data-emp-id="${emp.id}" data-emp-name="${emp.name}">
+      <td data-editable="text" data-emp-id="${emp.id}" data-field="name">
+        <span class="cell-label">${escName}</span>
+        <input class="cell-input hidden" type="text" value="${escName}" />
+      </td>
+      <td data-editable="text" data-emp-id="${emp.id}" data-field="position">
+        <span class="cell-label">${escPos || '—'}</span>
+        <input class="cell-input hidden" type="text" value="${escPos}" />
+      </td>
+      <td class="editable-div" data-emp-id="${emp.id}" data-emp-name="${escName}">
         <span class="div-label">${emp.division || '—'}</span>
         <select class="div-select hidden" data-emp-id="${emp.id}">${divOptions}</select>
       </td>
-      <td>${emp.employment_status || ''}</td>
+      <td data-editable="text" data-emp-id="${emp.id}" data-field="employment_status">
+        <span class="cell-label">${escStat || '—'}</span>
+        <input class="cell-input hidden" type="text" value="${escStat}" />
+      </td>
       ${toggleColsHtml}
       <td>
         <div class="action-cell">
@@ -711,7 +724,7 @@ function renderAdminEmployees() {
     `;
     tbody.appendChild(tr);
 
-    // Division click-to-edit
+    // Division click-to-edit (existing pattern)
     const divCell = tr.querySelector('.editable-div');
     const divLabel = divCell.querySelector('.div-label');
     const divSelect = divCell.querySelector('.div-select');
@@ -755,6 +768,89 @@ function renderAdminEmployees() {
       }, 200);
     };
   });
+
+  // Wire up inline text editing (event delegation on tbody, only once)
+  if (!tbody._empEditingWired) {
+    tbody._empEditingWired = true;
+    tbody.addEventListener('click', function onClickCell(e) {
+    const cell = e.target.closest('[data-editable="text"]');
+    if (!cell) return;
+    // Don't open if clicking on already-open input
+    if (e.target.tagName === 'INPUT') return;
+    const label = cell.querySelector('.cell-label');
+    const input = cell.querySelector('.cell-input');
+    if (!label || !input) return;
+    label.classList.add('hidden');
+    input.classList.remove('hidden');
+    input.focus();
+    input.select();
+  });
+
+  tbody.addEventListener('keydown', function onCellKeydown(e) {
+    if (e.key !== 'Enter' && e.key !== 'Escape') return;
+    const input = e.target.closest('.cell-input');
+    if (!input) return;
+    const cell = input.closest('[data-editable="text"]');
+    if (!cell) return;
+    const label = cell.querySelector('.cell-label');
+
+    if (e.key === 'Escape') {
+      input.value = label.textContent;
+      input.classList.add('hidden');
+      label.classList.remove('hidden');
+      return;
+    }
+
+    // Enter — save
+    const empId = parseInt(cell.dataset.empId, 10);
+    const field = cell.dataset.field;
+    const newVal = input.value.trim();
+    const oldVal = label.textContent;
+
+    if (newVal === oldVal || (newVal === '' && oldVal === '—')) {
+      input.classList.add('hidden');
+      label.classList.remove('hidden');
+      return;
+    }
+
+    const emp = adminData.employees.find(e => e.id === empId);
+    if (!emp) return;
+
+    input.disabled = true;
+    const payload = {
+      name: field === 'name' ? newVal : emp.name,
+      position: field === 'position' ? newVal : emp.position,
+      division: emp.division || '',
+      employmentStatus: field === 'employment_status' ? newVal : emp.employment_status
+    };
+
+    api.updateEmployee(empId, payload).then(() => {
+      loadAdminEmployees();
+    }).catch(err => {
+      alert('Gagal: ' + err.message);
+      input.disabled = false;
+      input.classList.add('hidden');
+      label.classList.remove('hidden');
+    });
+  });
+
+  tbody.addEventListener('blur', function onCellBlur(e) {
+    const input = e.target.closest('.cell-input');
+    if (!input) return;
+    // Small delay so click on save doesn't cancel before save
+    setTimeout(() => {
+      if (document.activeElement !== input) {
+        const cell = input.closest('[data-editable="text"]');
+        if (cell) {
+          const label = cell.querySelector('.cell-label');
+          input.value = label.textContent;
+          input.classList.add('hidden');
+          label.classList.remove('hidden');
+        }
+      }
+    }, 200);
+  }, true);
+  }
 
   tbody.querySelectorAll('[data-del-emp]').forEach(btn => {
     btn.onclick = async () => {
@@ -1640,13 +1736,36 @@ function renderAdminKFStudents() {
   students.forEach((s, idx) => {
     const tr = document.createElement('tr');
     const isActive = s.is_active != false;
+    const escName = (s.name || '').replace(/"/g, '&quot;');
+    const escNis = (s.nis || '').replace(/"/g, '&quot;');
+    const escClass = (s.class || '').replace(/"/g, '&quot;');
+    const escReligion = (s.religion || '').replace(/"/g, '&quot;');
+    const genderOptions = ['', 'L', 'P'].map(g =>
+      `<option value="${g}" ${(s.gender || '') === g ? 'selected' : ''}>${g || '—'}</option>`
+    ).join('');
+
     tr.innerHTML = `
       <td style="color:var(--text-muted);font-size:12px">${idx + 1}</td>
-      <td>${s.nis || '—'}</td>
-      <td>${s.name}</td>
-      <td>${s.class || '—'}</td>
-      <td>${s.gender || '—'}</td>
-      <td>${s.religion || '—'}</td>
+      <td data-editable="text" data-student-id="${s.id}" data-field="nis">
+        <span class="cell-label">${escNis || '—'}</span>
+        <input class="cell-input hidden" type="text" value="${escNis}" />
+      </td>
+      <td data-editable="text" data-student-id="${s.id}" data-field="name">
+        <span class="cell-label">${escName}</span>
+        <input class="cell-input hidden" type="text" value="${escName}" />
+      </td>
+      <td data-editable="text" data-student-id="${s.id}" data-field="class">
+        <span class="cell-label">${escClass || '—'}</span>
+        <input class="cell-input hidden" type="text" value="${escClass}" />
+      </td>
+      <td data-editable="select" data-student-id="${s.id}" data-field="gender">
+        <span class="cell-label">${s.gender || '—'}</span>
+        <select class="cell-select hidden">${genderOptions}</select>
+      </td>
+      <td data-editable="text" data-student-id="${s.id}" data-field="religion">
+        <span class="cell-label">${escReligion || '—'}</span>
+        <input class="cell-input hidden" type="text" value="${escReligion}" />
+      </td>
       <td><span class="toggle-switch ${isActive ? 'toggle-active' : 'toggle-inactive'}">${isActive ? 'Aktif' : 'Nonaktif'}</span></td>
       <td>
         <div class="action-cell">
@@ -1681,6 +1800,128 @@ function renderAdminKFStudents() {
 
   if (tbody.children.length === 0) {
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px">Tidak ada data siswa</td></tr>';
+  }
+
+  // Wire up inline editing for text cells (event delegation)
+  if (!tbody._kfsEditingWired) {
+    tbody._kfsEditingWired = true;
+
+    tbody.addEventListener('click', function onClickCell(e) {
+      const cell = e.target.closest('[data-editable]');
+      if (!cell) return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      const label = cell.querySelector('.cell-label');
+      const input = cell.querySelector('.cell-input, .cell-select');
+      if (!label || !input) return;
+      label.classList.add('hidden');
+      input.classList.remove('hidden');
+      if (input.tagName === 'INPUT') { input.focus(); input.select(); }
+    });
+
+    tbody.addEventListener('change', function onSelectChange(e) {
+      const select = e.target.closest('.cell-select');
+      if (!select) return;
+      const cell = select.closest('[data-editable="select"]');
+      if (!cell) return;
+      const label = cell.querySelector('.cell-label');
+      if (!label) return;
+      const studentId = parseInt(cell.dataset.studentId, 10);
+      const field = cell.dataset.field;
+      const newVal = select.value;
+      const oldVal = label.textContent;
+
+      if (newVal === oldVal || (newVal === '' && oldVal === '—')) {
+        select.classList.add('hidden');
+        label.classList.remove('hidden');
+        return;
+      }
+
+      const s = kfsData.find(st => st.id === studentId);
+      if (!s) return;
+      select.disabled = true;
+
+      const payload = {
+        nis: s.nis || '',
+        name: s.name,
+        studentClass: s.class || '',
+        gender: field === 'gender' ? newVal : (s.gender || ''),
+        religion: s.religion || ''
+      };
+
+      api.updateKFStudent(studentId, payload).then(() => {
+        loadAdminKFStudents();
+      }).catch(err => {
+        alert('Gagal: ' + err.message);
+        select.disabled = false;
+        select.classList.add('hidden');
+        label.classList.remove('hidden');
+      });
+    });
+
+    tbody.addEventListener('keydown', function onCellKeydown(e) {
+      if (e.key !== 'Enter' && e.key !== 'Escape') return;
+      const input = e.target.closest('.cell-input');
+      if (!input) return;
+      const cell = input.closest('[data-editable="text"]');
+      if (!cell) return;
+      const label = cell.querySelector('.cell-label');
+
+      if (e.key === 'Escape') {
+        input.value = label.textContent;
+        input.classList.add('hidden');
+        label.classList.remove('hidden');
+        return;
+      }
+
+      // Enter — save
+      const studentId = parseInt(cell.dataset.studentId, 10);
+      const field = cell.dataset.field;
+      const newVal = input.value.trim();
+      const oldVal = label.textContent;
+
+      if (newVal === oldVal || (newVal === '' && oldVal === '—')) {
+        input.classList.add('hidden');
+        label.classList.remove('hidden');
+        return;
+      }
+
+      const s = kfsData.find(st => st.id === studentId);
+      if (!s) return;
+
+      input.disabled = true;
+      const payload = {
+        nis: field === 'nis' ? newVal : (s.nis || ''),
+        name: field === 'name' ? newVal : s.name,
+        studentClass: field === 'class' ? newVal : (s.class || ''),
+        gender: s.gender || '',
+        religion: field === 'religion' ? newVal : (s.religion || '')
+      };
+
+      api.updateKFStudent(studentId, payload).then(() => {
+        loadAdminKFStudents();
+      }).catch(err => {
+        alert('Gagal: ' + err.message);
+        input.disabled = false;
+        input.classList.add('hidden');
+        label.classList.remove('hidden');
+      });
+    });
+
+    tbody.addEventListener('blur', function onCellBlur(e) {
+      const input = e.target.closest('.cell-input');
+      if (!input) return;
+      setTimeout(() => {
+        if (document.activeElement !== input) {
+          const cell = input.closest('[data-editable="text"]');
+          if (cell) {
+            const label = cell.querySelector('.cell-label');
+            input.value = label.textContent;
+            input.classList.add('hidden');
+            label.classList.remove('hidden');
+          }
+        }
+      }, 200);
+    }, true);
   }
 }
 
