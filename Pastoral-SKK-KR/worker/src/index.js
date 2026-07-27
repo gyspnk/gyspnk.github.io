@@ -452,6 +452,39 @@ export default {
         return json({ success: true, steps }, 200, allowOrigin);
       }
 
+      // ===== Bot: sync sheet configs to Firestore =====
+      if (path === '/api/bot/sync-config' && request.method === 'GET') {
+        await pushSheetConfigsToFirestore(env);
+        return json({ success: true }, 200, allowOrigin);
+      }
+
+      // ===== Bot: custom events for a date =====
+      if (path === '/api/bot/custom-events' && request.method === 'GET') {
+        const targetDate = url.searchParams.get('date') || '';
+        if (!targetDate) return json({ error: 'date diperlukan' }, 400, allowOrigin);
+        const rows = await query(env,
+          'SELECT * FROM calendar_custom_events WHERE start_date <= ? AND end_date >= ? ORDER BY start_date',
+          [targetDate, targetDate]);
+        const events = [];
+        for (const e of rows) {
+          const isRepeat = e.is_repeating == true;
+          if (isRepeat && e.repeat_days) {
+            let days = [];
+            try { days = JSON.parse(e.repeat_days); } catch (_) {}
+            const d = new Date(targetDate + 'T00:00:00');
+            if (!days.includes(d.getDay())) continue;
+          }
+          events.push({
+            title: e.title,
+            description: e.description || '',
+            start_date: e.start_date,
+            end_date: e.end_date,
+            color: e.color || '#ef4444'
+          });
+        }
+        return json({ date: targetDate, events }, 200, allowOrigin);
+      }
+
 
 
       // Auth required below — bot bypass via X-Bot-Key header
