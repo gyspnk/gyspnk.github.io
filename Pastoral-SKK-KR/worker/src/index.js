@@ -388,6 +388,12 @@ export default {
 
         const groups = await query(env, 'SELECT * FROM bot_groups WHERE is_enabled = TRUE');
         const configs = await query(env, 'SELECT * FROM calendar_sheet_configs WHERE is_active = TRUE');
+        // Compute date header
+        const d = new Date(targetDate + 'T00:00:00');
+        const HARI = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+        const BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+        const dateHeader = HARI[d.getDay()] + ', ' + d.getDate() + ' ' + BULAN[d.getMonth()] + ' ' + d.getFullYear();
+
         const messages = [];
 
         for (const g of groups) {
@@ -447,7 +453,7 @@ export default {
                   if (ds !== targetDate) continue;
                   const officer = String(row[slot.offIdx] || '').trim();
                   if (officer) {
-                    parts.push(label + ', ' + targetDate + ':\n' + slot.label + ' - Petugas: ' + officer);
+                    parts.push(label + ':\n' + slot.label + ' - Petugas: ' + officer);
                   }
                 }
               }
@@ -468,7 +474,7 @@ export default {
             if (!matchedRow) continue;
 
             // Format using column_config text fields (like calendar detail view)
-            let msg = label + ', ' + targetDate;
+            let msg = label + ':';
             if (textCols.length > 0) {
               for (const tc of textCols) {
                 const val = matchedRow[tc.idx] !== undefined && matchedRow[tc.idx] !== null ? String(matchedRow[tc.idx]).trim() : '';
@@ -483,7 +489,7 @@ export default {
             if (notes) msg += '\n\n' + notes.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
             parts.push(msg);
           }
-          if (parts.length > 0) messages.push({ chat_id: g.chat_id, text: parts.join('\n───\n') });
+          if (parts.length > 0) messages.push({ chat_id: g.chat_id, text: dateHeader + '\n\n' + parts.join('\n\n') });
         }
         return json({ date: targetDate, count: messages.length, messages }, 200, allowOrigin);
       }
