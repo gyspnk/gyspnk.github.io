@@ -736,6 +736,35 @@ tbody tr:hover { background: #f8fafc; }
 }
 .day-check-label input { display: none; }
 
+/* ===== Calendar Settings Panel (slide-in) ===== */
+.cal-settings-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.3);
+  display: flex; justify-content: flex-end;
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+}
+.cal-settings-overlay.open {
+  opacity: 1; visibility: visible;
+}
+.cal-settings-panel {
+  width: 420px; max-width: 90vw;
+  height: 100%; overflow-y: auto;
+  background: var(--card-bg);
+  border-left: 1px solid var(--border);
+  padding: 20px; box-sizing: border-box;
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
+}
+.cal-settings-overlay.open .cal-settings-panel {
+  transform: translateX(0);
+}
+.cal-settings-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.cal-settings-header h3 { margin: 0; font-size: 16px; }
+
 /* ================================================================
    RESPONSIVE — Tablet (≤ 1024px)
    ================================================================ */

@@ -9,7 +9,7 @@ import { getAvailableYears, getCurrentAcademicYear, loadKaryawanData } from './d
 import { initCalendar } from './calendar.js';
 
 let currentView = 'dashboard';
-let viewsInitialized = { dashboard: false, presensi: false, history: false, export: false, admin: false, calendar: false };
+let viewsInitialized = { dashboard: false, presensi: false, history: false, export: false, admin: false, calendar: false, bot: false };
 
 /* ===== Global Loading Bar ===== */
 let _loadingCount = 0;
@@ -352,10 +352,19 @@ function switchView(view) {
       viewsInitialized.calendar = true;
       initCalendar();
     }
+    // Always refresh calendar settings data when visiting calendar
+    initCalendarSettings();
   }
 
   if (view === 'admin' && hasRole('admin')) {
     initAdmin();
+  }
+
+  if (view === 'telegram-bot') {
+    if (!viewsInitialized.bot) {
+      viewsInitialized.bot = true;
+      initBotView();
+    }
   }
 }
 
@@ -416,8 +425,6 @@ async function initAdmin() {
   initAdminPresensiTypes().then(() => {
     initAdminPresensiConfig();
   });
-  initAdminCalendarConfig();
-  initAdminBotConfig();
 }
 
 function switchAdminTab(tab) {
@@ -2226,8 +2233,33 @@ let calendarConfigData = [];
 let _colEditorConfigId = null;
 let _colEditorData = [];
 
+/** Init calendar settings panel (gear icon on calendar page) */
+function initCalendarSettings() {
+  const btn = document.getElementById('cal-settings-btn');
+  if (!btn) return;
+  // Only wire up once
+  if (!btn._wired) {
+    btn._wired = true;
+    document.getElementById('cal-settings-btn').onclick = () => {
+      document.getElementById('cal-settings-overlay').classList.add('open');
+      loadCalendarConfigTable();
+    };
+    document.getElementById('cal-settings-close').onclick = () => {
+      document.getElementById('cal-settings-overlay').classList.remove('open');
+    };
+    document.getElementById('cal-settings-overlay').onclick = (e) => {
+      if (e.target === document.getElementById('cal-settings-overlay')) {
+        document.getElementById('cal-settings-overlay').classList.remove('open');
+      }
+    };
+    document.getElementById('cal-set-add-btn').onclick = handleAddCalendarConfig;
+  }
+  // Keep data fresh every time panel opens
+  loadCalendarConfigTable();
+}
+
 function initAdminCalendarConfig() {
-  document.getElementById('add-cal-config-btn').onclick = handleAddCalendarConfig;
+  
   // Column editor modal buttons
   document.getElementById('cal-col-editor-close').onclick = closeColumnEditor;
   document.getElementById('cal-col-cancel').onclick = closeColumnEditor;
@@ -2259,7 +2291,7 @@ async function loadCalendarConfigTable() {
 }
 
 function renderCalendarConfigTable() {
-  const tbody = document.getElementById('calendar-config-tbody');
+  const tbody = document.getElementById('cal-set-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
   calendarConfigData.forEach(c => {
@@ -2297,12 +2329,12 @@ function renderCalendarConfigTable() {
 }
 
 async function handleAddCalendarConfig() {
-  const academicYear = document.getElementById('new-cal-ay').value.trim();
-  const sheetKey = document.getElementById('new-cal-key').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
-  const sheetLabel = document.getElementById('new-cal-label').value.trim();
-  const sheetId = document.getElementById('new-cal-sheetid').value.trim();
-  const gid = document.getElementById('new-cal-gid').value.trim() || '0';
-  const color = document.getElementById('new-cal-color').value;
+  const academicYear = document.getElementById('cal-set-ay').value.trim();
+  const sheetKey = document.getElementById('cal-set-key').value.trim().toLowerCase().replace(/[^a-z0-9_]/g, '_');
+  const sheetLabel = document.getElementById('cal-set-label').value.trim();
+  const sheetId = document.getElementById('cal-set-sheetid').value.trim();
+  const gid = document.getElementById('cal-set-gid').value.trim() || '0';
+  const color = document.getElementById('cal-set-color').value;
 
   if (!academicYear || !sheetKey || !sheetLabel || !sheetId) {
     alert('Isi Tahun Ajaran, Key, Label, dan Google Sheet ID.');
@@ -2310,11 +2342,11 @@ async function handleAddCalendarConfig() {
   }
   try {
     await api.saveCalendarConfig({ academicYear, sheetKey, sheetLabel, sheetId, gid, color, sortOrder: calendarConfigData.length + 1 });
-    document.getElementById('new-cal-ay').value = '';
-    document.getElementById('new-cal-key').value = '';
-    document.getElementById('new-cal-label').value = '';
-    document.getElementById('new-cal-sheetid').value = '';
-    document.getElementById('new-cal-gid').value = '0';
+    document.getElementById('cal-set-ay').value = '';
+    document.getElementById('cal-set-key').value = '';
+    document.getElementById('cal-set-label').value = '';
+    document.getElementById('cal-set-sheetid').value = '';
+    document.getElementById('cal-set-gid').value = '0';
     await loadCalendarConfigTable();
   } catch (e) { alert('Gagal: ' + e.message); }
 }
@@ -2493,7 +2525,7 @@ async function saveColumnEditor() {
 let botGroupsData = [];
 let _editingBotGroupId = null;
 
-function initAdminBotConfig() {
+function initBotView() {
   document.getElementById('bot-groups-reload').onclick = loadBotGroups;
   document.getElementById('bot-groups-sync').onclick = handleBotSync;
   document.getElementById('bot-group-add-btn').onclick = () => openBotGroupModal();

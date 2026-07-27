@@ -73,6 +73,7 @@
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             Kalender Pastoral
           </a></li>
+<li><a href="#telegram-bot" data-view="telegram-bot" class="nav-link" id="bot-nav">🤖 Telegram Bot</a></li>
 <li><a href="#admin" data-view="admin" class="nav-link" id="admin-nav">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             Manajemen User
@@ -357,6 +358,7 @@
               <button id="cal-manage-events-btn" class="btn btn-sm btn-secondary" title="Kelola Event Khusus">⭐ Kelola Event</button>
               <button id="cal-add-event-btn" class="btn btn-sm btn-primary" title="Tambah Event Khusus">+ Event</button>
               <button id="cal-sheets-btn" class="btn btn-sm btn-secondary" title="Lihat Google Sheets">📊 Lihat Sheets</button>
+              <button id="cal-settings-btn" class="btn btn-sm btn-secondary" title="Pengaturan Kalender">⚙️</button>
               <div class="form-group" style="margin:0;min-width:100px">
                 <select id="cal-academic-year" style="font-size:12px;padding:3px 6px"></select>
               </div>
@@ -493,6 +495,103 @@
               </div>
             </div>
           </div>
+
+          <!-- Calendar Settings Panel (slide-in) -->
+          <div id="cal-settings-overlay" class="cal-settings-overlay">
+            <div class="cal-settings-panel">
+              <div class="cal-settings-header">
+                <h3>⚙️ Pengaturan Kalender</h3>
+                <button id="cal-settings-close" class="btn btn-sm btn-text">✕</button>
+              </div>
+              <div id="cal-settings-content">
+                <p class="muted" style="margin-bottom:12px">Atur Google Sheets yang ditampilkan di Kalender Pastoral per Tahun Ajaran. Klik <strong>📋 Kolom</strong> untuk mengatur kolom dan keterangan.</p>
+                <div id="cal-settings-form" style="display:flex;gap:6px;align-items:end;flex-wrap:wrap;margin-bottom:12px">
+                  <div class="form-group" style="min-width:80px"><label>AY</label><input type="text" id="cal-set-ay" placeholder="2026-2027" style="font-family:monospace;font-size:12px" /></div>
+                  <div class="form-group" style="min-width:80px"><label>Key</label><input type="text" id="cal-set-key" placeholder="renungan_harian" style="font-family:monospace;font-size:12px" /></div>
+                  <div class="form-group" style="min-width:100px"><label>Label</label><input type="text" id="cal-set-label" placeholder="📖 Renungan" style="font-size:12px" /></div>
+                  <div class="form-group" style="min-width:140px"><label>Sheet ID</label><input type="text" id="cal-set-sheetid" placeholder="1ojbcrwsnlnr..." style="font-family:monospace;font-size:12px" /></div>
+                  <div class="form-group" style="min-width:50px"><label>GID</label><input type="text" id="cal-set-gid" value="0" style="font-size:12px" /></div>
+                  <div class="form-group" style="min-width:50px"><label>Warna</label><input type="color" id="cal-set-color" value="#3b82f6" style="width:36px;height:28px;padding:2px" /></div>
+                  <button id="cal-set-add-btn" class="btn btn-primary btn-sm" style="margin-bottom:2px">Tambah</button>
+                </div>
+                <div class="table-wrapper" style="max-height:300px;overflow-y:auto">
+                  <table>
+                    <thead><tr><th>Label</th><th>Key</th><th>Warna</th><th>Aksi</th></tr></thead>
+                    <tbody id="cal-set-tbody"></tbody>
+                  </table>
+                </div>
+                <div id="cal-set-msg" class="info-msg hidden" style="margin-top:8px"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Telegram Bot View -->
+        <section id="view-telegram-bot" class="view hidden">
+          <div class="page-header" style="align-items:center">
+            <h2 style="margin:0">🤖 Manajemen Telegram Bot</h2>
+          </div>
+          <div style="max-width:800px">
+            <p class="muted" style="margin-bottom:12px">Atur grup Telegram dan konfigurasi bot pengumuman renungan harian.</p>
+
+            <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px">
+              <h4 style="margin:0 0 8px 0;font-size:14px">Konfigurasi Google Sheets</h4>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+                <div class="form-group" style="min-width:220px;flex:2"><label>Sheet ID</label><input type="text" id="bot-sheet-id" placeholder="Google Sheet ID" style="font-family:monospace;font-size:12px" /></div>
+                <div class="form-group" style="min-width:180px;flex:1"><label>Range</label><input type="text" id="bot-sheet-range" placeholder="Sheet1!A1:Z100" style="font-family:monospace;font-size:12px" /></div>
+                <button id="bot-config-save" class="btn btn-primary btn-sm" style="margin-bottom:2px">Simpan</button>
+              </div>
+              <div id="bot-config-msg" class="info-msg hidden" style="margin-top:8px"></div>
+            </div>
+
+            <h4 style="font-size:14px;margin-bottom:8px">Grup Terdaftar</h4>
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+              <button id="bot-groups-reload" class="btn btn-sm btn-secondary">🔄 Muat Ulang</button>
+              <button id="bot-groups-sync" class="btn btn-sm btn-secondary" title="Sync groups dari Firestore (Google Cloud)">☁️ Sync dari Bot</button>
+              <button id="bot-group-add-btn" class="btn btn-sm btn-primary">+ Tambah Grup</button>
+            </div>
+            <div class="table-wrapper" style="max-height:400px;overflow-y:auto">
+              <table>
+                <thead><tr><th>Chat ID</th><th>Nama Grup</th><th>Status</th><th>Jam Kirim</th><th>Jadwal</th><th>Terakhir Kirim</th><th>Aksi</th></tr></thead>
+                <tbody id="bot-groups-tbody"></tbody>
+              </table>
+            </div>
+            <div id="bot-groups-msg" class="info-msg hidden" style="margin-top:8px"></div>
+          </div>
+
+          <!-- Add/Edit Group Modal -->
+          <div id="bot-group-modal" class="modal-overlay hidden">
+            <div class="modal-card" style="max-width:420px">
+              <div class="modal-header">
+                <h3 id="bot-group-modal-title">Tambah Grup Telegram</h3>
+                <button id="bot-group-modal-close" class="btn btn-sm btn-text">✕</button>
+              </div>
+              <div class="modal-body">
+                <div class="form-group"><label>Chat ID</label><input type="text" id="bot-group-chatid" placeholder="-1001234567890" style="font-family:monospace" /></div>
+                <div class="form-group"><label>Nama Grup</label><input type="text" id="bot-group-name" placeholder="Nama grup Telegram" /></div>
+                <div style="display:flex;gap:8px">
+                  <div class="form-group" style="flex:1"><label>Jam</label><input type="number" id="bot-group-hour" min="0" max="23" value="13" style="font-family:monospace" /></div>
+                  <div class="form-group" style="flex:1"><label>Menit</label><input type="number" id="bot-group-minute" min="0" max="59" value="0" style="font-family:monospace" /></div>
+                </div>
+                <div class="form-group">
+                  <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                    <input type="checkbox" id="bot-group-enabled" checked /> Aktif
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label style="display:block;font-weight:600;margin-bottom:4px">Jadwal yang dikirim:</label>
+                  <div id="bot-group-schedules" style="display:flex;flex-wrap:wrap;gap:4px;max-height:140px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px">
+                    <p class="muted" style="font-size:12px;padding:4px;margin:0">Memuat jadwal...</p>
+                  </div>
+                </div>
+                <div id="bot-group-modal-msg" class="info-msg hidden" style="margin-top:8px"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+                  <button id="bot-group-modal-cancel" class="btn btn-secondary btn-sm">Batal</button>
+                  <button id="bot-group-modal-save" class="btn btn-primary btn-sm">Simpan</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- Admin View -->
@@ -506,8 +605,6 @@
               <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="employees">Karyawan</button>
               <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="kf-students">KF - Siswa</button>
               <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="presensi-config">Presensi</button>
-              <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="calendar-config">Kalender</button>
-              <button class="btn btn-sm btn-secondary admin-tab" data-admin-tab="bot-config">🤖 Bot Telegram</button>
             </div>
           </div>
 
@@ -772,177 +869,6 @@
                     <thead><tr><th>No</th><th>NIS</th><th>Nama</th><th>Kelas</th><th>Gender</th><th>Agama</th><th>Aktif</th><th>Aksi</th></tr></thead>
                     <tbody id="kfs-tbody"></tbody>
                   </table>
-                </div>
-              </div>
-            </div>
-          </div>
-          <!-- Tab: Calendar Config -->
-          <div id="admin-tab-calendar-config" class="admin-tab-content hidden">
-            <div class="admin-form-card" style="max-width:800px">
-              <h3>Kelola Link Kalender Pastoral <span style="font-weight:400;font-size:13px;color:var(--text-muted)">(Admin only)</span></h3>
-              <p class="muted" style="margin-bottom:12px">Atur Google Sheets yang ditampilkan di Kalender Pastoral per Tahun Ajaran.</p>
-              <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:14px">
-                <div class="form-group" style="min-width:110px"><label>Tahun Ajaran</label><input type="text" id="new-cal-ay" placeholder="2026-2027" style="font-family:monospace" /></div>
-                <div class="form-group" style="min-width:90px"><label>Key</label><input type="text" id="new-cal-key" placeholder="renungan_harian_siswa" style="font-family:monospace" /></div>
-                <div class="form-group" style="min-width:120px"><label>Label</label><input type="text" id="new-cal-label" placeholder="📖 Renungan Harian" /></div>
-                <div class="form-group" style="min-width:200px"><label>Google Sheet ID</label><input type="text" id="new-cal-sheetid" placeholder="1ojbcrwsnlnr..." style="font-family:monospace" /></div>
-                <div class="form-group" style="min-width:70px"><label>GID</label><input type="text" id="new-cal-gid" value="0" /></div>
-                <div class="form-group" style="min-width:60px"><label>Warna</label><input type="color" id="new-cal-color" value="#3b82f6" style="width:36px;height:30px;padding:2px" /></div>
-                <button id="add-cal-config-btn" class="btn btn-primary btn-sm">Tambah</button>
-              </div>
-              <div class="table-wrapper">
-                <table>
-                  <thead><tr><th>AY</th><th>Key</th><th>Label</th><th>Sheet ID</th><th>GID</th><th>Warna</th><th>Aksi</th></tr></thead>
-                  <tbody id="calendar-config-tbody"></tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Column Editor Modal -->
-            <div id="cal-column-editor-modal" class="modal-overlay hidden">
-              <div class="modal-card" style="max-width:640px">
-                <div class="modal-header">
-                  <h3 id="cal-col-editor-title">📋 Atur Kolom Sheet</h3>
-                  <button id="cal-col-editor-close" class="btn btn-sm btn-text">✕</button>
-                </div>
-                <div class="modal-body">
-                  <p class="muted" style="margin-bottom:8px">Tentukan bagaimana kolom dari Google Sheets dibaca. Kolom <strong>date</strong> sebagai sumber tanggal, <strong>text</strong> ditampilkan di detail, <strong>link</strong> sebagai tautan klikabel.</p>
-                  <div id="cal-col-editor-info" style="font-size:12px;color:var(--text-muted);margin-bottom:12px"></div>
-                  <div id="cal-col-editor-list"></div>
-                  <div style="margin-top:12px">
-                    <label style="font-weight:600;font-size:13px;display:block;margin-bottom:4px">📝 Keterangan (tampil di semua event sheet ini)</label>
-                    <div class="cev-desc-toolbar">
-                      <button type="button" class="notes-fmt-btn" data-fmt="bold" title="Tebal"><b>B</b></button>
-                      <button type="button" class="notes-fmt-btn" data-fmt="italic" title="Miring"><i>I</i></button>
-                      <button type="button" class="notes-fmt-btn" data-fmt="underline" title="Garis bawah"><u>U</u></button>
-                      <button type="button" class="notes-fmt-btn" data-fmt="strikeThrough" title="Coret"><s>S</s></button>
-                    </div>
-                    <div id="cal-col-notes" class="cev-desc-editor" contenteditable="true" data-placeholder="Contoh: Materi diupload di Google Drive..."></div>
-                  </div>
-                  <div style="display:flex;gap:8px;margin-top:12px">
-                    <button id="cal-col-add-row" class="btn btn-sm btn-secondary">+ Tambah Kolom</button>
-                    <button id="cal-col-detect" class="btn btn-sm btn-secondary" title="Coba ambil header kolom dari Google Sheets">🔍 Deteksi Otomatis</button>
-                  </div>
-                  <div id="cal-col-msg" class="info-msg hidden" style="margin-top:10px"></div>
-                  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-                    <button id="cal-col-cancel" class="btn btn-secondary btn-sm">Batal</button>
-                    <button id="cal-col-save" class="btn btn-primary btn-sm">Simpan</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tab: Presensi Config -->
-          <div id="admin-tab-presensi-config" class="admin-tab-content hidden">
-            <div class="admin-form-card" style="max-width:700px;margin-bottom:16px">
-              <h3>Kelola Kategori Presensi</h3>
-              <p class="muted" style="margin-bottom:12px">Tambah/hapus kategori presensi. Tandai <strong>Guru</strong> atau <strong>Siswa</strong>.</p>
-              <div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;margin-bottom:12px">
-                <div class="form-group" style="flex:1;min-width:110px"><label>Key</label><input type="text" id="new-pt-key" placeholder="contoh: retreat_guru" style="font-family:monospace" /></div>
-                <div class="form-group" style="flex:2;min-width:150px"><label>Nama</label><input type="text" id="new-pt-label" placeholder="contoh: Retreat Guru" /></div>
-                <div class="form-group" style="min-width:90px"><label>Tipe</label><select id="new-pt-category"><option value="guru">Guru</option><option value="siswa">Siswa</option></select></div>
-                <button id="add-pt-btn" class="btn btn-primary btn-sm">Tambah</button>
-              </div>
-              <div class="table-wrapper"><table>
-                <thead><tr><th>Key</th><th>Nama</th><th>Tipe</th><th>Status</th><th>Aksi</th></tr></thead>
-                <tbody id="presensi-types-tbody"></tbody>
-              </table></div>
-            </div>
-            <div class="admin-form-card" style="max-width:700px">
-              <h3>Konfigurasi Hari Presensi</h3>
-              <p class="muted" style="margin-bottom:16px">Atur hari apa saja setiap presensi boleh diisi. Hari yang tidak dicentang akan <strong>digrey-out</strong> di kalender dan tidak bisa dipilih.</p>
-              <div id="presensi-config-list"></div>
-            </div>
-          </div>
-
-          <!-- Export Column Selector Modal -->
-          <div id="export-column-modal" class="modal-overlay hidden">
-            <div class="modal-card" style="max-width:420px">
-              <div class="modal-header">
-                <h3 id="export-col-title">Pilih Kolom untuk Export</h3>
-                <button id="export-col-close" class="btn btn-sm btn-text">✕</button>
-              </div>
-              <div class="modal-body">
-                <p class="muted" style="margin-bottom:10px">Centang kolom yang ingin diexport:</p>
-                <div id="export-col-list" style="max-height:260px;overflow-y:auto;margin-bottom:12px"></div>
-                <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap">
-                  <button id="export-col-select-all" class="btn btn-sm btn-secondary">Pilih Semua</button>
-                  <button id="export-col-deselect-all" class="btn btn-sm btn-secondary">Hapus Semua</button>
-                </div>
-                <div id="export-col-filter-info" class="info-msg" style="margin-top:10px;font-size:12px;background:#f0f9ff;color:#1e40af;padding:6px 10px;border-radius:6px"></div>
-                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-                  <button id="export-col-cancel" class="btn btn-secondary btn-sm">Batal</button>
-                  <button id="export-col-proceed" class="btn btn-primary btn-sm">Export</button>
-                </div>
-                <div id="export-col-msg" class="info-msg hidden" style="margin-top:8px"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tab: Telegram Bot -->
-          <div id="admin-tab-bot-config" class="admin-tab-content hidden">
-            <div class="admin-form-card" style="max-width:800px">
-              <h3>🤖 Manajemen Telegram Bot</h3>
-              <p class="muted" style="margin-bottom:12px">Atur grup Telegram dan konfigurasi bot pengumuman renungan harian.</p>
-
-              <!-- Bot Config -->
-              <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px">
-                <h4 style="margin:0 0 8px 0;font-size:14px">Konfigurasi Google Sheets</h4>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
-                  <div class="form-group" style="min-width:220px;flex:2"><label>Sheet ID</label><input type="text" id="bot-sheet-id" placeholder="Google Sheet ID" style="font-family:monospace;font-size:12px" /></div>
-                  <div class="form-group" style="min-width:180px;flex:1"><label>Range</label><input type="text" id="bot-sheet-range" placeholder="Sheet1!A1:Z100" style="font-family:monospace;font-size:12px" /></div>
-                  <button id="bot-config-save" class="btn btn-primary btn-sm" style="margin-bottom:2px">Simpan</button>
-                </div>
-                <div id="bot-config-msg" class="info-msg hidden" style="margin-top:8px"></div>
-              </div>
-
-              <!-- Groups List -->
-              <h4 style="font-size:14px;margin-bottom:8px">Grup Terdaftar</h4>
-              <div id="bot-groups-actions" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-                <button id="bot-groups-reload" class="btn btn-sm btn-secondary">🔄 Muat Ulang</button>
-                <button id="bot-groups-sync" class="btn btn-sm btn-secondary" title="Sync groups dari Firestore (Google Cloud)">☁️ Sync dari Bot</button>
-                <button id="bot-group-add-btn" class="btn btn-sm btn-primary">+ Tambah Grup</button>
-              </div>
-              <div class="table-wrapper" style="max-height:400px;overflow-y:auto">
-                <table>
-                  <thead><tr><th>Chat ID</th><th>Nama Grup</th><th>Status</th><th>Jam Kirim</th><th>Jadwal</th><th>Terakhir Kirim</th><th>Aksi</th></tr></thead>
-                  <tbody id="bot-groups-tbody"></tbody>
-                </table>
-              </div>
-              <div id="bot-groups-msg" class="info-msg hidden" style="margin-top:8px"></div>
-            </div>
-
-            <!-- Add/Edit Group Modal -->
-            <div id="bot-group-modal" class="modal-overlay hidden">
-              <div class="modal-card" style="max-width:420px">
-                <div class="modal-header">
-                  <h3 id="bot-group-modal-title">Tambah Grup Telegram</h3>
-                  <button id="bot-group-modal-close" class="btn btn-sm btn-text">✕</button>
-                </div>
-                <div class="modal-body">
-                  <div class="form-group"><label>Chat ID</label><input type="text" id="bot-group-chatid" placeholder="Contoh: -1001234567890" style="font-family:monospace" /></div>
-                  <div class="form-group"><label>Nama Grup</label><input type="text" id="bot-group-name" placeholder="Nama grup Telegram" /></div>
-                  <div style="display:flex;gap:8px">
-                    <div class="form-group" style="flex:1"><label>Jam Kirim</label><input type="number" id="bot-group-hour" min="0" max="23" value="13" style="font-family:monospace" /></div>
-                    <div class="form-group" style="flex:1"><label>Menit</label><input type="number" id="bot-group-minute" min="0" max="59" value="0" style="font-family:monospace" /></div>
-                  </div>
-                  <div class="form-group">
-                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                      <input type="checkbox" id="bot-group-enabled" checked /> Aktif
-                    </label>
-                  </div>
-                  <div class="form-group">
-                    <label style="display:block;font-weight:600;margin-bottom:4px">Jadwal yang dikirim:</label>
-                    <div id="bot-group-schedules" style="display:flex;flex-wrap:wrap;gap:4px;max-height:140px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px">
-                      <p class="muted" style="font-size:12px;padding:4px;margin:0">Memuat jadwal...</p>
-                    </div>
-                  </div>
-                  <div id="bot-group-modal-msg" class="info-msg hidden" style="margin-top:8px"></div>
-                  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
-                    <button id="bot-group-modal-cancel" class="btn btn-secondary btn-sm">Batal</button>
-                    <button id="bot-group-modal-save" class="btn btn-primary btn-sm">Simpan</button>
-                  </div>
                 </div>
               </div>
             </div>
