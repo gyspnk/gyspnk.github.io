@@ -1040,6 +1040,8 @@ export default {
            ON DUPLICATE KEY UPDATE group_name=VALUES(group_name), is_enabled=VALUES(is_enabled),
              announce_hour=VALUES(announce_hour), announce_minute=VALUES(announce_minute)`,
           [String(chatId), groupName || '', isEnabled !== false, announceHour || 13, announceMinute || 0]);
+        // Push to Firestore for bot
+        pushGroupToFirestore(env, String(chatId), groupName || '', isEnabled !== false, announceHour || 13, announceMinute || 0, null).catch(() => {});
         return json({ success: true }, 200, allowOrigin);
       }
 
@@ -1057,6 +1059,14 @@ export default {
           params.push(id);
           await execute(env, `UPDATE bot_groups SET ${updates.join(', ')} WHERE id = ?`, params);
         }
+        // Push updated group to Firestore so bot reads it live
+        try {
+          const updated = await query(env, 'SELECT * FROM bot_groups WHERE id = ?', [id]);
+          if (updated.length > 0) {
+            const g = updated[0];
+            await pushGroupToFirestore(env, g.chat_id, g.group_name, g.is_enabled == true, g.announce_hour, g.announce_minute, g.active_schedules);
+          }
+        } catch (_) { /* non-blocking */ }
         return json({ success: true }, 200, allowOrigin);
       }
 
