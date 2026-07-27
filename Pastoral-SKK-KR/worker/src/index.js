@@ -433,29 +433,30 @@ export default {
             const label = cfg.sheet_label || sk;
             const notes = cfg.notes || '';
 
-            // Handle ibadah_mingguan_siswa specially (multi-date per row, 5 class slots)
-            if (sk === 'ibadah_mingguan_siswa') {
-              const classSlots = [
-                { dateIdx: 9, offIdx: 10, label: 'Kelas 1' },
-                { dateIdx: 11, offIdx: 12, label: 'Kelas 2-4' },
-                { dateIdx: 13, offIdx: 14, label: 'Kelas 5-6' },
-                { dateIdx: 15, offIdx: 16, label: 'TK' },
-                { dateIdx: 17, offIdx: 18, label: 'SMP' },
-              ];
+            // Handle multi-group sheets (columns with group > 0 = sub-events)
+            const groups = new Set();
+            colCfg.forEach(c => { if (c.group && c.group > 0) groups.add(c.group); });
+            if (groups.size > 0) {
               for (const row of apiData.rows) {
                 if (!row || row.length < 2) continue;
-                for (const slot of classSlots) {
-                  const dRaw = String(row[slot.dateIdx] || '').trim();
-                  if (!dRaw) continue;
+                groups.forEach(g => {
+                  const gCols = colCfg.filter(c => c.group === g);
+                  const gDate = gCols.find(c => c.type === 'date');
+                  const gTexts = gCols.filter(c => c.type === 'text' || c.type === 'link');
+                  if (!gDate) return;
+                  const dRaw = String(row[gDate.idx] || '').trim();
+                  if (!dRaw) return;
                   const d = parseDateFlexible(dRaw);
-                  if (!d || d.monthOnly) continue;
+                  if (!d || d.monthOnly) return;
                   const ds = String(d.year || new Date().getFullYear()) + '-' + String(d.month).padStart(2,'0') + '-' + String(d.day).padStart(2,'0');
-                  if (ds !== targetDate) continue;
-                  const officer = String(row[slot.offIdx] || '').trim();
-                  if (officer) {
-                    parts.push(label + ':\n' + slot.label + ' - Petugas: ' + officer);
-                  }
-                }
+                  if (ds !== targetDate) return;
+                  let m = gDate.label || ('Group ' + g);
+                  gTexts.forEach(tc => {
+                    const val = row[tc.idx] !== undefined && row[tc.idx] !== null ? String(row[tc.idx]).trim() : '';
+                    if (val) m += ' - ' + tc.label + ': ' + val;
+                  });
+                  parts.push(label + ':\n' + m);
+                });
               }
               continue;
             }

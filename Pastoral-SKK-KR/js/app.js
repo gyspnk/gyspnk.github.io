@@ -2426,6 +2426,7 @@ function renderColumnEditorList() {
         <option value="text" ${col.type === 'text' ? 'selected' : ''}>📝 Text</option>
         <option value="link" ${col.type === 'link' ? 'selected' : ''}>🔗 Link</option>
       </select>
+      <input type="number" class="col-group" value="${col.group || 0}" min="0" max="99" style="width:38px;padding:4px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:monospace" placeholder="Grp" title="Grup (0=tidak, >0=sub-event)" />
       <label title="Label singkat di sel kalender" style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;white-space:nowrap">
         <input type="checkbox" class="col-short" ${col.short ? 'checked' : ''} /> Short
       </label>
@@ -2495,9 +2496,11 @@ async function saveColumnEditor() {
     const label = row.querySelector('.col-label').value.trim();
     const type = row.querySelector('.col-type').value;
     const short = row.querySelector('.col-short').checked;
+    const group = parseInt(row.querySelector('.col-group').value, 10) || 0;
     if (label) {
       const col = { idx, label, type };
       if (short) col.short = true;
+      if (group > 0) col.group = group;
       columnConfig.push(col);
     }
   });
