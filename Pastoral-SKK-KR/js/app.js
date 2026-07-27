@@ -2667,6 +2667,7 @@ async function handleBotConfigSave() {
 /** Available schedule types for bot */
 const BOT_SCHEDULE_TYPES = [
   { key: 'renungan_harian_siswa', label: '📖 Renungan Harian Siswa' },
+  { key: 'renungan_harian_guru', label: '📖 Renungan Harian Guru/Karyawan' },
   { key: 'ibadah_mingguan_siswa', label: '⛪ Ibadah Mingguan Siswa' },
   { key: 'ibadah_mingguan_karyawan', label: '🙏 Ibadah Mingguan Karyawan' },
   { key: 'komsel_karyawan', label: '🤝 Komsel Karyawan' },
