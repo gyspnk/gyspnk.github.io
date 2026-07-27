@@ -403,7 +403,15 @@
               </div>
               <div class="modal-body">
                 <div class="form-group"><label>Judul</label><input type="text" id="cev-title" placeholder="Nama event..." /></div>
-                <div class="form-group"><label>Keterangan</label><textarea id="cev-desc" rows="2" placeholder="Opsional..." style="width:100%"></textarea></div>
+                <div class="form-group"><label>Keterangan</label>
+                  <div class="cev-desc-toolbar">
+                    <button type="button" class="cev-fmt-btn" data-fmt="bold" title="Tebal (Ctrl+B)"><b>B</b></button>
+                    <button type="button" class="cev-fmt-btn" data-fmt="italic" title="Miring (Ctrl+I)"><i>I</i></button>
+                    <button type="button" class="cev-fmt-btn" data-fmt="underline" title="Garis bawah (Ctrl+U)"><u>U</u></button>
+                    <button type="button" class="cev-fmt-btn" data-fmt="strikeThrough" title="Coret (Ctrl+Shift+X)"><s>S</s></button>
+                  </div>
+                  <div id="cev-desc" class="cev-desc-editor" contenteditable="true" data-placeholder="Opsional..."></div>
+                </div>
                 <div style="display:flex;gap:8px">
                   <div class="form-group" style="flex:1"><label>Dari</label><input type="date" id="cev-start" /></div>
                   <div class="form-group" style="flex:1"><label>Sampai</label><input type="date" id="cev-end" /></div>

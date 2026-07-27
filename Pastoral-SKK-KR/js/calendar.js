@@ -90,6 +90,14 @@ export async function initCalendar() {
   document.getElementById('cev-repeat').onchange = function() {
     document.getElementById('cev-repeat-config').classList.toggle('hidden', !this.checked);
   };
+  // Format toolbar for description editor
+  document.querySelectorAll('.cev-fmt-btn').forEach(btn => {
+    btn.onmousedown = (e) => {
+      e.preventDefault(); // Prevent losing focus from editor
+      document.getElementById('cev-desc').focus();
+      document.execCommand(btn.dataset.fmt, false, null);
+    };
+  });
 
   // Manage Events modal (Kelola Event) — list saved events
   document.getElementById('cal-manage-events-btn').onclick = () => openManageEventsModal();
@@ -1180,13 +1188,13 @@ function openAddEventModal(event) {
 
   if (isEdit) {
     document.getElementById('cev-title').value = event.title || '';
-    document.getElementById('cev-desc').value = event.description || '';
+    document.getElementById('cev-desc').innerHTML = event.description || '';
     document.getElementById('cev-start').value = event.start_date || '';
     document.getElementById('cev-end').value = event.end_date || '';
     document.getElementById('cev-color').value = event.color || '#ef4444';
   } else {
     document.getElementById('cev-title').value = '';
-    document.getElementById('cev-desc').value = '';
+    document.getElementById('cev-desc').innerHTML = '';
     document.getElementById('cev-color').value = '#ef4444';
     // Default date range: 1 Juli AY awal – 30 Juni AY akhir
     const ayMatch = currentAcademicYear.match(/^(\d{4})/);
@@ -1225,6 +1233,8 @@ function closeAddEventModal() {
   // Reset repeat state
   document.getElementById('cev-repeat').checked = false;
   document.getElementById('cev-repeat-config').classList.add('hidden');
+  // Clear description editor
+  document.getElementById('cev-desc').innerHTML = '';
 }
 
 /** Open the Kelola Event modal (list saved events) */
@@ -1243,7 +1253,8 @@ function closeManageEventsModal() {
 
 async function saveCustomEvent() {
   const title = document.getElementById('cev-title').value.trim();
-  const description = document.getElementById('cev-desc').value.trim();
+  const descEl = document.getElementById('cev-desc');
+  const description = (descEl.innerHTML === '<br>' || !descEl.innerHTML.trim()) ? '' : descEl.innerHTML;
   const startDate = document.getElementById('cev-start').value;
   const endDate = document.getElementById('cev-end').value;
   const color = document.getElementById('cev-color').value;
@@ -1284,7 +1295,7 @@ async function saveCustomEvent() {
     msgEl.className = 'info-msg'; msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';
     msgEl.classList.remove('hidden');
     document.getElementById('cev-title').value = '';
-    document.getElementById('cev-desc').value = '';
+    document.getElementById('cev-desc').innerHTML = '';
     document.getElementById('cev-start').value = '';
     document.getElementById('cev-end').value = '';
     await loadCustomEvents();
