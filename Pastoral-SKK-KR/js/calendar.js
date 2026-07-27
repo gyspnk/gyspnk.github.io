@@ -571,6 +571,7 @@ function parseWithColumnConfig(sheet, columns, rows) {
         let detailHtml = '<div class="event-detail">';
         detailHtml += '<div class="event-source" style="color:' + sheet.color + '">' + sheet.label + '</div>';
         detailHtml += '<div class="event-field"><strong>' + (gDate.label || 'Kelas') + '</strong></div>';
+        if (gDate.notes) detailHtml += '<div class="event-field event-notes-text">' + gDate.notes + '</div>';
         gTexts.forEach(tc => {
           const raw = row[tc.idx];
           const val = (raw !== null && raw !== undefined) ? String(raw).trim() : '';

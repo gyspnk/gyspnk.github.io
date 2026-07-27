@@ -454,6 +454,7 @@ export default {
                   const ds = String(d.year || new Date().getFullYear()) + '-' + String(d.month).padStart(2,'0') + '-' + String(d.day).padStart(2,'0');
                   if (ds !== targetDate) return;
                   let m = gDate.label || ('Group ' + g);
+                  if (gDate.notes) m += '\n  ' + gDate.notes;
                   gTexts.forEach(tc => {
                     const val = row[tc.idx] !== undefined && row[tc.idx] !== null ? String(row[tc.idx]).trim() : '';
                     if (val) m += ' - ' + tc.label + ': ' + val;
