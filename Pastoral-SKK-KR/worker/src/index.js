@@ -1694,67 +1694,6 @@ export default {
         return json({ success: true, steps }, 200, allowOrigin);
       }
 
-      // ===== Bot schedule proxy (public — v2 with full fallbacks) =====
-      if (path === '/api/bot/schedule-data' && request.method === 'GET') {
-        const sheetId = url.searchParams.get('sheetId');
-        const gid = url.searchParams.get('gid') || '0';
-        if (!sheetId) return json({ error: 'sheetId diperlukan' }, 400, allowOrigin);
-        const cacheKey = 'bot:' + sheetId + ':' + gid;
-        const cached = _calendarCache.get(cacheKey);
-        if (cached && (Date.now() - cached.ts) < 300000) {
-          return json(cached.data, 200, allowOrigin);
-        }
-        try {
-          const gvizUrl = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/gviz/tq?tqx=out:json&gid=${gid}`;
-          const res = await fetch(gvizUrl, { headers: { 'Accept': 'application/json' } });
-          if (res.ok) {
-            const text = await res.text();
-            const js = text.indexOf('{'), je = text.lastIndexOf('}');
-            if (js >= 0 && je >= 0) {
-              const raw = JSON.parse(text.slice(js, je + 1));
-              if (raw.status === 'ok' && raw.table) {
-                const cols = (raw.table.cols || []).map(c => c.label || '');
-                const rows = (raw.table.rows || []).map(r => (r.c || []).map(cell => (cell && cell.v !== undefined) ? cell.v : (cell && cell.f || '')));
-                const result = { success: true, columns: cols, rows, accessible: true };
-                _calendarCache.set(cacheKey, { ts: Date.now(), data: result });
-                return json(result, 200, allowOrigin);
-              }
-            }
-          }
-          if ((res.status === 401 || res.status === 403) && env.GAPI_KEY) {
-            const apiData = await fetchSheetViaSheetsAPIWithKey(sheetId, gid, env.GAPI_KEY);
-            if (apiData) {
-              const result = { success: true, ...apiData, accessible: true };
-              _calendarCache.set(cacheKey, { ts: Date.now(), data: result });
-              return json(result, 200, allowOrigin);
-            }
-          }
-          if ((res.status === 401 || res.status === 403) && env.GSA_JSON) {
-            const accessToken = await getGoogleAccessToken(env);
-            if (accessToken) {
-              const apiData = await fetchSheetViaSheetsAPI(sheetId, gid, accessToken);
-              if (apiData) {
-                const result = { success: true, ...apiData, accessible: true };
-                _calendarCache.set(cacheKey, { ts: Date.now(), data: result });
-                return json(result, 200, allowOrigin);
-              }
-            }
-          }
-          const csvUrl = `https://docs.google.com/spreadsheets/d/${encodeURIComponent(sheetId)}/export?format=csv&gid=${gid}`;
-          const csvRes = await fetch(csvUrl);
-          if (csvRes.ok) {
-            const csvText = await csvRes.text();
-            const lines = csvText.trim().split('\n');
-            const cols = lines.length > 0 ? parseCSVLine(lines[0]) : [];
-            const rows = lines.slice(1).map(l => parseCSVLine(l));
-            const result = { success: true, columns: cols, rows, accessible: true };
-            _calendarCache.set(cacheKey, { ts: Date.now(), data: result });
-            return json(result, 200, allowOrigin);
-          }
-        } catch (e) { /* fall through */ }
-        return json({ success: false, accessible: false, error: 'Sheet tidak dapat diakses' }, 200, allowOrigin);
-      }
-
       // Auth required below — bot bypass via X-Bot-Key header
       const botKey = request.headers.get('X-Bot-Key') || '';
       let payload;
