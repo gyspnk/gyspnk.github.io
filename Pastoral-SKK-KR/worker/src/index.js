@@ -127,6 +127,59 @@ async function getGoogleAccessToken(env) {
   return _cachedAccessToken;
 }
 
+/** Push ALL sheet configs to Firestore so bot reads correct sheet IDs, date cols, etc. */
+async function pushSheetConfigsToFirestore(env) {
+  if (!env.GSA_JSON) return;
+  try {
+    let sa;
+    try { sa = parseGSAJson(env.GSA_JSON); } catch (e) { return; }
+    const now = Math.floor(Date.now() / 1000);
+    const jwt = await signJWT(
+      { alg: 'RS256', typ: 'JWT' },
+      { iss: sa.client_email, scope: 'https://www.googleapis.com/auth/datastore',
+        aud: 'https://oauth2.googleapis.com/token', exp: now + 3600, iat: now },
+      sa.private_key
+    );
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${encodeURIComponent(jwt)}`
+    });
+    if (!tokenRes.ok) return;
+    const tokenData = await tokenRes.json();
+    const projectId = sa.project_id;
+
+    const rows = await query(env, 'SELECT * FROM calendar_sheet_configs WHERE is_active = TRUE');
+    const configs = {};
+    for (const r of rows) {
+      let colCfg = [];
+      try { if (r.column_config) colCfg = JSON.parse(r.column_config); } catch (_) {}
+      const dateCol = colCfg.find(c => c.type === 'date');
+      configs[r.sheet_key] = {
+        sheet_id: r.sheet_id,
+        gid: r.gid || '0',
+        sheet_label: r.sheet_label,
+        date_col: dateCol ? dateCol.idx : (r.sheet_key === 'ibadah_mingguan_karyawan' ? 1 : 0),
+        text_cols: colCfg.filter(c => c.type === 'text' || c.type === 'link').map(c => ({ idx: c.idx, label: c.label, type: c.type }))
+      };
+    }
+
+    const fbUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/bot_groups/_sheets`;
+    const fields = {};
+    for (const [key, val] of Object.entries(configs)) {
+      fields[key] = { stringValue: JSON.stringify(val) };
+    }
+    await fetch(fbUrl, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${tokenData.access_token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields })
+    });
+    console.log('pushSheetConfigsToFirestore: synced', Object.keys(configs).length, 'sheets');
+  } catch (e) {
+    console.error('pushSheetConfigsToFirestore error:', e.message);
+  }
+}
+
 /** Push group config to Firestore so the bot reads it immediately */
 async function pushGroupToFirestore(env, chatId, groupName, isEnabled, announceHour, announceMinute, activeSchedules) {
   if (!env.GSA_JSON) return;
@@ -954,6 +1007,7 @@ export default {
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE sheet_label=VALUES(sheet_label), sheet_id=VALUES(sheet_id), gid=VALUES(gid), color=VALUES(color), sort_order=VALUES(sort_order), column_config=VALUES(column_config), is_active=TRUE`,
           [academicYear, sheetKey, sheetLabel, sheetId, gid || '0', color || '#3b82f6', sortOrder || 0, columnConfigJson]);
+        pushSheetConfigsToFirestore(env);
         return json({ success: true }, 200, allowOrigin);
       }
 
@@ -961,6 +1015,7 @@ export default {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
         const id = parseInt(path.split('/').pop(), 10);
         await execute(env, 'UPDATE calendar_sheet_configs SET is_active = FALSE WHERE id = ?', [id]);
+        pushSheetConfigsToFirestore(env);
         return json({ success: true }, 200, allowOrigin);
       }
 
@@ -978,6 +1033,7 @@ export default {
         } else if (notes !== undefined) {
           await execute(env, 'UPDATE calendar_sheet_configs SET notes = ? WHERE id = ?', [notes || null, id]);
         }
+        pushSheetConfigsToFirestore(env);
         return json({ success: true }, 200, allowOrigin);
       }
 
