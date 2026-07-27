@@ -417,6 +417,7 @@ async function initAdmin() {
     initAdminPresensiConfig();
   });
   initAdminCalendarConfig();
+  initAdminBotConfig();
 }
 
 function switchAdminTab(tab) {
@@ -2477,5 +2478,166 @@ async function saveColumnEditor() {
     msgEl.textContent = 'Gagal: ' + (e.message || 'Coba lagi');
     msgEl.style.background = '#fee2e2';
     msgEl.style.color = '#991b1b';
+  }
+}
+
+/* ===== Telegram Bot Management ===== */
+let botGroupsData = [];
+let _editingBotGroupId = null;
+
+function initAdminBotConfig() {
+  document.getElementById('bot-groups-reload').onclick = loadBotGroups;
+  document.getElementById('bot-group-add-btn').onclick = () => openBotGroupModal();
+  document.getElementById('bot-config-save').onclick = handleBotConfigSave;
+  document.getElementById('bot-group-modal-close').onclick = closeBotGroupModal;
+  document.getElementById('bot-group-modal-cancel').onclick = closeBotGroupModal;
+  document.getElementById('bot-group-modal-save').onclick = handleBotGroupSave;
+  document.getElementById('bot-group-modal').onclick = (e) => {
+    if (e.target === document.getElementById('bot-group-modal')) closeBotGroupModal();
+  };
+  loadBotGroups();
+  loadBotConfig();
+}
+
+async function loadBotGroups() {
+  try {
+    botGroupsData = await api.getBotGroups() || [];
+  } catch (e) { botGroupsData = []; }
+  renderBotGroups();
+}
+
+function renderBotGroups() {
+  const tbody = document.getElementById('bot-groups-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  botGroupsData.forEach(g => {
+    const isEnabled = g.is_enabled == true;
+    const timeStr = `${String(g.announce_hour || 13).padStart(2, '0')}:${String(g.announce_minute || 0).padStart(2, '0')} WIB`;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><code style="font-size:11px">${g.chat_id}</code></td>
+      <td>${g.group_name || '—'}</td>
+      <td><span class="toggle-switch ${isEnabled ? 'toggle-active' : 'toggle-inactive'}">${isEnabled ? 'Aktif' : 'Nonaktif'}</span></td>
+      <td>${timeStr}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${g.last_sent_date || '—'}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm btn-secondary" data-bot-edit="${g.id}">✏️</button>
+        <button class="btn btn-sm ${isEnabled ? 'btn-warn' : 'btn-success'}" data-bot-toggle="${g.id}" data-bot-enabled="${isEnabled ? 1 : 0}">${isEnabled ? 'Nonaktif' : 'Aktifkan'}</button>
+        <button class="btn btn-danger btn-sm" data-bot-del="${g.id}">🗑</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  tbody.querySelectorAll('[data-bot-edit]').forEach(btn => {
+    btn.onclick = () => {
+      const g = botGroupsData.find(x => x.id == btn.dataset.botEdit);
+      if (g) openBotGroupModal(g);
+    };
+  });
+  tbody.querySelectorAll('[data-bot-toggle]').forEach(btn => {
+    btn.onclick = async () => {
+      const id = parseInt(btn.dataset.botToggle, 10);
+      const nowEnabled = btn.dataset.botEnabled === '1';
+      try {
+        await api.updateBotGroup(id, { isEnabled: !nowEnabled });
+        await loadBotGroups();
+      } catch (e) { alert('Gagal: ' + e.message); }
+    };
+  });
+  tbody.querySelectorAll('[data-bot-del]').forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm('Hapus grup ini?')) return;
+      try {
+        await api.deleteBotGroup(parseInt(btn.dataset.botDel, 10));
+        await loadBotGroups();
+      } catch (e) { alert('Gagal: ' + e.message); }
+    };
+  });
+  if (tbody.children.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px">Belum ada grup. Tambah grup Telegram atau ketik /start di bot di grup.</td></tr>';
+  }
+}
+
+async function loadBotConfig() {
+  try {
+    const cfg = await api.getBotConfig() || {};
+    document.getElementById('bot-sheet-id').value = cfg.sheet_id || '';
+    document.getElementById('bot-sheet-range').value = cfg.sheet_range || '';
+  } catch (e) { /* ignore */ }
+}
+
+async function handleBotConfigSave() {
+  const msgEl = document.getElementById('bot-config-msg');
+  const sheetId = document.getElementById('bot-sheet-id').value.trim();
+  const sheetRange = document.getElementById('bot-sheet-range').value.trim();
+  if (!sheetId || !sheetRange) {
+    msgEl.textContent = 'Sheet ID dan Range wajib diisi.';
+    msgEl.className = 'info-msg'; msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
+    msgEl.classList.remove('hidden'); return;
+  }
+  msgEl.textContent = 'Menyimpan...';
+  msgEl.className = 'info-msg'; msgEl.style.background = '#dbeafe'; msgEl.style.color = '#1e40af';
+  msgEl.classList.remove('hidden');
+  try {
+    await api.saveBotConfig({ sheetId, sheetRange });
+    msgEl.textContent = '✅ Konfigurasi berhasil disimpan.';
+    msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';
+    setTimeout(() => msgEl.classList.add('hidden'), 2000);
+  } catch (e) {
+    msgEl.textContent = 'Gagal: ' + e.message;
+    msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
+  }
+}
+
+function openBotGroupModal(group) {
+  _editingBotGroupId = group ? group.id : null;
+  document.getElementById('bot-group-modal-title').textContent = group ? '✏️ Edit Grup Telegram' : 'Tambah Grup Telegram';
+  document.getElementById('bot-group-chatid').value = group ? group.chat_id : '';
+  document.getElementById('bot-group-chatid').readOnly = !!group;
+  document.getElementById('bot-group-name').value = group ? (group.group_name || '') : '';
+  document.getElementById('bot-group-hour').value = group ? (group.announce_hour || 13) : 13;
+  document.getElementById('bot-group-minute').value = group ? (group.announce_minute || 0) : 0;
+  document.getElementById('bot-group-enabled').checked = group ? (group.is_enabled != false) : true;
+  document.getElementById('bot-group-modal-msg').classList.add('hidden');
+  document.getElementById('bot-group-modal').classList.remove('hidden');
+}
+
+function closeBotGroupModal() {
+  _editingBotGroupId = null;
+  document.getElementById('bot-group-modal').classList.add('hidden');
+}
+
+async function handleBotGroupSave() {
+  const msgEl = document.getElementById('bot-group-modal-msg');
+  const chatId = document.getElementById('bot-group-chatid').value.trim();
+  const groupName = document.getElementById('bot-group-name').value.trim();
+  const announceHour = parseInt(document.getElementById('bot-group-hour').value, 10) || 13;
+  const announceMinute = parseInt(document.getElementById('bot-group-minute').value, 10) || 0;
+  const isEnabled = document.getElementById('bot-group-enabled').checked;
+
+  if (!chatId) {
+    msgEl.textContent = 'Chat ID wajib diisi.';
+    msgEl.className = 'info-msg'; msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
+    msgEl.classList.remove('hidden'); return;
+  }
+
+  msgEl.textContent = 'Menyimpan...';
+  msgEl.className = 'info-msg'; msgEl.style.background = '#dbeafe'; msgEl.style.color = '#1e40af';
+  msgEl.classList.remove('hidden');
+
+  try {
+    if (_editingBotGroupId) {
+      await api.updateBotGroup(_editingBotGroupId, { groupName, announceHour, announceMinute, isEnabled });
+    } else {
+      await api.saveBotGroup({ chatId, groupName, announceHour, announceMinute, isEnabled });
+    }
+    msgEl.textContent = '✅ Grup berhasil disimpan.';
+    msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';
+    await loadBotGroups();
+    setTimeout(() => closeBotGroupModal(), 1000);
+  } catch (e) {
+    msgEl.textContent = 'Gagal: ' + e.message;
+    msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
   }
 }

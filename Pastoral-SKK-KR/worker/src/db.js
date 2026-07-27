@@ -200,6 +200,28 @@ export async function initSchema(env) {
     `ALTER TABLE calendar_custom_events ADD COLUMN IF NOT EXISTS repeat_days TEXT DEFAULT NULL`,
     // Notes for sheet-level keterangan (shown on every event from this sheet)
     `ALTER TABLE calendar_sheet_configs ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT NULL AFTER column_config`,
+    // Telegram bot groups management
+    `CREATE TABLE IF NOT EXISTS bot_groups (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      chat_id VARCHAR(50) UNIQUE NOT NULL,
+      group_name VARCHAR(200) DEFAULT '',
+      is_enabled BOOLEAN DEFAULT TRUE,
+      announce_hour INT DEFAULT 13,
+      announce_minute INT DEFAULT 0,
+      last_sent_date VARCHAR(20) DEFAULT '',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )`,
+    `CREATE TABLE IF NOT EXISTS bot_config (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      config_key VARCHAR(50) UNIQUE NOT NULL,
+      config_value TEXT DEFAULT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )`,
+    // Seed default bot config
+    `INSERT IGNORE INTO bot_config (config_key, config_value) VALUES ('sheet_id', '141GNZXGXayJc-3PUUZMoJcccxbhUhbivGYOR5aLZwY4')`,
+    `INSERT IGNORE INTO bot_config (config_key, config_value) VALUES ('sheet_range', 'Jadwal Renungan Guru!A6:F1000')`,
   ];
   for (const sql of statements) {
     try {

@@ -408,6 +408,12 @@ const demoApi = {
   async addCalendarEvent(data) { return { success: true }; },
   async updateCalendarEvent(id, data) { return { success: true }; },
   async deleteCalendarEvent(id) { return { success: true }; },
+  async getBotGroups() { return []; },
+  async saveBotGroup(data) { return { success: true }; },
+  async updateBotGroup(id, data) { return { success: true }; },
+  async deleteBotGroup(id) { return { success: true }; },
+  async getBotConfig() { return {}; },
+  async saveBotConfig(data) { return { success: true }; },
 };
 
 /* ===== Real API backend ===== */
@@ -583,7 +589,25 @@ const realApi = {
   },
   async deleteCalendarEvent(id) {
     return apiFetch(`/api/calendar-events/${id}`, { method: 'DELETE' });
-  }
+  },
+  async getBotGroups() {
+    return apiFetch('/api/bot/groups');
+  },
+  async saveBotGroup(data) {
+    return apiFetch('/api/bot/groups', { method: 'POST', body: JSON.stringify(data) });
+  },
+  async updateBotGroup(id, data) {
+    return apiFetch(`/api/bot/groups/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  async deleteBotGroup(id) {
+    return apiFetch(`/api/bot/groups/${id}`, { method: 'DELETE' });
+  },
+  async getBotConfig() {
+    return apiFetch('/api/bot/config');
+  },
+  async saveBotConfig(data) {
+    return apiFetch('/api/bot/config', { method: 'PUT', body: JSON.stringify(data) });
+  },
 };
 
 export const api = isDemoMode() ? demoApi : realApi;

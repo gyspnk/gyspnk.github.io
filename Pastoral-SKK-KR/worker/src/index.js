@@ -979,6 +979,69 @@ export default {
         return json(rows.map(r => r.academic_year), 200, allowOrigin);
       }
 
+      // ===== Telegram Bot Management =====
+      if (path === '/api/bot/groups' && request.method === 'GET') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const rows = await query(env, 'SELECT * FROM bot_groups ORDER BY group_name');
+        return json(rows, 200, allowOrigin);
+      }
+
+      if (path === '/api/bot/groups' && request.method === 'POST') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const { chatId, groupName, isEnabled, announceHour, announceMinute } = await request.json();
+        if (!chatId) return json({ error: 'chatId diperlukan' }, 400, allowOrigin);
+        await execute(env,
+          `INSERT INTO bot_groups (chat_id, group_name, is_enabled, announce_hour, announce_minute)
+           VALUES (?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE group_name=VALUES(group_name), is_enabled=VALUES(is_enabled),
+             announce_hour=VALUES(announce_hour), announce_minute=VALUES(announce_minute)`,
+          [String(chatId), groupName || '', isEnabled !== false, announceHour || 13, announceMinute || 0]);
+        return json({ success: true }, 200, allowOrigin);
+      }
+
+      if (path.startsWith('/api/bot/groups/') && request.method === 'PUT') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const id = parseInt(path.split('/').pop(), 10);
+        const body = await request.json();
+        const updates = []; const params = [];
+        if (body.groupName !== undefined) { updates.push('group_name = ?'); params.push(body.groupName); }
+        if (body.isEnabled !== undefined) { updates.push('is_enabled = ?'); params.push(body.isEnabled ? 1 : 0); }
+        if (body.announceHour !== undefined) { updates.push('announce_hour = ?'); params.push(body.announceHour); }
+        if (body.announceMinute !== undefined) { updates.push('announce_minute = ?'); params.push(body.announceMinute); }
+        if (updates.length > 0) {
+          params.push(id);
+          await execute(env, `UPDATE bot_groups SET ${updates.join(', ')} WHERE id = ?`, params);
+        }
+        return json({ success: true }, 200, allowOrigin);
+      }
+
+      if (path.startsWith('/api/bot/groups/') && request.method === 'DELETE') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const id = parseInt(path.split('/').pop(), 10);
+        await execute(env, 'DELETE FROM bot_groups WHERE id = ?', [id]);
+        return json({ success: true }, 200, allowOrigin);
+      }
+
+      if (path === '/api/bot/config' && request.method === 'GET') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const rows = await query(env, 'SELECT config_key, config_value FROM bot_config');
+        const cfg = {};
+        rows.forEach(r => { cfg[r.config_key] = r.config_value; });
+        return json(cfg, 200, allowOrigin);
+      }
+
+      if (path === '/api/bot/config' && request.method === 'PUT') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const { sheetId, sheetRange } = await request.json();
+        if (sheetId !== undefined) {
+          await execute(env, 'INSERT INTO bot_config (config_key, config_value) VALUES (\'sheet_id\', ?) ON DUPLICATE KEY UPDATE config_value = ?', [sheetId, sheetId]);
+        }
+        if (sheetRange !== undefined) {
+          await execute(env, 'INSERT INTO bot_config (config_key, config_value) VALUES (\'sheet_range\', ?) ON DUPLICATE KEY UPDATE config_value = ?', [sheetRange, sheetRange]);
+        }
+        return json({ success: true }, 200, allowOrigin);
+      }
+
       return json({ error: 'Endpoint tidak ditemukan' }, 404, allowOrigin);
     } catch (err) {
       return json({ error: err.message || 'Server error' }, 500, allowOrigin);
