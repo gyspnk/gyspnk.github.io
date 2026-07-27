@@ -224,6 +224,32 @@ async function pushGroupToFirestore(env, chatId, groupName, isEnabled, announceH
   }
 }
 
+/** Simple date parser for sheet values */
+function parseDateFlexible(val) {
+  if (!val) return null;
+  let str = String(val).trim();
+  str = str.replace(/^(Senin|Selasa|Rabu|Kamis|Jumat|Jum.at|Sabtu|Minggu|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s*,?\s*/i, '');
+  // Try ISO "YYYY-MM-DD"
+  let m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return { year: parseInt(m[1]), month: parseInt(m[2]), day: parseInt(m[3]) };
+  // Try "DD/MM/YYYY"
+  m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return { year: parseInt(m[3]), month: parseInt(m[2]), day: parseInt(m[1]) };
+  // Try "DD Month YYYY"
+  const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec',
+    'januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember',
+    'january','february','march','april','may','june','july','august','september','october','november','december'];
+  m = str.match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})$/i);
+  if (m) {
+    const mi = months.indexOf(m[2].toLowerCase()) % 12;
+    if (mi >= 0) return { year: parseInt(m[3]), month: mi + 1, day: parseInt(m[1]) };
+  }
+  // Try Google Date() format
+  m = str.match(/Date\s*\(\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})/);
+  if (m) return { year: parseInt(m[1]), month: parseInt(m[2]) + 1, day: parseInt(m[3]) };
+  return null;
+}
+
 async function fetchSheetViaSheetsAPI(sheetId, gid, accessToken) {
   // Get sheet name from gid via metadata
   const metaUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties`;
@@ -353,6 +379,113 @@ export default {
           }
         } catch (e) { /* fall through */ }
         return json({ success: false, accessible: false, error: 'Sheet tidak dapat diakses' }, 200, allowOrigin);
+      }
+      // ===== Bot: full announcement v3 (mirrors calendar parsing) =====
+      if (path === '/api/bot/announcement' && request.method === 'GET') {
+        const targetDate = url.searchParams.get('date') || '';
+        if (!targetDate) return json({ error: 'date diperlukan' }, 400, allowOrigin);
+        if (!env.GSA_JSON) return json({ error: 'GSA_JSON required' }, 400, allowOrigin);
+
+        const groups = await query(env, 'SELECT * FROM bot_groups WHERE is_enabled = TRUE');
+        const configs = await query(env, 'SELECT * FROM calendar_sheet_configs WHERE is_active = TRUE');
+        const messages = [];
+
+        for (const g of groups) {
+          let activeSched = ['renungan_harian_siswa', 'ibadah_mingguan_karyawan', 'komsel_karyawan'];
+          if (g.active_schedules) {
+            try { const p = JSON.parse(g.active_schedules); if (Array.isArray(p) && p.length > 0) activeSched = p; } catch (_) {}
+          }
+          const parts = [];
+          for (const sk of activeSched) {
+            const cfg = configs.find(c => c.sheet_key === sk);
+            if (!cfg) continue;
+
+            // OAuth token
+            const sa = parseGSAJson(env.GSA_JSON);
+            if (!sa) continue;
+            const jwt = await signJWT(
+              { alg: 'RS256', typ: 'JWT' },
+              { iss: sa.client_email, scope: 'https://www.googleapis.com/auth/spreadsheets.readonly',
+                aud: 'https://oauth2.googleapis.com/token', exp: Math.floor(Date.now()/1000) + 3600, iat: Math.floor(Date.now()/1000) },
+              sa.private_key
+            );
+            const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+              method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: 'grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=' + encodeURIComponent(jwt)
+            });
+            if (!tokenRes.ok) continue;
+            const tokenData = await tokenRes.json();
+            const apiData = await fetchSheetViaSheetsAPI(cfg.sheet_id, cfg.gid || '0', tokenData.access_token);
+            if (!apiData || !apiData.rows) continue;
+
+            let colCfg = [];
+            try { if (cfg.column_config) colCfg = JSON.parse(cfg.column_config); } catch (_) {}
+            const dateCol = colCfg.length > 0 ? colCfg.find(c => c.type === 'date') : null;
+            const dateIdx = dateCol ? dateCol.idx : (sk === 'ibadah_mingguan_karyawan' ? 1 : 0);
+            const textCols = colCfg.length > 0 ? colCfg.filter(c => c.type === 'text' || c.type === 'link') : [];
+            const shortCol = colCfg.length > 0 ? colCfg.find(c => c.short === true) : null;
+            const label = cfg.sheet_label || sk;
+            const notes = cfg.notes || '';
+
+            // Handle ibadah_mingguan_siswa specially (multi-date per row, 5 class slots)
+            if (sk === 'ibadah_mingguan_siswa') {
+              const classSlots = [
+                { dateIdx: 9, offIdx: 10, label: 'Kelas 1' },
+                { dateIdx: 11, offIdx: 12, label: 'Kelas 2-4' },
+                { dateIdx: 13, offIdx: 14, label: 'Kelas 5-6' },
+                { dateIdx: 15, offIdx: 16, label: 'TK' },
+                { dateIdx: 17, offIdx: 18, label: 'SMP' },
+              ];
+              for (const row of apiData.rows) {
+                if (!row || row.length < 2) continue;
+                for (const slot of classSlots) {
+                  const dRaw = String(row[slot.dateIdx] || '').trim();
+                  if (!dRaw) continue;
+                  const d = parseDateFlexible(dRaw);
+                  if (!d || d.monthOnly) continue;
+                  const ds = String(d.year || new Date().getFullYear()) + '-' + String(d.month).padStart(2,'0') + '-' + String(d.day).padStart(2,'0');
+                  if (ds !== targetDate) continue;
+                  const officer = String(row[slot.offIdx] || '').trim();
+                  if (officer) {
+                    parts.push(label + ', ' + targetDate + ':\n' + slot.label + ' - Petugas: ' + officer);
+                  }
+                }
+              }
+              continue;
+            }
+
+            // Generic single-date parser
+            let matchedRow = null;
+            for (const row of apiData.rows) {
+              if (!row || row.length <= dateIdx) continue;
+              const raw = String(row[dateIdx] || '').trim();
+              if (!raw) continue;
+              const d = parseDateFlexible(raw);
+              if (!d || d.monthOnly) continue;
+              const ds = String(d.year || new Date().getFullYear()) + '-' + String(d.month).padStart(2,'0') + '-' + String(d.day).padStart(2,'0');
+              if (ds === targetDate) { matchedRow = row; break; }
+            }
+            if (!matchedRow) continue;
+
+            // Format using column_config text fields (like calendar detail view)
+            let msg = label + ', ' + targetDate;
+            if (textCols.length > 0) {
+              for (const tc of textCols) {
+                const val = matchedRow[tc.idx] !== undefined && matchedRow[tc.idx] !== null ? String(matchedRow[tc.idx]).trim() : '';
+                if (val) msg += '\n' + tc.label + ': ' + val;
+              }
+            } else {
+              for (let i = dateIdx + 1; i < Math.min(matchedRow.length, 8); i++) {
+                const val = String(matchedRow[i] || '').trim();
+                if (val) msg += '\n  ' + val;
+              }
+            }
+            if (notes) msg += '\n\n' + notes.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+            parts.push(msg);
+          }
+          if (parts.length > 0) messages.push({ chat_id: g.chat_id, text: parts.join('\n───\n') });
+        }
+        return json({ date: targetDate, count: messages.length, messages }, 200, allowOrigin);
       }
       await ensureSchema(env);
 
