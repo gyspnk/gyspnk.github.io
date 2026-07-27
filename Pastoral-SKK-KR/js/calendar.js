@@ -83,6 +83,13 @@ export async function initCalendar() {
   document.getElementById('calendar-event-modal').onclick = (e) => {
     if (e.target === document.getElementById('calendar-event-modal')) closeEventModal();
   };
+  // Sheets list modal
+  document.getElementById('cal-sheets-btn').onclick = openSheetsModal;
+  document.getElementById('cal-sheets-close').onclick = closeSheetsModal;
+  document.getElementById('cal-sheets-close-btn').onclick = closeSheetsModal;
+  document.getElementById('calendar-sheets-modal').onclick = (e) => {
+    if (e.target === document.getElementById('calendar-sheets-modal')) closeSheetsModal();
+  };
   // Search filter
   const searchInput = document.getElementById('cal-search');
   if (searchInput) {
@@ -101,6 +108,8 @@ export async function initCalendar() {
         closeManageEventsModal();
       } else if (!document.getElementById('calendar-custom-modal').classList.contains('hidden')) {
         closeAddEventModal();
+      } else if (!document.getElementById('calendar-sheets-modal').classList.contains('hidden')) {
+        closeSheetsModal();
       } else if (searchInput && searchInput.value) {
         searchInput.value = '';
         searchInput.oninput();
@@ -973,6 +982,39 @@ function showEventDetail(dateStr, events) {
 
 function closeEventModal() {
   document.getElementById('calendar-event-modal').classList.add('hidden');
+}
+
+/* ===== Sheets List Modal ===== */
+function openSheetsModal() {
+  const list = document.getElementById('cal-sheets-list');
+  if (!list) return;
+
+  const activeSheets = calendarSheets.filter(s => {
+    const data = scheduleData[s.key];
+    return data && data.accessible !== false;
+  });
+
+  if (activeSheets.length === 0) {
+    list.innerHTML = '<p class="muted" style="padding:20px;text-align:center">Belum ada data sheet aktif. Muat ulang halaman atau periksa konfigurasi kalender.</p>';
+  } else {
+    list.innerHTML = activeSheets.map(s => {
+      const data = scheduleData[s.key];
+      const url = `https://docs.google.com/spreadsheets/d/${s.sheetId}/edit#gid=${s.gid}`;
+      const rowCount = data && data.rows ? data.rows.length : 0;
+      return `<a href="${url}" target="_blank" rel="noopener" class="sheets-list-item" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;text-decoration:none;color:var(--text);transition:background 0.15s" onmouseover="this.style.background='var(--bg-secondary)'" onmouseout="this.style.background=''">
+        <span style="width:12px;height:12px;border-radius:3px;background:${s.color};flex-shrink:0"></span>
+        <span style="flex:1;font-weight:500">${s.label}</span>
+        <span style="font-size:11px;color:var(--text-muted)">${rowCount} baris</span>
+        <span style="font-size:16px">↗</span>
+      </a>`;
+    }).join('');
+  }
+
+  document.getElementById('calendar-sheets-modal').classList.remove('hidden');
+}
+
+function closeSheetsModal() {
+  document.getElementById('calendar-sheets-modal').classList.add('hidden');
 }
 
 /* ===== Navigation ===== */

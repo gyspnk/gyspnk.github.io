@@ -356,6 +356,7 @@
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <button id="cal-manage-events-btn" class="btn btn-sm btn-secondary" title="Kelola Event Khusus">⭐ Kelola Event</button>
               <button id="cal-add-event-btn" class="btn btn-sm btn-primary" title="Tambah Event Khusus">+ Event</button>
+              <button id="cal-sheets-btn" class="btn btn-sm btn-secondary" title="Lihat Google Sheets">📊 Lihat Sheets</button>
               <div class="form-group" style="margin:0;min-width:100px">
                 <select id="cal-academic-year" style="font-size:12px;padding:3px 6px"></select>
               </div>
@@ -448,6 +449,23 @@
                 <button id="cal-event-close" class="btn btn-sm btn-text">✕</button>
               </div>
               <div class="modal-body" id="cal-event-body"></div>
+            </div>
+          </div>
+
+          <!-- Sheets List Modal -->
+          <div id="calendar-sheets-modal" class="modal-overlay hidden">
+            <div class="modal-card" style="max-width:520px">
+              <div class="modal-header">
+                <h3>📊 Google Sheets Aktif</h3>
+                <button id="cal-sheets-close" class="btn btn-sm btn-text">✕</button>
+              </div>
+              <div class="modal-body">
+                <p class="muted" style="margin-bottom:12px">Klik nama sheet untuk membuka Google Sheets di tab baru.</p>
+                <div id="cal-sheets-list"></div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+                  <button id="cal-sheets-close-btn" class="btn btn-secondary btn-sm">Tutup</button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
