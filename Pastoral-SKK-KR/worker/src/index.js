@@ -902,13 +902,14 @@ export default {
 
       if (path === '/api/calendar-config' && request.method === 'POST') {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
-        const { academicYear, sheetKey, sheetLabel, sheetId, gid, color, sortOrder } = await request.json();
+        const { academicYear, sheetKey, sheetLabel, sheetId, gid, color, sortOrder, columnConfig } = await request.json();
         if (!academicYear || !sheetKey || !sheetLabel || !sheetId) return json({ error: 'Field tidak lengkap' }, 400, allowOrigin);
+        const columnConfigJson = columnConfig ? JSON.stringify(columnConfig) : null;
         await execute(env,
-          `INSERT INTO calendar_sheet_configs (academic_year, sheet_key, sheet_label, sheet_id, gid, color, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?, ?)
-           ON DUPLICATE KEY UPDATE sheet_label=VALUES(sheet_label), sheet_id=VALUES(sheet_id), gid=VALUES(gid), color=VALUES(color), sort_order=VALUES(sort_order), is_active=TRUE`,
-          [academicYear, sheetKey, sheetLabel, sheetId, gid || '0', color || '#3b82f6', sortOrder || 0]);
+          `INSERT INTO calendar_sheet_configs (academic_year, sheet_key, sheet_label, sheet_id, gid, color, sort_order, column_config)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE sheet_label=VALUES(sheet_label), sheet_id=VALUES(sheet_id), gid=VALUES(gid), color=VALUES(color), sort_order=VALUES(sort_order), column_config=VALUES(column_config), is_active=TRUE`,
+          [academicYear, sheetKey, sheetLabel, sheetId, gid || '0', color || '#3b82f6', sortOrder || 0, columnConfigJson]);
         return json({ success: true }, 200, allowOrigin);
       }
 
@@ -916,6 +917,17 @@ export default {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
         const id = parseInt(path.split('/').pop(), 10);
         await execute(env, 'UPDATE calendar_sheet_configs SET is_active = FALSE WHERE id = ?', [id]);
+        return json({ success: true }, 200, allowOrigin);
+      }
+
+      // PUT /api/calendar-config/:id/columns — update column config only
+      const calConfigColumnsMatch = path.match(/^\/api\/calendar-config\/(\d+)\/columns$/);
+      if (calConfigColumnsMatch && request.method === 'PUT') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const id = parseInt(calConfigColumnsMatch[1], 10);
+        const { columnConfig } = await request.json();
+        const columnConfigJson = columnConfig ? JSON.stringify(columnConfig) : null;
+        await execute(env, 'UPDATE calendar_sheet_configs SET column_config = ? WHERE id = ?', [columnConfigJson, id]);
         return json({ success: true }, 200, allowOrigin);
       }
 

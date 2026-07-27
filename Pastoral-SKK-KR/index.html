@@ -771,6 +771,30 @@
                 </table>
               </div>
             </div>
+
+            <!-- Column Editor Modal -->
+            <div id="cal-column-editor-modal" class="modal-overlay hidden">
+              <div class="modal-card" style="max-width:640px">
+                <div class="modal-header">
+                  <h3 id="cal-col-editor-title">📋 Atur Kolom Sheet</h3>
+                  <button id="cal-col-editor-close" class="btn btn-sm btn-text">✕</button>
+                </div>
+                <div class="modal-body">
+                  <p class="muted" style="margin-bottom:8px">Tentukan bagaimana kolom dari Google Sheets dibaca. Kolom <strong>date</strong> sebagai sumber tanggal, <strong>text</strong> ditampilkan di detail, <strong>link</strong> sebagai tautan klikabel.</p>
+                  <div id="cal-col-editor-info" style="font-size:12px;color:var(--text-muted);margin-bottom:12px"></div>
+                  <div id="cal-col-editor-list"></div>
+                  <div style="display:flex;gap:8px;margin-top:12px">
+                    <button id="cal-col-add-row" class="btn btn-sm btn-secondary">+ Tambah Kolom</button>
+                    <button id="cal-col-detect" class="btn btn-sm btn-secondary" title="Coba ambil header kolom dari Google Sheets">🔍 Deteksi Otomatis</button>
+                  </div>
+                  <div id="cal-col-msg" class="info-msg hidden" style="margin-top:10px"></div>
+                  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+                    <button id="cal-col-cancel" class="btn btn-secondary btn-sm">Batal</button>
+                    <button id="cal-col-save" class="btn btn-primary btn-sm">Simpan</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Tab: Presensi Config -->

@@ -1981,9 +1981,20 @@ async function syncPresensiTypes() {
 
 /* ===== Calendar Config Management (Admin) ===== */
 let calendarConfigData = [];
+let _colEditorConfigId = null;
+let _colEditorData = [];
 
 function initAdminCalendarConfig() {
   document.getElementById('add-cal-config-btn').onclick = handleAddCalendarConfig;
+  // Column editor modal buttons
+  document.getElementById('cal-col-editor-close').onclick = closeColumnEditor;
+  document.getElementById('cal-col-cancel').onclick = closeColumnEditor;
+  document.getElementById('cal-col-save').onclick = saveColumnEditor;
+  document.getElementById('cal-col-add-row').onclick = addColumnEditorRow;
+  document.getElementById('cal-col-detect').onclick = detectColumnHeaders;
+  document.getElementById('cal-column-editor-modal').onclick = (e) => {
+    if (e.target === document.getElementById('cal-column-editor-modal')) closeColumnEditor();
+  };
   loadCalendarConfigTable();
 }
 
@@ -2010,9 +2021,16 @@ function renderCalendarConfigTable() {
       <td><code style="font-size:10px">${c.sheet_id.substring(0, 12)}...</code></td>
       <td>${c.gid || '0'}</td>
       <td><span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${c.color};vertical-align:middle"></span></td>
-      <td><button class="btn btn-danger btn-sm" data-del-cal="${c.id}">Hapus</button></td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm btn-secondary" data-edit-cols="${c.id}" title="Atur kolom sheet">📋 Kolom</button>
+        <button class="btn btn-danger btn-sm" data-del-cal="${c.id}">Hapus</button>
+      </td>
     `;
     tbody.appendChild(tr);
+  });
+  // Wire up column edit buttons
+  tbody.querySelectorAll('[data-edit-cols]').forEach(btn => {
+    btn.onclick = () => openColumnEditor(parseInt(btn.dataset.editCols, 10));
   });
   tbody.querySelectorAll('[data-del-cal]').forEach(btn => {
     btn.onclick = async () => {
@@ -2024,7 +2042,7 @@ function renderCalendarConfigTable() {
     };
   });
   if (tbody.children.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px">Belum ada konfigurasi — gunakan default dari sistem</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px">Belum ada konfigurasi — gunakan default dari sistem</td></tr>';
   }
 }
 
@@ -2049,4 +2067,165 @@ async function handleAddCalendarConfig() {
     document.getElementById('new-cal-gid').value = '0';
     await loadCalendarConfigTable();
   } catch (e) { alert('Gagal: ' + e.message); }
+}
+
+/* ===== Column Editor Modal ===== */
+function openColumnEditor(configId) {
+  const config = calendarConfigData.find(c => c.id === configId);
+  if (!config) return;
+  _colEditorConfigId = configId;
+
+  let cols = [];
+  try { if (config.column_config) cols = JSON.parse(config.column_config); } catch (e) {}
+  _colEditorData = cols.length > 0 ? cols : [];
+
+  document.getElementById('cal-col-editor-title').textContent = `📋 Atur Kolom — ${config.sheet_label}`;
+  document.getElementById('cal-col-editor-info').textContent = `Key: ${config.sheet_key} | Tahun: ${config.academic_year}`;
+  renderColumnEditorList();
+  document.getElementById('cal-col-msg').classList.add('hidden');
+  document.getElementById('cal-column-editor-modal').classList.remove('hidden');
+}
+
+function closeColumnEditor() {
+  _colEditorConfigId = null;
+  _colEditorData = [];
+  document.getElementById('cal-column-editor-modal').classList.add('hidden');
+}
+
+function renderColumnEditorList() {
+  const container = document.getElementById('cal-col-editor-list');
+  if (!container) return;
+
+  if (_colEditorData.length === 0) {
+    container.innerHTML = '<p class="muted" style="padding:20px;text-align:center">Belum ada kolom. Klik <strong>+ Tambah Kolom</strong> untuk menambah, atau <strong>Deteksi Otomatis</strong> untuk membaca header dari sheet.</p>';
+    return;
+  }
+
+  container.innerHTML = _colEditorData.map((col, i) => {
+    const labelEsc = String(col.label || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return `<div class="col-editor-row" style="display:flex;align-items:center;gap:6px;padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;background:var(--bg)">
+      <span style="font-size:11px;color:var(--text-muted);min-width:20px">${i + 1}</span>
+      <input type="number" class="col-idx" value="${col.idx}" min="0" max="99" style="width:48px;padding:4px;border:1px solid var(--border);border-radius:4px;font-size:12px;font-family:monospace" placeholder="Idx" />
+      <input type="text" class="col-label" value="${labelEsc}" style="flex:1;min-width:80px;padding:4px;border:1px solid var(--border);border-radius:4px;font-size:12px" placeholder="Nama kolom" />
+      <select class="col-type" style="width:100px;padding:4px;border:1px solid var(--border);border-radius:4px;font-size:12px">
+        <option value="ignore" ${col.type === 'ignore' ? 'selected' : ''}>Ignore</option>
+        <option value="date" ${col.type === 'date' ? 'selected' : ''}>📅 Date</option>
+        <option value="text" ${col.type === 'text' ? 'selected' : ''}>📝 Text</option>
+        <option value="link" ${col.type === 'link' ? 'selected' : ''}>🔗 Link</option>
+      </select>
+      <label title="Label singkat di sel kalender" style="display:flex;align-items:center;gap:3px;font-size:11px;cursor:pointer;white-space:nowrap">
+        <input type="checkbox" class="col-short" ${col.short ? 'checked' : ''} /> Short
+      </label>
+      <button class="btn btn-danger btn-sm col-del-btn" type="button" title="Hapus kolom" style="padding:2px 6px;font-size:14px;line-height:1">✕</button>
+    </div>`;
+  }).join('');
+
+  // Wire up delete buttons
+  container.querySelectorAll('.col-del-btn').forEach((btn, i) => {
+    btn.onclick = () => {
+      _colEditorData.splice(i, 1);
+      renderColumnEditorList();
+    };
+  });
+}
+
+function addColumnEditorRow() {
+  const nextIdx = _colEditorData.length > 0 ? Math.max(..._colEditorData.map(c => c.idx)) + 1 : 0;
+  _colEditorData.push({ idx: nextIdx, label: `Kolom ${nextIdx + 1}`, type: 'text' });
+  renderColumnEditorList();
+}
+
+async function detectColumnHeaders() {
+  const config = calendarConfigData.find(c => c.id === _colEditorConfigId);
+  if (!config) return;
+  const msgEl = document.getElementById('cal-col-msg');
+  msgEl.textContent = 'Mengambil header kolom...';
+  msgEl.className = 'info-msg';
+  msgEl.style.background = '#dbeafe';
+  msgEl.style.color = '#1e40af';
+  msgEl.classList.remove('hidden');
+
+  try {
+    const data = await api.getCalendarSchedules(config.sheet_id, config.gid || '0');
+    if (data && data.columns && data.columns.length > 0) {
+      _colEditorData = data.columns.map((label, idx) => {
+        const lower = (label || '').toLowerCase();
+        let type = 'text';
+        if (/^(no\.|#|no|nomor|urut)$/i.test(lower)) type = 'ignore';
+        else if (/hari|tanggal|date/i.test(lower)) type = 'date';
+        const short = type === 'date' || type === 'text';
+        return { idx, label: label || `Kolom ${idx + 1}`, type, short: short && type !== 'ignore' };
+      });
+      renderColumnEditorList();
+      msgEl.textContent = `✅ Berhasil mendeteksi ${data.columns.length} kolom.`;
+      msgEl.style.background = '#dcfce7';
+      msgEl.style.color = '#166534';
+    } else {
+      msgEl.textContent = 'Gagal membaca data sheet. Pastikan sheet dapat diakses.';
+      msgEl.style.background = '#fee2e2';
+      msgEl.style.color = '#991b1b';
+    }
+  } catch (e) {
+    msgEl.textContent = 'Gagal: ' + (e.message || 'Coba lagi');
+    msgEl.style.background = '#fee2e2';
+    msgEl.style.color = '#991b1b';
+  }
+}
+
+async function saveColumnEditor() {
+  const msgEl = document.getElementById('cal-col-msg');
+  // Collect data from form
+  const rows = document.querySelectorAll('#cal-col-editor-list .col-editor-row');
+  const columnConfig = [];
+  rows.forEach(row => {
+    const idx = parseInt(row.querySelector('.col-idx').value, 10);
+    const label = row.querySelector('.col-label').value.trim();
+    const type = row.querySelector('.col-type').value;
+    const short = row.querySelector('.col-short').checked;
+    if (label) {
+      const col = { idx, label, type };
+      if (short) col.short = true;
+      columnConfig.push(col);
+    }
+  });
+
+  if (columnConfig.length === 0) {
+    msgEl.textContent = 'Minimal satu kolom harus diisi.';
+    msgEl.className = 'info-msg';
+    msgEl.style.background = '#fee2e2';
+    msgEl.style.color = '#991b1b';
+    msgEl.classList.remove('hidden');
+    return;
+  }
+
+  // Validate: must have a date column
+  if (!columnConfig.some(c => c.type === 'date')) {
+    msgEl.textContent = 'Harus ada minimal satu kolom bertipe Date sebagai sumber tanggal.';
+    msgEl.className = 'info-msg';
+    msgEl.style.background = '#fee2e2';
+    msgEl.style.color = '#991b1b';
+    msgEl.classList.remove('hidden');
+    return;
+  }
+
+  msgEl.textContent = 'Menyimpan...';
+  msgEl.className = 'info-msg';
+  msgEl.style.background = '#dbeafe';
+  msgEl.style.color = '#1e40af';
+  msgEl.classList.remove('hidden');
+
+  try {
+    await api.updateCalendarColumns(_colEditorConfigId, columnConfig);
+    msgEl.textContent = '✅ Konfigurasi kolom berhasil disimpan.';
+    msgEl.style.background = '#dcfce7';
+    msgEl.style.color = '#166534';
+    // Update local data
+    const config = calendarConfigData.find(c => c.id === _colEditorConfigId);
+    if (config) config.column_config = JSON.stringify(columnConfig);
+    setTimeout(() => closeColumnEditor(), 1200);
+  } catch (e) {
+    msgEl.textContent = 'Gagal: ' + (e.message || 'Coba lagi');
+    msgEl.style.background = '#fee2e2';
+    msgEl.style.color = '#991b1b';
+  }
 }

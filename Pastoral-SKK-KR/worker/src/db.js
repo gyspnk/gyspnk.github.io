@@ -189,6 +189,12 @@ export async function initSchema(env) {
     `UPDATE employees SET is_active_rh = is_active, is_active_im = is_active`,
     `ALTER TABLE employees DROP COLUMN IF EXISTS is_active`,
     `ALTER TABLE employees DROP INDEX IF EXISTS idx_active`,
+    // Add column_config for per-sheet column definitions
+    `ALTER TABLE calendar_sheet_configs ADD COLUMN IF NOT EXISTS column_config TEXT DEFAULT NULL AFTER color`,
+    // Seed default column configs for standard sheets (admin can override via UI)
+    `UPDATE calendar_sheet_configs SET column_config = '[{"idx":0,"label":"No.","type":"ignore"},{"idx":1,"label":"Hari/Tanggal","type":"date"},{"idx":2,"label":"Tema","type":"text"},{"idx":3,"label":"Lokasi","type":"text"},{"idx":4,"label":"Pemimpin Pujian","type":"text"},{"idx":5,"label":"Pemimpin Firman","type":"text","short":true},{"idx":6,"label":"Sumbangan Pujian","type":"text"}]' WHERE sheet_key = 'ibadah_mingguan_karyawan' AND column_config IS NULL`,
+    `UPDATE calendar_sheet_configs SET column_config = '[{"idx":0,"label":"Hari/Tanggal","type":"date"},{"idx":1,"label":"Jenjang","type":"text"},{"idx":2,"label":"Petugas Pujian","type":"text"},{"idx":3,"label":"Petugas Firman","type":"text","short":true},{"idx":4,"label":"Tema","type":"text"},{"idx":5,"label":"Tagline","type":"text"},{"idx":6,"label":"Bahan PAMS","type":"link"},{"idx":7,"label":"Link Dokumen","type":"link"}]' WHERE sheet_key = 'komsel_karyawan' AND column_config IS NULL`,
+    `UPDATE calendar_sheet_configs SET column_config = '[{"idx":0,"label":"Tanggal","type":"date"},{"idx":1,"label":"Jadwal","type":"text"},{"idx":2,"label":"Petugas TK-SD","type":"text","short":true},{"idx":3,"label":"Petugas SMP","type":"text","short":true},{"idx":4,"label":"Keterangan","type":"text"}]' WHERE sheet_key = 'renungan_harian_siswa' AND column_config IS NULL`,
   ];
   for (const sql of statements) {
     try {

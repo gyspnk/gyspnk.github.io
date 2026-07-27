@@ -1,6 +1,12 @@
 import { CONFIG } from './config.js';
 import { api, isDemoMode } from './api.js';
 
+/* ===== Utilities ===== */
+function safeParseJSON(str) {
+  if (!str || typeof str !== 'string') return null;
+  try { return JSON.parse(str); } catch (e) { return null; }
+}
+
 /* ===== Calendar State ===== */
 let currentMonth, currentYear;
 let scheduleData = {};    // { sheetKey: { columns, rows, accessible, error } }
@@ -132,6 +138,7 @@ async function loadCalendarConfig() {
         sheetId: c.sheet_id,
         gid: c.gid || '0',
         color: c.color || '#3b82f6',
+        columnConfig: safeParseJSON(c.column_config),
         defaultVisible: true
       }));
       return;
@@ -497,8 +504,93 @@ function buildEventMap() {
   return eventMap;
 }
 
+/* ===== Generic Parser (uses configurable column config from DB) ===== */
+function parseWithColumnConfig(sheet, columns, rows) {
+  const events = [];
+  const colConfig = sheet.columnConfig || [];
+  if (!rows || rows.length === 0) return events;
+
+  // Find date column and short label column
+  const dateCol = colConfig.find(c => c.type === 'date');
+  const shortCol = colConfig.find(c => c.short === true);
+  const textCols = colConfig.filter(c => c.type === 'text' || c.type === 'link');
+
+  if (!dateCol) return events; // No date column defined — can't parse
+
+  const dateIdx = dateCol.idx;
+  const shortIdx = shortCol ? shortCol.idx : null;
+
+  rows.forEach(row => {
+    if (!row || row.length === 0) return;
+    const rawDate = row[dateIdx] !== undefined ? String(row[dateIdx]).trim() : '';
+    if (!rawDate) return;
+
+    // Skip common header/subtitle rows
+    if (/^(No\.|Hari\/Tanggal|Tema|Lokasi|Pemimpin|Sumbangan|Jenjang|Petugas|Tagline|PAMS|Link|Tanggal|Jadwal|Keterangan)/i.test(rawDate)) return;
+    if (/jadwal (ibadah|komsel)|setiap|ruang|character building|minggu ke|bahan pams/i.test(rawDate)) return;
+
+    // Skip year-range subtitle rows (e.g. "2026-2027")
+    const checkRange = colConfig.filter(c => c.type !== 'ignore').map(c => String(row[c.idx] || '')).join(' ');
+    if (/\d{4}\s*[-–]\s*\d{4}/.test(checkRange)) return;
+
+    const parsed = parseDateFlexible(rawDate);
+    if (!parsed || parsed.monthOnly) return;
+
+    const dateStr = fmtDate(new Date(parsed.year || new Date().getFullYear(), parsed.month - 1, parsed.day));
+
+    // Build short label
+    let shortLabel = '';
+    if (shortIdx !== null && row[shortIdx] !== undefined && String(row[shortIdx]).trim()) {
+      shortLabel = String(row[shortIdx]).trim().substring(0, 22);
+    } else {
+      // Fallback to first non-empty text column
+      for (const tc of textCols) {
+        if (tc.type === 'ignore') continue;
+        const val = row[tc.idx] !== undefined ? String(row[tc.idx]).trim() : '';
+        if (val) { shortLabel = val.substring(0, 22); break; }
+      }
+    }
+    if (!shortLabel) shortLabel = sheet.label.replace(/^[^\s]+\s/, '').substring(0, 18) || 'Ibadah';
+
+    // Build summary and detail HTML
+    let summary = sheet.label;
+    let detailHtml = '<div class="event-detail">';
+    detailHtml += `<div class="event-source" style="color:${sheet.color}">${sheet.label}</div>`;
+
+    textCols.forEach(tc => {
+      const val = row[tc.idx] !== undefined ? String(row[tc.idx]).trim() : '';
+      if (!val) return;
+      if (tc.type === 'link') {
+        const isUrl = /^https?:\/\//i.test(val);
+        if (isUrl) {
+          detailHtml += `<div class="event-field"><strong>${tc.label}:</strong> <a href="${val}" target="_blank" rel="noopener" style="color:var(--primary)">${val}</a></div>`;
+        } else {
+          detailHtml += `<div class="event-field"><strong>${tc.label}:</strong> ${val}</div>`;
+        }
+      } else {
+        detailHtml += `<div class="event-field"><strong>${tc.label}:</strong> ${val}</div>`;
+      }
+      // Use first text value as summary if short label not explicitly set
+      if (summary === sheet.label && tc.type === 'text' && !shortCol) {
+        summary = `${sheet.label}: ${val}`;
+      }
+    });
+
+    detailHtml += '</div>';
+
+    events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, shortLabel, detailHtml });
+  });
+
+  return events;
+}
+
 /* ===== Sheet-Specific Parsers ===== */
 function parseSheetEvents(sheet, columns, rows) {
+  // Generic parser when columnConfig is available
+  if (sheet.columnConfig && sheet.columnConfig.length > 0) {
+    return parseWithColumnConfig(sheet, columns, rows);
+  }
+  // Fallback to hardcoded parsers for backward compatibility
   switch (sheet.key) {
     case 'renungan_harian_siswa': return parseRenunganSiswa(sheet, columns, rows);
     case 'ibadah_mingguan_siswa': return parseIbadahSiswa(sheet, columns, rows);
