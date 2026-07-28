@@ -1322,14 +1322,16 @@ export default {
 
       if (path === '/api/bot/groups' && request.method === 'POST') {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
-        const { chatId, groupName, isEnabled, announceHour, announceMinute } = await request.json();
+        const { chatId, groupName, isEnabled, announceHour, announceMinute, activeSchedules, notes } = await request.json();
         if (!chatId) return json({ error: 'chatId diperlukan' }, 400, allowOrigin);
         await execute(env,
-          `INSERT INTO bot_groups (chat_id, group_name, is_enabled, announce_hour, announce_minute)
-           VALUES (?, ?, ?, ?, ?)
+          `INSERT INTO bot_groups (chat_id, group_name, is_enabled, announce_hour, announce_minute, active_schedules, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE group_name=VALUES(group_name), is_enabled=VALUES(is_enabled),
-             announce_hour=VALUES(announce_hour), announce_minute=VALUES(announce_minute)`,
-          [String(chatId), groupName || '', isEnabled !== false, announceHour || 13, announceMinute || 0]);
+             announce_hour=VALUES(announce_hour), announce_minute=VALUES(announce_minute),
+             active_schedules=VALUES(active_schedules), notes=VALUES(notes)`,
+          [String(chatId), groupName || '', isEnabled !== false, announceHour || 13, announceMinute || 0,
+           activeSchedules ? JSON.stringify(activeSchedules) : null, notes || null]);
         // Push to Firestore for bot
         pushGroupToFirestore(env, String(chatId), groupName || '', isEnabled !== false, announceHour || 13, announceMinute || 0, null).catch(() => {});
         return json({ success: true }, 200, allowOrigin);
