@@ -394,6 +394,7 @@ export default {
             try { const p = JSON.parse(g.active_schedules); if (Array.isArray(p) && p.length > 0) activeSched = p; } catch (_) {}
           }
           const parts = [];
+          const gNotes = g.notes ? g.notes.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ') : '';
           for (const sk of activeSched) {
             const cfg = configs.find(c => c.sheet_key === sk);
             if (!cfg) continue;
@@ -423,7 +424,6 @@ export default {
             const textCols = colCfg.length > 0 ? colCfg.filter(c => (c.type === 'text' || c.type === 'link') && c.show_bot !== false) : [];
             const shortCol = colCfg.length > 0 ? colCfg.find(c => c.short === true) : null;
             const label = cfg.sheet_label || sk;
-            const notes = (g.notes ? g.notes + '\n' : '') + (cfg.notes || '');
 
             // Handle multi-group sheets (columns with group > 0 = sub-events)
             const groups = new Set();
@@ -469,6 +469,7 @@ export default {
 
             // Format using column_config text fields (like calendar detail view)
             let msg = label + ':';
+            const sheetNotes = cfg.notes ? cfg.notes.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ') : '';
             if (textCols.length > 0) {
               for (const tc of textCols) {
                 const val = matchedRow[tc.idx] !== undefined && matchedRow[tc.idx] !== null ? String(matchedRow[tc.idx]).trim() : '';
@@ -480,11 +481,12 @@ export default {
                 if (val) msg += '\n  ' + val;
               }
             }
+            if (sheetNotes) msg += '\n' + sheetNotes;
             parts.push(msg);
           }
           if (parts.length > 0) {
             let text = dateHeader + '\n\n' + parts.join('\n\n');
-            if (notes) text += '\n\n' + notes.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+            if (gNotes) text += '\n\n' + gNotes;
             messages.push({ chat_id: g.chat_id, text });
           }
         }
