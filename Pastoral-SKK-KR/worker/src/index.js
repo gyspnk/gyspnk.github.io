@@ -480,10 +480,13 @@ export default {
                 if (val) msg += '\n  ' + val;
               }
             }
-            if (notes) msg += '\n\n' + notes.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
             parts.push(msg);
           }
-          if (parts.length > 0) messages.push({ chat_id: g.chat_id, text: dateHeader + '\n\n' + parts.join('\n\n') });
+          if (parts.length > 0) {
+            let text = dateHeader + '\n\n' + parts.join('\n\n');
+            if (notes) text += '\n\n' + notes.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+            messages.push({ chat_id: g.chat_id, text });
+          }
         }
         return json({ date: targetDate, count: messages.length, messages }, 200, allowOrigin);
       }
