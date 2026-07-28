@@ -6,8 +6,9 @@ let _schemaReady = false;
 const _calendarCache = new Map();
 async function ensureSchema(env) {
   if (!_schemaReady) {
-    try { await initSchema(env); } catch (e) { console.error('Schema init:', e.message); }
     _schemaReady = true;
+    // Run schema init in background — don't block request or consume subrequest budget
+    initSchema(env).catch(e => console.error('Schema init:', e.message));
   }
 }
 
