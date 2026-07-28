@@ -9,18 +9,6 @@ async function ensureSchema(env) {
     try { await initSchema(env); } catch (e) { console.error('Schema init:', e.message); }
     _schemaReady = true;
   }
-  // Always run migrations (idempotent) — catches tables/columns added after initial deploy
-  try {
-    await execute(env, `ALTER TABLE employees ADD COLUMN presensi_active_json JSON`);
-  } catch (e) {
-    if (!e.message.includes('Duplicate column')) {
-      // Try TEXT as fallback (some TiDB versions don't support JSON type)
-      try { await execute(env, `ALTER TABLE employees ADD COLUMN presensi_active_json TEXT`); }
-      catch (e2) {
-        if (!e2.message.includes('Duplicate column')) console.error('Migration presensi_active_json:', e.message, e2.message);
-      }
-    }
-  }
 }
 
 // Simple CSV line parser
