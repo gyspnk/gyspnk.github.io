@@ -498,6 +498,20 @@ export default {
         }
         return json({ date: targetDate, count: messages.length, messages }, 200, allowOrigin);
       }
+      // ===== Bot: migration (run one at a time to stay under subrequest limit) =====
+      if (path === '/api/bot/migrate' && request.method === 'GET') {
+        const idx = parseInt(url.searchParams.get('idx') || '0', 10);
+        const stmts = [
+          "ALTER TABLE bot_groups ADD COLUMN notes TEXT DEFAULT NULL",
+          "ALTER TABLE bot_groups ADD COLUMN active_schedules TEXT DEFAULT NULL",
+          "ALTER TABLE calendar_sheet_configs ADD COLUMN notes TEXT DEFAULT NULL AFTER column_config"
+        ];
+        if (idx < stmts.length) {
+          try { await execute(env, stmts[idx]); return json({ ok: true, idx }); } catch (e) { return json({ error: e.message, idx }); }
+        }
+        return json({ done: true }, 200, allowOrigin);
+      }
+
       await ensureSchema(env);
 
       if (path === '/api/auth/status' && request.method === 'GET') {
@@ -594,16 +608,6 @@ export default {
           steps.push({ step: 'no_gsa_json', error: 'GSA_JSON secret not configured' });
         }
         return json({ success: true, steps }, 200, allowOrigin);
-      }
-
-      // ===== Bot: run bot-specific migrations =====
-      if (path === '/api/bot/migrate' && request.method === 'GET') {
-        try {
-          await execute(env, "ALTER TABLE bot_groups ADD COLUMN notes TEXT DEFAULT NULL");
-          await execute(env, "ALTER TABLE bot_groups ADD COLUMN active_schedules TEXT DEFAULT NULL");
-          await execute(env, "ALTER TABLE calendar_sheet_configs ADD COLUMN notes TEXT DEFAULT NULL AFTER column_config");
-        } catch (e) { /* already exists */ }
-        return json({ success: true }, 200, allowOrigin);
       }
 
       // ===== Bot: sync sheet configs to Firestore =====
