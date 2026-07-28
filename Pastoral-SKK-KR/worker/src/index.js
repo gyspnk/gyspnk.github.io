@@ -596,6 +596,16 @@ export default {
         return json({ success: true, steps }, 200, allowOrigin);
       }
 
+      // ===== Bot: run bot-specific migrations =====
+      if (path === '/api/bot/migrate' && request.method === 'GET') {
+        try {
+          await execute(env, "ALTER TABLE bot_groups ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT NULL");
+          await execute(env, "ALTER TABLE bot_groups ADD COLUMN IF NOT EXISTS active_schedules TEXT DEFAULT NULL");
+          await execute(env, "ALTER TABLE calendar_sheet_configs ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT NULL AFTER column_config");
+        } catch (e) { /* already exists */ }
+        return json({ success: true }, 200, allowOrigin);
+      }
+
       // ===== Bot: sync sheet configs to Firestore =====
       if (path === '/api/bot/sync-config' && request.method === 'GET') {
         await pushSheetConfigsToFirestore(env);
