@@ -16,6 +16,14 @@ async function apiFetch(path, options = {}) {
   const token = getToken();
   if (token) headers['Authorization'] = 'Bearer ' + token;
   const res = await fetch(url, { ...options, headers });
+  // Auto-logout jika token expired/tidak valid (401)
+  if (res.status === 401) {
+    setToken(null);
+    localStorage.removeItem(CONFIG.USER_KEY);
+    localStorage.removeItem(CONFIG.TOKEN_KEY);
+    window.location.reload();
+    throw new Error('Sesi berakhir. Silakan login ulang.');
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
