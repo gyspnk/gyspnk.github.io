@@ -590,7 +590,7 @@ function parseWithColumnConfig(sheet, columns, rows) {
           const val = (raw !== null && raw !== undefined) ? String(raw).trim() : '';
           if (!val) return;
           detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
-          if (tc.notes) detailHtml += '<div class="event-field event-notes-text">📝 ' + tc.notes + '</div>';
+          if (tc.notes) detailHtml += '<div class="event-field event-notes-text">' + tc.notes + '</div>';
         });
         detailHtml += '</div>';
         events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, shortLabel, detailHtml });
@@ -636,7 +636,7 @@ function parseWithColumnConfig(sheet, columns, rows) {
     let detailHtml = '<div class="event-detail">';
     detailHtml += '<div class="event-source" style="color:' + sheet.color + '">' + sheet.label + '</div>';
     // Tampilkan notes dari kolom date (per-column notes di pengaturan kolom)
-    if (dateCol.notes) detailHtml += '<div class="event-field event-notes-text">📝 ' + dateCol.notes + '</div>';
+    if (dateCol.notes) detailHtml += '<div class="event-field event-notes-text">' + dateCol.notes + '</div>';
     textCols.forEach(tc => {
       const raw = row[tc.idx];
       const val = (raw !== null && raw !== undefined) ? String(raw).trim() : '';
@@ -651,7 +651,7 @@ function parseWithColumnConfig(sheet, columns, rows) {
       } else {
         detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
       }
-      if (tc.notes) detailHtml += '<div class="event-field event-notes-text">📝 ' + tc.notes + '</div>';
+      if (tc.notes) detailHtml += '<div class="event-field event-notes-text">' + tc.notes + '</div>';
       if (summary === sheet.label && tc.type === 'text' && !shortCol) {
         summary = sheet.label + ': ' + val;
       }
