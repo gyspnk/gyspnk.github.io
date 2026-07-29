@@ -266,6 +266,10 @@
               <label for="history-search">Cari dalam hasil</label>
               <input type="text" id="history-search" placeholder="Cari nama/keterangan..." />
             </div>
+            <span class="history-view-toggle" style="display:flex;align-items:end;gap:4px;padding-bottom:8px">
+              <button id="hist-view-table" class="btn btn-sm btn-primary">📋 Tabel</button>
+              <button id="hist-view-list" class="btn btn-sm btn-secondary">👥 Daftar</button>
+            </span>
             <div class="form-group">
               <label for="history-per-page">Per Halaman</label>
               <select id="history-per-page">
@@ -282,6 +286,7 @@
             <h3>Grafik Kehadiran</h3>
             <canvas id="history-chart"></canvas>
           </div>
+          <div id="history-list-view" class="hidden"></div>
           <div class="table-wrapper">
             <table id="history-table">
               <thead>

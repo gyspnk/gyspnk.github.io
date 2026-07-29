@@ -1460,3 +1460,58 @@ tbody tr:hover { background: #f8fafc; }
   .calendar-grid-header > div { font-size: 8px; padding: 4px 1px; }
   .cal-month-label { min-width: 100px; font-size: 12px; }
 }
+
+/* ===== History List View (Daftar Kehadiran) ===== */
+.history-list-section {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  background: var(--card-bg);
+}
+.history-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  font-size: 14px;
+}
+.history-list-header-title {
+  color: var(--text);
+}
+.history-list-header-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.history-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  transition: background 0.1s;
+}
+.history-list-item:last-child {
+  border-bottom: none;
+}
+.history-list-item:hover {
+  background: var(--bg-secondary);
+}
+.history-list-num {
+  min-width: 24px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.history-list-name {
+  flex: 1;
+  color: var(--text);
+  font-weight: 500;
+}

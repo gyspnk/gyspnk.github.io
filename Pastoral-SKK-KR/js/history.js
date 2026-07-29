@@ -10,6 +10,7 @@ let userMap = {};
 let historyChart = null;
 let currentPage = 1;
 let perPage = 10;
+let historyViewMode = 'table'; // 'table' | 'list'
 
 export async function initHistory() {
   const years = await getAvailableYears();
@@ -59,8 +60,16 @@ export async function initHistory() {
 
   document.getElementById('history-load').onclick = loadHistory;
   document.getElementById('history-export').onclick = exportHistory;
-  document.getElementById('history-search').oninput = () => { currentPage = 1; renderHistoryTable(); };
+  document.getElementById('history-search').oninput = () => {
+    currentPage = 1;
+    if (historyViewMode === 'list') renderHistoryListView();
+    else renderHistoryTable();
+  };
   document.getElementById('history-per-page').onchange = () => { perPage = parseInt(document.getElementById('history-per-page').value, 10); currentPage = 1; renderHistoryTable(); };
+
+  // View toggle
+  document.getElementById('hist-view-table').onclick = () => switchHistoryView('table');
+  document.getElementById('hist-view-list').onclick = () => switchHistoryView('list');
 
   try {
     // Load employees for the initially selected presensi type
@@ -180,7 +189,13 @@ async function loadHistory() {
   const filterLabel = employee === 'all' ? (isSiswa ? 'semua kelas' : 'semua karyawan') : employee;
   statusMsg.textContent = `${count} record ${typeLabel} ditemukan untuk ${filterLabel}.`;
   currentPage = 1;
-  renderHistoryTable();
+  if (historyViewMode === 'list') {
+    switchViewTo('list');
+    renderHistoryListView();
+  } else {
+    switchViewTo('table');
+    renderHistoryTable();
+  }
   renderHistoryChart();
   window.hideLoading();
 }
@@ -350,6 +365,154 @@ function renderHistoryChart() {
       plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }
     }
   });
+}
+
+/* ===== View Toggle ===== */
+function switchViewTo(mode) {
+  const listView = document.getElementById('history-list-view');
+  const tableWrapper = document.querySelector('.table-wrapper');
+  const pagination = document.getElementById('history-pagination');
+  const chartCard = document.querySelector('.chart-card');
+  const perPageGroup = document.querySelector('#history-per-page')?.closest('.form-group');
+
+  // Show/hide table elements
+  if (mode === 'list') {
+    if (tableWrapper) tableWrapper.style.display = 'none';
+    if (pagination) pagination.style.display = 'none';
+    if (chartCard) chartCard.style.display = 'none';
+    if (listView) listView.classList.remove('hidden');
+    if (perPageGroup) perPageGroup.style.display = 'none';
+  } else {
+    if (tableWrapper) tableWrapper.style.display = '';
+    if (pagination) pagination.style.display = '';
+    if (chartCard) chartCard.style.display = '';
+    if (listView) listView.classList.add('hidden');
+    if (perPageGroup) perPageGroup.style.display = '';
+  }
+}
+
+function switchHistoryView(mode) {
+  historyViewMode = mode;
+  const tableBtn = document.getElementById('hist-view-table');
+  const listBtn = document.getElementById('hist-view-list');
+
+  if (mode === 'list') {
+    tableBtn.className = 'btn btn-sm btn-secondary';
+    listBtn.className = 'btn btn-sm btn-primary';
+    switchViewTo('list');
+    renderHistoryListView();
+  } else {
+    listBtn.className = 'btn btn-sm btn-secondary';
+    tableBtn.className = 'btn btn-sm btn-primary';
+    switchViewTo('table');
+    renderHistoryTable();
+  }
+}
+
+/* ===== Daftar Kehadiran (Read-Only List View) ===== */
+function renderHistoryListView() {
+  const container = document.getElementById('history-list-view');
+  if (!container) return;
+
+  const isSiswa = CONFIG.isSiswaType(document.getElementById('history-type')?.value || '');
+  const searchTerm = (document.getElementById('history-search')?.value || '').toLowerCase();
+  const employee = document.getElementById('history-employee')?.value || 'all';
+  const statusLabels = {};
+  CONFIG.ATTENDANCE_STATUSES.forEach(s => statusLabels[s.value] = s.label);
+  const statusColors = {};
+  CONFIG.ATTENDANCE_STATUSES.forEach(s => statusColors[s.value] = s.color);
+
+  // Filter: exclude auto-generated records, apply employee/search filter
+  let filtered = allRecords.filter(r => {
+    // Skip auto-generated "belum diisi"
+    if (r.notes && r.notes.includes('Otomatis')) return false;
+    // Apply employee/division filter
+    if (isSiswa) {
+      if (employee !== 'all' && r.employee_division !== employee) return false;
+    } else {
+      if (employee !== 'all' && r.employee_name !== employee) return false;
+    }
+    // Apply search
+    if (searchTerm) {
+      const user = userMap[r.recorded_by];
+      const recorderName = user ? user.full_name : '';
+      if (!r.employee_name.toLowerCase().includes(searchTerm) &&
+          !(r.notes || '').toLowerCase().includes(searchTerm) &&
+          !(r.employee_division || '').toLowerCase().includes(searchTerm)) return false;
+    }
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted)">Tidak ada data kehadiran yang sudah diisi.</div>';
+    return;
+  }
+
+  // Group by division (guru) or class (siswa)
+  const groups = {};
+  filtered.forEach(r => {
+    const key = r.employee_division || 'Tanpa Divisi';
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(r);
+  });
+
+  // Sort group keys
+  let sortedKeys;
+  if (isSiswa) {
+    // Natural sort for class names: TK A, TK B, 1 SD, 2 SD, ...
+    const gradeOrder = { 'TK': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9 };
+    sortedKeys = Object.keys(groups).sort((a, b) => {
+      const aPrefix = a.split(' ')[0];
+      const bPrefix = b.split(' ')[0];
+      const aOrder = gradeOrder[aPrefix] ?? 99;
+      const bOrder = gradeOrder[bPrefix] ?? 99;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.localeCompare(b, 'id');
+    });
+  } else {
+    sortedKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'id'));
+  }
+
+  let html = '';
+  sortedKeys.forEach(key => {
+    const items = groups[key];
+    // Sort by name within group
+    items.sort((a, b) => (a.employee_name || '').localeCompare(b.employee_name || '', 'id'));
+
+    // Count per status
+    const counts = {};
+    items.forEach(r => {
+      counts[r.status] = (counts[r.status] || 0) + 1;
+    });
+    const countSummary = CONFIG.ATTENDANCE_STATUSES.map(s => {
+      const c = counts[s.value] || 0;
+      return c ? `<span style="color:${s.color};font-weight:600">${s.short} ${c}</span>` : '';
+    }).filter(Boolean).join(' · ') || '0';
+
+    // Render items
+    const itemsHtml = items.map((r, i) => {
+      const statusCfg = CONFIG.ATTENDANCE_STATUSES.find(s => s.value === r.status);
+      const badgeHtml = statusCfg
+        ? `<span class="status-badge status-${r.status}">${statusLabels[r.status]}</span>`
+        : `<span class="status-badge">${r.status}</span>`;
+      return `<div class="history-list-item">
+        <span class="history-list-num">${i + 1}</span>
+        <span class="history-list-name">${r.employee_name || ''}</span>
+        ${badgeHtml}
+      </div>`;
+    }).join('');
+
+    const sectionLabel = isSiswa ? 'Kelas' : 'Divisi';
+    html += `<div class="history-list-section">
+      <div class="history-list-header">
+        <span class="history-list-header-title">${sectionLabel}: ${key}</span>
+        <span class="history-list-header-count">${items.length} orang · ${countSummary}</span>
+      </div>
+      ${itemsHtml}
+    </div>`;
+  });
+
+  container.innerHTML = html;
 }
 
 async function exportHistory() {
