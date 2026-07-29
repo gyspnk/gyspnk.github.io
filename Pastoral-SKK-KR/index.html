@@ -218,7 +218,13 @@
         <!-- History View -->
         <section id="view-history" class="view hidden">
           <div class="page-header">
-            <h2>Lihat Presensi</h2>
+            <div style="display:flex;align-items:center;gap:8px">
+              <h2 style="margin:0">Lihat Presensi</h2>
+              <span class="history-view-toggle" style="display:flex;gap:4px">
+                <button id="hist-view-table" class="btn btn-sm btn-secondary">📋 Tabel</button>
+                <button id="hist-view-list" class="btn btn-sm btn-primary">👥 Daftar</button>
+              </span>
+            </div>
           </div>
           <div class="history-controls">
             <div class="form-group">
@@ -233,8 +239,8 @@
             <div class="form-group">
               <label>Mode</label>
               <div class="radio-group">
-                <label class="radio-label"><input type="radio" name="history-mode" value="range" checked /> Rentang</label>
-                <label class="radio-label"><input type="radio" name="history-mode" value="single" /> 1 Hari</label>
+                <label class="radio-label"><input type="radio" name="history-mode" value="range" /> Rentang</label>
+                <label class="radio-label"><input type="radio" name="history-mode" value="single" checked /> 1 Hari</label>
               </div>
             </div>
             <div class="form-group" id="history-range-group">
@@ -266,10 +272,6 @@
               <label for="history-search">Cari dalam hasil</label>
               <input type="text" id="history-search" placeholder="Cari nama/keterangan..." />
             </div>
-            <span class="history-view-toggle" style="display:flex;align-items:end;gap:4px;padding-bottom:8px">
-              <button id="hist-view-table" class="btn btn-sm btn-primary">📋 Tabel</button>
-              <button id="hist-view-list" class="btn btn-sm btn-secondary">👥 Daftar</button>
-            </span>
             <div class="form-group">
               <label for="history-per-page">Per Halaman</label>
               <select id="history-per-page">

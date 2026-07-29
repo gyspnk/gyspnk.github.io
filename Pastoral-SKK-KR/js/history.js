@@ -10,7 +10,7 @@ let userMap = {};
 let historyChart = null;
 let currentPage = 1;
 let perPage = 10;
-let historyViewMode = 'table'; // 'table' | 'list'
+let historyViewMode = 'list'; // 'table' | 'list'
 
 export async function initHistory() {
   const years = await getAvailableYears();
@@ -51,12 +51,15 @@ export async function initHistory() {
   const fmtD = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   document.getElementById('history-start').value = fmtD(firstDay);
   document.getElementById('history-end').value = fmtD(now);
+  document.getElementById('history-single-date').value = fmtD(now);
 
   const modeRadios = document.querySelectorAll('input[name="history-mode"]');
   modeRadios.forEach(r => r.onchange = toggleMode);
 
-  document.getElementById('history-single-date-group').classList.add('hidden');
-  document.getElementById('history-range-group').classList.remove('hidden');
+  // Default: 1 Hari mode (single date). Range mode is hidden initially.
+  document.getElementById('history-single-date-group').classList.remove('hidden');
+  document.getElementById('history-range-group').classList.add('hidden');
+  document.getElementById('history-range-group-end').classList.add('hidden');
 
   document.getElementById('history-load').onclick = loadHistory;
   document.getElementById('history-export').onclick = exportHistory;
@@ -67,7 +70,13 @@ export async function initHistory() {
   };
   document.getElementById('history-per-page').onchange = () => { perPage = parseInt(document.getElementById('history-per-page').value, 10); currentPage = 1; renderHistoryTable(); };
 
-  // View toggle
+  // View toggle — set initial button states to match default mode (list)
+  const tableBtn = document.getElementById('hist-view-table');
+  const listBtn = document.getElementById('hist-view-list');
+  if (historyViewMode === 'list') {
+    tableBtn.className = 'btn btn-sm btn-secondary';
+    listBtn.className = 'btn btn-sm btn-primary';
+  }
   document.getElementById('hist-view-table').onclick = () => switchHistoryView('table');
   document.getElementById('hist-view-list').onclick = () => switchHistoryView('list');
 
@@ -140,6 +149,10 @@ function toggleMode() {
   document.getElementById('history-single-date-group').classList.toggle('hidden', isRange);
   document.getElementById('history-range-group').classList.toggle('hidden', !isRange);
   document.getElementById('history-range-group-end').classList.toggle('hidden', !isRange);
+  // List view only works for single date — auto-switch to table when range is selected
+  if (isRange && historyViewMode === 'list') {
+    switchHistoryView('table');
+  }
 }
 
 async function loadHistory() {
@@ -189,6 +202,13 @@ async function loadHistory() {
   const filterLabel = employee === 'all' ? (isSiswa ? 'semua kelas' : 'semua karyawan') : employee;
   statusMsg.textContent = `${count} record ${typeLabel} ditemukan untuk ${filterLabel}.`;
   currentPage = 1;
+
+  // List view only for single date — auto-switch to table if range
+  const viewMode = document.querySelector('input[name="history-mode"]:checked').value;
+  if (viewMode === 'range' && historyViewMode === 'list') {
+    switchHistoryView('table');
+  }
+
   if (historyViewMode === 'list') {
     switchViewTo('list');
     renderHistoryListView();
@@ -372,23 +392,21 @@ function switchViewTo(mode) {
   const listView = document.getElementById('history-list-view');
   const tableWrapper = document.querySelector('.table-wrapper');
   const pagination = document.getElementById('history-pagination');
-  const chartCard = document.querySelector('.chart-card');
   const perPageGroup = document.querySelector('#history-per-page')?.closest('.form-group');
 
-  // Show/hide table elements
+  // List view: hide table/pagination, show list container
   if (mode === 'list') {
     if (tableWrapper) tableWrapper.style.display = 'none';
     if (pagination) pagination.style.display = 'none';
-    if (chartCard) chartCard.style.display = 'none';
     if (listView) listView.classList.remove('hidden');
     if (perPageGroup) perPageGroup.style.display = 'none';
   } else {
     if (tableWrapper) tableWrapper.style.display = '';
     if (pagination) pagination.style.display = '';
-    if (chartCard) chartCard.style.display = '';
     if (listView) listView.classList.add('hidden');
     if (perPageGroup) perPageGroup.style.display = '';
   }
+  // Chart is always visible regardless of view mode
 }
 
 function switchHistoryView(mode) {
