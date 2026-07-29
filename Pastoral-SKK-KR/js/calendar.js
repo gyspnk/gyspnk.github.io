@@ -634,6 +634,8 @@ function parseWithColumnConfig(sheet, columns, rows) {
     let summary = sheet.label;
     let detailHtml = '<div class="event-detail">';
     detailHtml += '<div class="event-source" style="color:' + sheet.color + '">' + sheet.label + '</div>';
+    // Tampilkan notes dari kolom date (per-column notes di pengaturan kolom)
+    if (dateCol.notes) detailHtml += '<div class="event-field event-notes-text">' + dateCol.notes + '</div>';
     textCols.forEach(tc => {
       const raw = row[tc.idx];
       const val = (raw !== null && raw !== undefined) ? String(raw).trim() : '';
