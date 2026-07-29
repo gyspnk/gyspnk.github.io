@@ -437,14 +437,12 @@ function renderHistoryListView() {
   const employee = document.getElementById('history-employee')?.value || 'all';
   const statusLabels = {};
   CONFIG.ATTENDANCE_STATUSES.forEach(s => statusLabels[s.value] = s.label);
-  const statusColors = {};
-  CONFIG.ATTENDANCE_STATUSES.forEach(s => statusColors[s.value] = s.color);
 
   // Filter: exclude auto-generated records, apply employee/search filter
   let filtered = allRecords.filter(r => {
     // Skip auto-generated "belum diisi"
     if (r.notes && r.notes.includes('Otomatis')) return false;
-    // Apply employee/division filter
+    // Apply employee/division filter (sama seperti di menu isi presensi)
     if (isSiswa) {
       if (employee !== 'all' && r.employee_division !== employee) return false;
     } else {
@@ -452,11 +450,8 @@ function renderHistoryListView() {
     }
     // Apply search
     if (searchTerm) {
-      const user = userMap[r.recorded_by];
-      const recorderName = user ? user.full_name : '';
       if (!r.employee_name.toLowerCase().includes(searchTerm) &&
-          !(r.notes || '').toLowerCase().includes(searchTerm) &&
-          !(r.employee_division || '').toLowerCase().includes(searchTerm)) return false;
+          !(r.notes || '').toLowerCase().includes(searchTerm)) return false;
     }
     return true;
   });
@@ -466,7 +461,7 @@ function renderHistoryListView() {
     return;
   }
 
-  // Group by division (guru) or class (siswa)
+  // Group by division (guru) or class (siswa) — seperti pengelompokan jenjang
   const groups = {};
   filtered.forEach(r => {
     const key = r.employee_division || 'Tanpa Divisi';
@@ -477,7 +472,6 @@ function renderHistoryListView() {
   // Sort group keys
   let sortedKeys;
   if (isSiswa) {
-    // Natural sort for class names: TK A, TK B, 1 SD, 2 SD, ...
     const gradeOrder = { 'TK': 0, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9 };
     sortedKeys = Object.keys(groups).sort((a, b) => {
       const aPrefix = a.split(' ')[0];
@@ -491,42 +485,53 @@ function renderHistoryListView() {
     sortedKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b, 'id'));
   }
 
+  const sectionLabel = isSiswa ? 'KELAS' : 'DIVISI';
   let html = '';
   sortedKeys.forEach(key => {
     const items = groups[key];
-    // Sort by name within group
     items.sort((a, b) => (a.employee_name || '').localeCompare(b.employee_name || '', 'id'));
 
-    // Count per status
+    // Hitung status per section
     const counts = {};
-    items.forEach(r => {
-      counts[r.status] = (counts[r.status] || 0) + 1;
-    });
+    items.forEach(r => { counts[r.status] = (counts[r.status] || 0) + 1; });
     const countSummary = CONFIG.ATTENDANCE_STATUSES.map(s => {
       const c = counts[s.value] || 0;
-      return c ? `<span style="color:${s.color};font-weight:600">${s.short} ${c}</span>` : '';
+      return c ? `<span class="hist-summary-dot" style="background:${s.color}"></span>${s.short} ${c}` : '';
     }).filter(Boolean).join(' · ') || '0';
 
-    // Render items
-    const itemsHtml = items.map((r, i) => {
+    // Render table per section — header sama seperti menu isi presensi
+    const colHeaders = isSiswa
+      ? ['No', 'Nama', 'NIS', 'Kelas', 'Status', 'Keterangan']
+      : ['No', 'Nama', 'Jabatan', 'Divisi', 'Status', 'Keterangan'];
+
+    const rowsHtml = items.map((r, i) => {
       const statusCfg = CONFIG.ATTENDANCE_STATUSES.find(s => s.value === r.status);
       const badgeHtml = statusCfg
         ? `<span class="status-badge status-${r.status}">${statusLabels[r.status]}</span>`
         : `<span class="status-badge">${r.status}</span>`;
-      return `<div class="history-list-item">
-        <span class="history-list-num">${i + 1}</span>
-        <span class="history-list-name">${r.employee_name || ''}</span>
-        ${badgeHtml}
-      </div>`;
+      const col2 = isSiswa ? (r.employee_position || '—') : (r.employee_position || '');
+      const col3 = isSiswa ? (r.employee_division || '—') : (r.employee_division || '');
+      return `<tr>
+        <td style="color:var(--text-muted);font-size:12px">${i + 1}</td>
+        <td style="font-weight:500">${r.employee_name || ''}</td>
+        <td>${col2}</td>
+        <td>${col3}</td>
+        <td>${badgeHtml}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${r.notes || ''}</td>
+      </tr>`;
     }).join('');
 
-    const sectionLabel = isSiswa ? 'Kelas' : 'Divisi';
     html += `<div class="history-list-section">
       <div class="history-list-header">
         <span class="history-list-header-title">${sectionLabel}: ${key}</span>
         <span class="history-list-header-count">${items.length} orang · ${countSummary}</span>
       </div>
-      ${itemsHtml}
+      <div class="table-wrapper" style="margin:0;border:none">
+        <table>
+          <thead><tr>${colHeaders.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
     </div>`;
   });
 
