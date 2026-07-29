@@ -588,8 +588,9 @@ function parseWithColumnConfig(sheet, columns, rows) {
         gTexts.forEach(tc => {
           const raw = row[tc.idx];
           const val = (raw !== null && raw !== undefined) ? String(raw).trim() : '';
-          if (!val) return;
-          detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
+          if (val) {
+            detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
+          }
           if (tc.notes) detailHtml += '<div class="event-field event-notes-text">' + tc.notes + '</div>';
         });
         detailHtml += '</div>';
@@ -640,21 +641,22 @@ function parseWithColumnConfig(sheet, columns, rows) {
     textCols.forEach(tc => {
       const raw = row[tc.idx];
       const val = (raw !== null && raw !== undefined) ? String(raw).trim() : '';
-      if (!val) return;
-      if (tc.type === 'link') {
-        const isUrl = /^https?:\/\//i.test(val);
-        if (isUrl) {
-          detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> <a href="' + val + '" target="_blank" rel="noopener" style="color:var(--primary)">' + val + '</a></div>';
+      if (val) {
+        if (tc.type === 'link') {
+          const isUrl = /^https?:\/\//i.test(val);
+          if (isUrl) {
+            detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> <a href="' + val + '" target="_blank" rel="noopener" style="color:var(--primary)">' + val + '</a></div>';
+          } else {
+            detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
+          }
         } else {
           detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
         }
-      } else {
-        detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
+        if (summary === sheet.label && tc.type === 'text' && !shortCol) {
+          summary = sheet.label + ': ' + val;
+        }
       }
       if (tc.notes) detailHtml += '<div class="event-field event-notes-text">' + tc.notes + '</div>';
-      if (summary === sheet.label && tc.type === 'text' && !shortCol) {
-        summary = sheet.label + ': ' + val;
-      }
     });
     detailHtml += '</div>';
     events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, shortLabel, detailHtml });
