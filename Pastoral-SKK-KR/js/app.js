@@ -6,7 +6,7 @@ import { initPresensi, loadPresensiData } from './attendance.js';
 import { initHistory, loadHistory } from './history.js';
 import { initExport } from './export.js';
 import { getAvailableYears, getCurrentAcademicYear, loadKaryawanData } from './data-loader.js';
-import { initCalendar } from './calendar.js';
+import { initCalendar, reloadCalendarConfig } from './calendar.js';
 
 let currentView = 'dashboard';
 let viewsInitialized = { dashboard: false, presensi: false, history: false, export: false, admin: false, calendar: false, bot: false };
@@ -2556,6 +2556,8 @@ async function saveColumnEditor() {
       config.column_config = JSON.stringify(columnConfig);
       config.notes = notes;
     }
+    // Reload calendar config so notes appear immediately (without page refresh)
+    reloadCalendarConfig().catch(e => console.warn('Calendar reload after column save:', e.message));
     setTimeout(() => closeColumnEditor(), 1200);
   } catch (e) {
     msgEl.textContent = 'Gagal: ' + (e.message || 'Coba lagi');

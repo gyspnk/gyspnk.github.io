@@ -151,6 +151,19 @@ export async function initCalendar() {
   loadCustomEvents();
 }
 
+/** Re-fetch calendar config from API and re-render — called after column editor saves config/notes */
+export async function reloadCalendarConfig() {
+  await loadCalendarConfig();
+  // Reset visibility for any new sheets
+  calendarSheets.forEach(sheet => {
+    if (!(sheet.key in visibility)) visibility[sheet.key] = true;
+  });
+  renderFilters();
+  renderCalendar();
+  fetchAllSchedules();
+  loadCustomEvents();
+}
+
 async function loadCalendarConfig() {
   try {
     const configs = await api.getCalendarConfig(currentAcademicYear);
@@ -495,10 +508,10 @@ function buildEventMap() {
     if (!data || !data.rows || data.rows.length === 0) return;
 
     const events = parseSheetEvents(sheet, data.columns, data.rows);
-    // Inject sheet notes into each event detail
+    // Inject sheet notes into each event detail (append before closing event-detail)
     if (sheet.notes) {
       events.forEach(evt => {
-        evt.detailHtml = evt.detailHtml.replace('</div>', `<hr class="event-separator" /><div class="event-notes">${sheet.notes}</div></div>`);
+        evt.detailHtml = evt.detailHtml.replace(/<\/div>\s*$/, `<hr class="event-separator" /><div class="event-notes">${sheet.notes}</div></div>`);
       });
     }
     events.forEach(evt => {
