@@ -2,6 +2,7 @@ import { CONFIG } from './config.js';
 import { api } from './api.js';
 import { getAvailableYears, getCurrentAcademicYear, loadKaryawanData } from './data-loader.js';
 import { exportRecords } from './export.js';
+import { hasRole } from './auth.js';
 
 let allRecords = [];
 let allEmployees = [];
@@ -500,9 +501,11 @@ function renderHistoryListView() {
     }).filter(Boolean).join(' · ') || '0';
 
     // Render table per section — header sama seperti menu isi presensi
+    const isAdmin = hasRole('admin');
     const colHeaders = isSiswa
       ? ['No', 'Nama', 'NIS', 'Kelas', 'Status', 'Keterangan', 'Diisi Oleh']
       : ['No', 'Nama', 'Jabatan', 'Divisi', 'Status', 'Keterangan', 'Diisi Oleh'];
+    if (isAdmin) colHeaders.push('Aksi');
 
     const rowsHtml = items.map((r, i) => {
       const statusCfg = CONFIG.ATTENDANCE_STATUSES.find(s => s.value === r.status);
@@ -513,6 +516,9 @@ function renderHistoryListView() {
       const col3 = isSiswa ? (r.employee_division || '—') : (r.employee_division || '');
       const user = userMap[r.recorded_by];
       const recorderName = user ? user.full_name : (r.recorded_by || '—');
+      const delBtn = isAdmin
+        ? `<button class="btn btn-danger btn-sm hist-del-user" data-name="${r.employee_name}" data-date="${r.attendance_date}" title="Hapus presensi ${r.employee_name}" style="padding:2px 6px;font-size:14px">🗑</button>`
+        : '';
       return `<tr>
         <td style="color:var(--text-muted);font-size:12px">${i + 1}</td>
         <td style="font-weight:500">${r.employee_name || ''}</td>
@@ -521,6 +527,7 @@ function renderHistoryListView() {
         <td>${badgeHtml}</td>
         <td style="font-size:12px;color:var(--text-muted)">${r.notes || ''}</td>
         <td style="font-size:12px"><span style="color:var(--text-muted)">${recorderName}</span></td>
+        ${isAdmin ? `<td style="text-align:center">${delBtn}</td>` : ''}
       </tr>`;
     }).join('');
 
@@ -539,6 +546,31 @@ function renderHistoryListView() {
   });
 
   container.innerHTML = html;
+
+  // Wire up delete buttons for admin
+  if (hasRole('admin')) {
+    container.querySelectorAll('.hist-del-user').forEach(btn => {
+      btn.onclick = async () => {
+        const employeeName = btn.dataset.name;
+        const date = btn.dataset.date;
+        const presensiType = document.getElementById('history-type')?.value || 'renungan_harian';
+        const yearLabel = document.getElementById('history-year')?.value;
+        if (!confirm(`Hapus data presensi "${employeeName}" pada tanggal ${date}?\nData tidak bisa dikembalikan.`)) return;
+        try {
+          btn.disabled = true;
+          btn.textContent = '...';
+          await api.deleteAttendance({ date, academicYear: yearLabel, presensiType, employeeName });
+          // Hapus dari allRecords dan re-render
+          allRecords = allRecords.filter(r => !(r.attendance_date === date && r.employee_name === employeeName));
+          renderHistoryListView();
+        } catch (e) {
+          alert('Gagal: ' + e.message);
+          btn.disabled = false;
+          btn.textContent = '🗑';
+        }
+      };
+    });
+  }
 }
 
 async function exportHistory() {
