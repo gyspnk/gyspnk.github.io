@@ -12,6 +12,7 @@ const EXPORT_TREND_SERIES = [
   { key: 'tidak_hadir', label: 'Tidak Hadir', color: '#ef4444', borderDash: [], fill: false, bgColor: 'transparent' },
 ];
 let exportTrendState = Object.fromEntries(EXPORT_TREND_SERIES.map(s => [s.key, true]));
+let exportPresensiConfig = {};
 
 export async function initExport() {
   const years = await getAvailableYears();
@@ -34,7 +35,16 @@ export async function initExport() {
   document.getElementById('export-end').value = fmtD(now);
 
   document.getElementById('export-btn').onclick = doExport;
+  document.getElementById('export-type').onchange = updateExportClassFilter;
+  document.getElementById('export-year').onchange = updateExportClassFilter;
   renderExportTrendToggles();
+  // Load presensi config for active-day filtering
+  try {
+    const config = await api.getPresensiConfig();
+    config.forEach(c => { exportPresensiConfig[c.presensi_type] = (c.allowed_days || '').split(',').map(Number).filter(n => !isNaN(n)); });
+  } catch(e) { exportPresensiConfig = {}; }
+  // Populate class filter initially
+  await updateExportClassFilter();
 }
 
 function renderExportTrendToggles() {
@@ -56,6 +66,33 @@ function renderExportTrendToggles() {
     };
     container.appendChild(chip);
   });
+}
+
+async function updateExportClassFilter() {
+  const group = document.getElementById('export-class-group');
+  const select = document.getElementById('export-class');
+  if (!group || !select) return;
+  const type = document.getElementById('export-type').value;
+  if (CONFIG.isSiswaType(type)) {
+    group.style.display = '';
+    const prevVal = select.value || 'all';
+    select.innerHTML = '<option value="all">Semua Kelas</option>';
+    try {
+      const yearLabel = document.getElementById('export-year').value;
+      const students = await api.getKFStudents({ academicYear: yearLabel, active: 'true' });
+      const classes = [...new Set(students.map(s => s.class).filter(Boolean))].sort((a,b) => a.localeCompare(b,'id',{numeric:true}));
+      classes.forEach(cls => {
+        const opt = document.createElement('option');
+        opt.value = cls;
+        opt.textContent = cls;
+        select.appendChild(opt);
+      });
+      if (classes.includes(prevVal)) select.value = prevVal;
+    } catch(e) { console.error('Gagal memuat data kelas:', e); }
+  } else {
+    group.style.display = 'none';
+    select.value = 'all';
+  }
 }
 
 function getExportPresensiType() {
@@ -106,6 +143,12 @@ async function doExport() {
     console.error('Failed to filter inactive employees:', e);
   }
 
+  // Filter by class/jenjang if selected
+  const classFilter = document.getElementById('export-class')?.value;
+  if (classFilter && classFilter !== 'all') {
+    records = records.filter(r => r.employee_division === classFilter);
+  }
+
   if (records.length === 0) {
     preview.innerHTML = '<p style="color:var(--amber)">Tidak ada data presensi pada rentang tanggal ini.</p>';
     btn.disabled = false;
@@ -113,13 +156,22 @@ async function doExport() {
     return;
   }
 
+  // Ensure presensi config is loaded for day filtering
+  if (Object.keys(exportPresensiConfig).length === 0) {
+    try {
+      const config = await api.getPresensiConfig();
+      config.forEach(c => { exportPresensiConfig[c.presensi_type] = (c.allowed_days || '').split(',').map(Number).filter(n => !isNaN(n)); });
+    } catch(e) { /* keep empty */ }
+  }
+  const allowedDays = exportPresensiConfig[presensiType] || [1,2,3,4,5];
+
   preview.innerHTML = '<p>Membuat grafik...</p>';
   const chartImages = await renderChartImages(records, startDate, endDate);
 
   preview.innerHTML = '<p>Membuat file Excel...</p>';
 
   try {
-    const blob = await createExcelFile(records, chartImages, { startDate, endDate, academicYear, presensiType });
+    const blob = await createExcelFile(records, chartImages, { startDate, endDate, academicYear, presensiType, allowedDays });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -264,13 +316,13 @@ export async function createExcelFile(records, chartImages, meta) {
   const statusColorHex = { hadir: '22C55E', terlambat: 'F59E0B', izin: '3B82F6', sakit: 'A855F7', tidak_hadir_tk: 'EF4444' };
   const fmtKey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
-  // Generate weekday dates (Sen-Jum)
+  // Generate dates based on presensi config allowed days (not hardcoded Mon-Fri)
+  const allowedDays = meta.allowedDays || [1,2,3,4,5];
   const startDate = new Date(meta.startDate + 'T00:00:00');
   const endDate = new Date(meta.endDate + 'T00:00:00');
   const dates = [];
   for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-    const day = d.getDay();
-    if (day !== 0 && day !== 6) dates.push(new Date(d));
+    if (allowedDays.includes(d.getDay())) dates.push(new Date(d));
   }
 
   // Build lookup: empName_dateStr → status
@@ -322,7 +374,7 @@ export async function createExcelFile(records, chartImages, meta) {
     cell.border = { bottom: { style: 'thin', color: { argb: 'FF000000' } } };
   });
 
-  // Style date header cells with weekend indicator (none since we skip weekends, but style weekday)
+  // Style date header cells with blue background for all active days
   dates.forEach((d, i) => {
     const cell = headerRow.getCell(5 + i);
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
@@ -412,7 +464,8 @@ export async function createExcelFile(records, chartImages, meta) {
   ws2.getCell('A4').value = 'Rentang Tanggal:';
   ws2.getCell('B4').value = `${meta.startDate} s/d ${meta.endDate}`;
   ws2.getCell('A5').value = 'Hari Kerja:';
-  ws2.getCell('B5').value = `${dates.length} hari (Sen-Jum)`;
+  const allowedDayLabels = allowedDays.map(d => dayNames[d]).join(', ');
+  ws2.getCell('B5').value = `${dates.length} hari (${allowedDayLabels})`;
   ws2.getCell('A6').value = 'Tahun Ajaran:';
   ws2.getCell('B6').value = meta.academicYear;
   ws2.getCell('A7').value = 'Total Record:';

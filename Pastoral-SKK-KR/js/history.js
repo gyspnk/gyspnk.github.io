@@ -621,12 +621,20 @@ async function exportHistory() {
     };
     const typeSlug = typeSlugMap[presensiType] || 'Presensi';
     const isSiswa = CONFIG.isSiswaType(presensiType);
+    // Load presensi config for day filtering
+    let allowedDays;
+    try {
+      const config = await api.getPresensiConfig();
+      const cfg = config.find(c => c.presensi_type === presensiType);
+      allowedDays = cfg ? cfg.allowed_days.split(',').map(Number).filter(n => !isNaN(n)) : undefined;
+    } catch(e) { /* ignore */ }
     const meta = {
       startDate,
       endDate,
       academicYear: document.getElementById('history-year').value,
       employee: employee === 'all' ? (isSiswa ? 'Semua Kelas' : 'Semua Karyawan') : employee,
       presensiType,
+      allowedDays,
       userMap
     };
     const fileName = employee === 'all'
