@@ -390,11 +390,11 @@ function renderHistoryChart() {
 /* ===== View Toggle ===== */
 function switchViewTo(mode) {
   const listView = document.getElementById('history-list-view');
-  const tableWrapper = document.querySelector('.table-wrapper');
+  // Cari table-wrapper yg mengandung #history-table (bukan punya list view)
+  const tableWrapper = document.getElementById('history-table')?.closest('.table-wrapper');
   const pagination = document.getElementById('history-pagination');
-  const perPageGroup = document.querySelector('#history-per-page')?.closest('.form-group');
+  const perPageGroup = document.getElementById('history-per-page')?.closest('.form-group');
 
-  // List view: hide table/pagination, show list container
   if (mode === 'list') {
     if (tableWrapper) tableWrapper.style.display = 'none';
     if (pagination) pagination.style.display = 'none';
@@ -501,8 +501,8 @@ function renderHistoryListView() {
 
     // Render table per section — header sama seperti menu isi presensi
     const colHeaders = isSiswa
-      ? ['No', 'Nama', 'NIS', 'Kelas', 'Status', 'Keterangan']
-      : ['No', 'Nama', 'Jabatan', 'Divisi', 'Status', 'Keterangan'];
+      ? ['No', 'Nama', 'NIS', 'Kelas', 'Status', 'Keterangan', 'Diisi Oleh']
+      : ['No', 'Nama', 'Jabatan', 'Divisi', 'Status', 'Keterangan', 'Diisi Oleh'];
 
     const rowsHtml = items.map((r, i) => {
       const statusCfg = CONFIG.ATTENDANCE_STATUSES.find(s => s.value === r.status);
@@ -511,6 +511,8 @@ function renderHistoryListView() {
         : `<span class="status-badge">${r.status}</span>`;
       const col2 = isSiswa ? (r.employee_position || '—') : (r.employee_position || '');
       const col3 = isSiswa ? (r.employee_division || '—') : (r.employee_division || '');
+      const user = userMap[r.recorded_by];
+      const recorderName = user ? user.full_name : (r.recorded_by || '—');
       return `<tr>
         <td style="color:var(--text-muted);font-size:12px">${i + 1}</td>
         <td style="font-weight:500">${r.employee_name || ''}</td>
@@ -518,6 +520,7 @@ function renderHistoryListView() {
         <td>${col3}</td>
         <td>${badgeHtml}</td>
         <td style="font-size:12px;color:var(--text-muted)">${r.notes || ''}</td>
+        <td style="font-size:12px"><span style="color:var(--text-muted)">${recorderName}</span></td>
       </tr>`;
     }).join('');
 
