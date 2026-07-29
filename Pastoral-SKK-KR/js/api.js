@@ -16,8 +16,9 @@ async function apiFetch(path, options = {}) {
   const token = getToken();
   if (token) headers['Authorization'] = 'Bearer ' + token;
   const res = await fetch(url, { ...options, headers });
-  // Auto-logout jika token expired/tidak valid (401)
-  if (res.status === 401) {
+  // Auto-logout jika token expired/tidak valid (401) — sekali saja, tanpa infinite refresh
+  if (res.status === 401 && !sessionStorage.getItem('auth_expired')) {
+    sessionStorage.setItem('auth_expired', '1');
     setToken(null);
     localStorage.removeItem(CONFIG.USER_KEY);
     localStorage.removeItem(CONFIG.TOKEN_KEY);

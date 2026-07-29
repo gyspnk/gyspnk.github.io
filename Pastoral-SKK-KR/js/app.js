@@ -29,6 +29,21 @@ window.hideLoading = function() {
 document.addEventListener('DOMContentLoaded', boot);
 
 async function boot() {
+  // Cek apakah ini redirect setelah sesi expired — hindari infinite refresh
+  const sessionExpired = sessionStorage.getItem('auth_expired');
+  if (sessionExpired) {
+    sessionStorage.removeItem('auth_expired');
+    initMobileMenu();
+    showLogin();
+    const errEl = document.getElementById('login-error');
+    if (errEl) {
+      errEl.textContent = 'Sesi berakhir. Silakan login ulang.';
+      errEl.classList.remove('hidden');
+    }
+    document.getElementById('demo-setup')?.classList.add('hidden');
+    return;
+  }
+
   if (isDemoMode()) {
     document.getElementById('demo-banner').classList.remove('hidden');
     migrateDemoEmployeeData();
