@@ -223,8 +223,27 @@ body {
   inset: 0;
   background: rgba(0,0,0,0.5);
   z-index: 99;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0.25s ease;
 }
-.sidebar-overlay.hidden { display: none; }
+/* Dynamic permission modal overlay */
+.modal-overlay-dynamic {
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+.modal-overlay-dynamic.open {
+  opacity: 1;
+}
+.sidebar-overlay.open {
+  opacity: 1;
+  visibility: visible;
+}
+.sidebar-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
 
 /* Mobile top bar */
 .mobile-topbar {
@@ -809,7 +828,6 @@ tbody tr:hover { background: #f8fafc; }
     overflow-y: auto; /* ensure footer is reachable on small portrait phones */
   }
   .sidebar.open { transform: translateX(0); }
-  .sidebar-overlay.open { display: block; }
 
   /* Show mobile top bar */
   .mobile-topbar { display: flex; }

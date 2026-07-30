@@ -141,8 +141,13 @@ function initMobileMenu() {
 
   function openMenu() {
     sidebar.classList.add('open');
-    overlay.classList.add('open');
     overlay.classList.remove('hidden');
+    // Double RAF ensures browser commits opacity:0 before adding open class
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        overlay.classList.add('open');
+      });
+    });
     document.body.style.overflow = 'hidden';
   }
 
@@ -1312,9 +1317,16 @@ async function showPermissionModal(targetId, targetName, currentPerms, isRole = 
   </div>`;
 
   const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay-dynamic';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px';
   overlay.innerHTML = `<div style="background:var(--card-bg);border-radius:12px;padding:24px;width:100%;max-width:780px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">${html}</div>`;
   document.body.appendChild(overlay);
+  // Fade in overlay
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      overlay.classList.add('open');
+    });
+  });
 
   // Click handlers for styled radio/checkbox labels
   overlay.querySelectorAll('label').forEach(label => {
