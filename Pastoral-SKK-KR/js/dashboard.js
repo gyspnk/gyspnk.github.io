@@ -22,7 +22,7 @@ function saveTrendToggleState(state) {
   const value = JSON.stringify(state);
   // Expire 1 year from now
   const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
-  document.cookie = `${TREND_TOGGLE_COOKIE}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+  document.cookie = `${TREND_TOGGLE_COOKIE}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax; Secure`;
 }
 
 function loadTrendToggleState() {
