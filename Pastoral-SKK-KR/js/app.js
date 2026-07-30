@@ -8,7 +8,7 @@ import { initExport } from './export.js';
 import { getAvailableYears, getCurrentAcademicYear, loadKaryawanData } from './data-loader.js';
 import { initCalendar, reloadCalendarConfig } from './calendar.js';
 
-let currentView = 'dashboard';
+let currentView = null;
 let viewsInitialized = { dashboard: false, presensi: false, history: false, export: false, admin: false, calendar: false, bot: false };
 
 /* ===== Global Loading Bar ===== */
@@ -335,9 +335,29 @@ function filterPresensiTypeSelectors() {
 }
 
 function switchView(view) {
+  // Skip if already on this view (prevents re-animation when clicking active link)
+  if (view === currentView) return;
   currentView = view;
-  document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
-  document.getElementById(`view-${view}`).classList.remove('hidden');
+
+  // Hide all views with transition awareness
+  document.querySelectorAll('.view').forEach(v => {
+    v.classList.remove('visible');
+    v.classList.add('hidden');
+  });
+
+  // Show target view with smooth fade-in animation
+  const targetView = document.getElementById(`view-${view}`);
+  if (!targetView) return;
+  targetView.classList.remove('hidden');
+  // Double requestAnimationFrame ensures the browser commits the display change
+  // before the visible class triggers the CSS transition
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      targetView.classList.add('visible');
+    });
+  });
+
+  // Update nav link active state
   document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
   const link = document.querySelector(`.nav-link[data-view="${view}"]`);
   if (link) link.classList.add('active');

@@ -33,6 +33,29 @@ body {
 
 .hidden { display: none !important; }
 
+/* ===== Page Transitions ===== */
+.view {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.view.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* Keep display: none for actual hiding — overrides opacity/transform */
+.view.hidden {
+  display: none !important;
+}
+
+/* Smooth sidebar nav-link transitions */
+.nav-link {
+  transition: background 0.2s ease, color 0.2s ease, padding-left 0.2s ease;
+}
+.nav-link.active {
+  padding-left: 18px;
+}
+
 /* Loading bar */
 .loading-bar {
   position: fixed;
