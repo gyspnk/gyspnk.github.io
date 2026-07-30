@@ -1759,8 +1759,19 @@ function initAdminKFStudents() {
       }
       // Ensure year dropdown has options and a value selected
       const yearSelect = document.getElementById('kfs-year-select');
-      if (yearSelect && !yearSelect.value) {
-        populateKFSYearSelect();
+      if (yearSelect && (!yearSelect.options.length || !yearSelect.value)) {
+        // Populate dropdown without triggering auto-load (we'll load explicitly below)
+        yearSelect.innerHTML = '';
+        adminData.years.forEach(y => {
+          const opt = document.createElement('option');
+          opt.value = y.id;
+          opt.textContent = y.year_label;
+          yearSelect.appendChild(opt);
+        });
+        // Select current academic year
+        const currentAY = getCurrentAcademicYear(adminData.years.map(y => ({ code: y.year_code, label: y.year_label })));
+        const match = adminData.years.find(y => y.year_label === currentAY.label);
+        if (match) yearSelect.value = match.id;
       }
       // Load KF student data with error handling
       try {
