@@ -14,8 +14,32 @@ const TREND_SERIES = [
   { key: 'sakit', label: 'Sakit', color: '#a855f7', borderDash: [], fill: false, bgColor: 'transparent' },
   { key: 'tidak_hadir', label: 'Tidak Hadir', color: '#ef4444', borderDash: [], fill: false, bgColor: 'transparent' },
 ];
-// All enabled by default
-let trendToggleState = Object.fromEntries(TREND_SERIES.map(s => [s.key, true]));
+
+// --- Cookie helpers for toggle persistence ---
+const TREND_TOGGLE_COOKIE = 'pas_trend_toggles';
+
+function saveTrendToggleState(state) {
+  const value = JSON.stringify(state);
+  // Expire 1 year from now
+  const expires = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `${TREND_TOGGLE_COOKIE}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+}
+
+function loadTrendToggleState() {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${TREND_TOGGLE_COOKIE}=([^;]*)`));
+  if (match) {
+    try {
+      const parsed = JSON.parse(decodeURIComponent(match[1]));
+      // Ensure every series key exists (in case new series added later)
+      const defaultState = Object.fromEntries(TREND_SERIES.map(s => [s.key, true]));
+      return { ...defaultState, ...parsed };
+    } catch { /* ignore corrupt cookie */ }
+  }
+  return Object.fromEntries(TREND_SERIES.map(s => [s.key, true]));
+}
+// --- end cookie helpers ---
+
+let trendToggleState = loadTrendToggleState();
 
 export async function initDashboard() {
   const years = await getAvailableYears();
@@ -221,7 +245,7 @@ function renderTrendToggles() {
   container.innerHTML = '';
   TREND_SERIES.forEach(series => {
     const chip = document.createElement('button');
-    chip.className = 'chart-toggle-chip active';
+    chip.className = `chart-toggle-chip ${trendToggleState[series.key] ? 'active' : ''}`;
     chip.type = 'button';
     chip.style.setProperty('--toggle-color', series.color);
     chip.innerHTML = `
@@ -230,6 +254,7 @@ function renderTrendToggles() {
     `;
     chip.onclick = () => {
       trendToggleState[series.key] = !trendToggleState[series.key];
+      saveTrendToggleState(trendToggleState);
       chip.classList.toggle('active');
       renderTrendChart();
     };
