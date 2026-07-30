@@ -1745,7 +1745,37 @@ function initAdminKFStudents() {
   document.getElementById('add-kfs-form').onsubmit = handleAddKFStudent;
   document.getElementById('kfs-import-btn').onclick = handleImportKFStudents;
   document.getElementById('kfs-import-siswa-folder').onclick = handleImportSiswaFolder;
-  document.getElementById('export-kfs-btn').onclick = () => showExportColumnSelector('kfs');
+  document.getElementById('export-kfs-btn').onclick = async () => {
+    // Ensure KF student data is loaded before showing export modal
+    if (!kfsData || kfsData.length === 0) {
+      // If years aren't loaded yet, fetch them on-demand
+      if (!adminData.years || adminData.years.length === 0) {
+        try {
+          adminData.years = await api.getAcademicYears();
+        } catch (e) {
+          alert('Gagal memuat data tahun ajaran: ' + e.message);
+          return;
+        }
+      }
+      // Ensure year dropdown has options and a value selected
+      const yearSelect = document.getElementById('kfs-year-select');
+      if (yearSelect && !yearSelect.value) {
+        populateKFSYearSelect();
+      }
+      // Load KF student data with error handling
+      try {
+        await loadAdminKFStudents();
+      } catch (e) {
+        alert('Gagal memuat data siswa: ' + e.message);
+        return;
+      }
+    }
+    if (!kfsData || kfsData.length === 0) {
+      alert('Tidak ada data siswa KF untuk tahun ajaran ini.');
+      return;
+    }
+    showExportColumnSelector('kfs');
+  };
   populateKFSYearSelect();
 }
 
@@ -1770,20 +1800,22 @@ function populateKFSYearSelect() {
   }
   // Auto-load if we have a valid year selected
   if (select.value) {
-    loadAdminKFStudents();
+    loadAdminKFStudents().catch(e => console.warn('Auto-load KF students gagal:', e.message));
   }
 }
 
 async function loadAdminKFStudents() {
   const yearId = parseInt(document.getElementById('kfs-year-select').value, 10);
-  if (!yearId) return;
+  if (!yearId) return false;
   const year = adminData.years.find(y => y.id === yearId);
-  if (!year) return;
+  if (!year) return false;
   try {
     kfsData = await api.getKFStudents({ academicYear: year.label });
     renderAdminKFStudents();
+    return true;
   } catch (e) {
     console.error('Failed to load KF students:', e);
+    throw e; // let callers decide how to handle
   }
 }
 
