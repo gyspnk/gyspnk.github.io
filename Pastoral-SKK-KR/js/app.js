@@ -1377,7 +1377,12 @@ async function showPermissionModal(targetId, targetName, currentPerms, isRole = 
     };
   }
 
-  overlay.querySelector('#perm-cancel').onclick = () => overlay.remove();
+  const closePermModal = () => {
+    overlay.classList.remove('open');
+    setTimeout(() => overlay.remove(), 250);
+  };
+
+  overlay.querySelector('#perm-cancel').onclick = closePermModal;
   overlay.querySelector('#perm-save').onclick = async () => {
     const newPerms = {};
     types.forEach(t => {
@@ -1413,13 +1418,13 @@ async function showPermissionModal(targetId, targetName, currentPerms, isRole = 
       }
       msgEl.textContent = '✅ Izin berhasil disimpan.';
       msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';
-      setTimeout(() => overlay.remove(), 600);
+      setTimeout(() => closePermModal(), 600);
     } catch (e) {
       msgEl.textContent = 'Gagal: ' + e.message;
       msgEl.style.background = '#fee2e2'; msgEl.style.color = '#991b1b';
     }
   };
-  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.onclick = (e) => { if (e.target === overlay) closePermModal(); };
 }
 
 async function handleAddUser(e) {

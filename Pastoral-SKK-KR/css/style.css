@@ -230,10 +230,14 @@ body {
 /* Dynamic permission modal overlay */
 .modal-overlay-dynamic {
   opacity: 0;
-  transition: opacity 0.22s ease;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.22s ease, visibility 0.22s ease;
 }
 .modal-overlay-dynamic.open {
   opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 .sidebar-overlay.open {
   opacity: 1;
