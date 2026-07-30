@@ -71,28 +71,44 @@ function renderExportTrendToggles() {
 async function updateExportClassFilter() {
   const group = document.getElementById('export-class-group');
   const select = document.getElementById('export-class');
+  const label = document.getElementById('export-class-label');
   if (!group || !select) return;
   const type = document.getElementById('export-type').value;
-  if (CONFIG.isSiswaType(type)) {
-    group.style.display = '';
-    const prevVal = select.value || 'all';
-    select.innerHTML = '<option value="all">Semua Kelas</option>';
-    try {
-      const yearLabel = document.getElementById('export-year').value;
+  const isSiswa = CONFIG.isSiswaType(type);
+  const yearLabel = document.getElementById('export-year').value;
+  const prevVal = select.value || 'all';
+
+  // Update label
+  if (label) label.textContent = isSiswa ? 'Kelas' : 'Divisi';
+  select.innerHTML = `<option value="all">${isSiswa ? 'Semua Kelas' : 'Semua Divisi'}</option>`;
+
+  try {
+    if (isSiswa) {
       const students = await api.getKFStudents({ academicYear: yearLabel, active: 'true' });
-      const classes = [...new Set(students.map(s => s.class).filter(Boolean))].sort((a,b) => a.localeCompare(b,'id',{numeric:true}));
-      classes.forEach(cls => {
+      const items = [...new Set(students.map(s => s.class).filter(Boolean))].sort((a,b) => a.localeCompare(b,'id',{numeric:true}));
+      items.forEach(item => {
         const opt = document.createElement('option');
-        opt.value = cls;
-        opt.textContent = cls;
+        opt.value = item;
+        opt.textContent = item;
         select.appendChild(opt);
       });
-      if (classes.includes(prevVal)) select.value = prevVal;
-    } catch(e) { console.error('Gagal memuat data kelas:', e); }
-  } else {
-    group.style.display = 'none';
-    select.value = 'all';
-  }
+    } else {
+      // For guru types, load active employees and extract their divisions
+      const years = await getAvailableYears();
+      const yearObj = years.find(y => y.label === yearLabel);
+      if (yearObj) {
+        const emps = await loadKaryawanData(yearObj, type);
+        const items = [...new Set(emps.map(e => e.division).filter(Boolean))].sort((a,b) => a.localeCompare(b,'id',{numeric:true}));
+        items.forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = item;
+          opt.textContent = item;
+          select.appendChild(opt);
+        });
+      }
+    }
+    if (prevVal && [...select.options].some(o => o.value === prevVal)) select.value = prevVal;
+  } catch(e) { console.error('Gagal memuat data filter jenjang:', e); }
 }
 
 function getExportPresensiType() {
