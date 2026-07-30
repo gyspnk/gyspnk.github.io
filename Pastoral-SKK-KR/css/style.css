@@ -36,12 +36,10 @@ body {
 /* ===== Page Transitions ===== */
 .view {
   opacity: 0;
-  transform: translateY(12px);
-  transition: opacity 0.35s ease, transform 0.35s ease;
+  transition: opacity 0.35s ease;
 }
 .view.visible {
   opacity: 1;
-  transform: translateY(0);
 }
 /* Keep display: none for actual hiding — overrides opacity/transform */
 .view.hidden {
