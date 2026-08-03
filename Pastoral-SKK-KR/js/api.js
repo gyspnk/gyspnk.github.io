@@ -455,7 +455,17 @@ const realApi = {
     if (params.academicYear) qs.set('academicYear', params.academicYear);
     if (params.date) qs.set('date', params.date);
     if (params.presensiType) qs.set('presensiType', params.presensiType);
-    return apiFetch('/api/attendance?' + qs.toString());
+    const rows = await apiFetch('/api/attendance?' + qs.toString());
+    if (!Array.isArray(rows)) return rows;
+    // Safety net: 1 record per (nama, tanggal, tahun, tipe) — cegah jumlah
+    // murid/karyawan terduplikasi di Lihat Presensi/export bila DB punya duplikat
+    const seen = new Map();
+    for (const r of rows) {
+      const key = [r.employee_name, r.attendance_date, r.academic_year, r.presensi_type || 'renungan_harian'].join('|');
+      const prev = seen.get(key);
+      if (!prev || (r.id || 0) > (prev.id || 0)) seen.set(key, r);
+    }
+    return [...seen.values()];
   },
   async saveAttendance(data) {
     return apiFetch('/api/attendance', { method: 'POST', body: JSON.stringify(data) });

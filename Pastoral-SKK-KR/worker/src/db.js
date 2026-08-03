@@ -182,9 +182,6 @@ export async function initSchema(env) {
     `ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_active_rh BOOLEAN DEFAULT TRUE AFTER employment_status`,
     `ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_active_im BOOLEAN DEFAULT TRUE AFTER is_active_rh`,
     `ALTER TABLE employees ADD COLUMN IF NOT EXISTS is_active_kf BOOLEAN DEFAULT TRUE AFTER is_active_im`,
-    // Drop old unique key and add new one that includes presensi_type
-    `ALTER TABLE attendance DROP INDEX IF EXISTS uq_attendance`,
-    `ALTER TABLE attendance ADD UNIQUE INDEX uq_attendance (employee_name, attendance_date, academic_year, presensi_type)`,
     // Data migration: sync old is_active → is_active_rh + is_active_im, then drop old column
     // Unconditional sync — idempotent, and handles DEFAULT TRUE overriding old FALSE values
     `UPDATE employees SET is_active_rh = is_active, is_active_im = is_active`,
@@ -236,5 +233,36 @@ export async function initSchema(env) {
       // Migration statements may fail on existing schemas — safe to ignore
       console.warn('Schema statement warning:', e.message);
     }
+  }
+
+  // ===== Attendance unique key (self-healing) =====
+  // Migrasi lama DROP+ADD index setiap deploy; jika ADD gagal (mis. karena sudah
+  // ada duplikat), index hilang → save berulang malah MENAMBAH baris baru dan
+  // jumlah murid/karyawan di Lihat Presensi jadi dobel. Kini: cek definisi index
+  // dulu; hanya bila rusak/tidak ada → bersihkan duplikat (pertahankan record
+  // terbaru) lalu buat index-nya. Idempoten, aman dijalankan setiap init.
+  try {
+    const idxRows = await query(env,
+      `SELECT COLUMN_NAME FROM information_schema.statistics
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'attendance' AND INDEX_NAME = 'uq_attendance'
+       ORDER BY SEQ_IN_INDEX`);
+    const wantCols = ['employee_name', 'attendance_date', 'academic_year', 'presensi_type'];
+    const haveCols = (idxRows || []).map(r => r.COLUMN_NAME);
+    const indexOk = wantCols.length === haveCols.length && wantCols.every((c, i) => c === haveCols[i]);
+    if (!indexOk) {
+      await execute(env,
+        `DELETE FROM attendance WHERE id NOT IN (
+           SELECT keep_id FROM (
+             SELECT MAX(id) AS keep_id FROM attendance
+             GROUP BY employee_name, attendance_date, academic_year, presensi_type
+           ) t
+         )`);
+      await execute(env, 'ALTER TABLE attendance DROP INDEX IF EXISTS uq_attendance');
+      await execute(env,
+        'ALTER TABLE attendance ADD UNIQUE INDEX uq_attendance (employee_name, attendance_date, academic_year, presensi_type)');
+      console.log('Attendance unique index restored (duplicates cleaned).');
+    }
+  } catch (e) {
+    console.warn('Attendance unique index check skipped:', e.message);
   }
 }

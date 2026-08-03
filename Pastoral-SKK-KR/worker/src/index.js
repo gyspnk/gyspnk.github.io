@@ -746,7 +746,15 @@ export default {
         if (params.get('presensiType')) { sql += ' AND presensi_type = ?'; vals.push(params.get('presensiType')); }
         sql += ' ORDER BY attendance_date, employee_name';
         const rows = await query(env, sql, vals);
-        return json(rows, 200, allowOrigin);
+        // Safety net: 1 record per (nama, tanggal, tahun, tipe) — jumlah
+        // murid/karyawan tidak boleh dobel walau DB sempat tanpa unique key
+        const seen = new Map();
+        for (const r of rows) {
+          const key = [r.employee_name, r.attendance_date, r.academic_year, r.presensi_type || 'renungan_harian'].join('|');
+          const prev = seen.get(key);
+          if (!prev || (r.id || 0) > (prev.id || 0)) seen.set(key, r);
+        }
+        return json([...seen.values()], 200, allowOrigin);
       }
 
       if (path === '/api/attendance' && request.method === 'POST') {
@@ -755,12 +763,21 @@ export default {
         const pType = presensiType || 'renungan_harian';
         let count = 0;
         for (const rec of records) {
-          await execute(env,
-            `INSERT INTO attendance (employee_name, employee_position, employee_division, employee_status, academic_year, attendance_date, presensi_type, status, notes, recorded_by, recorded_by_role)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE status = VALUES(status), notes = VALUES(notes), recorded_by = VALUES(recorded_by), recorded_by_role = VALUES(recorded_by_role), updated_at = CURRENT_TIMESTAMP`,
-            [rec.employee_name, rec.employee_position, rec.employee_division, rec.employee_status, academicYear, date, pType, rec.status, rec.notes || '', recordedBy, recordedByRole]
-          );
+          // Idempoten: update bila sudah ada, insert bila belum — tidak bergantung
+          // pada unique index DB (mencegah data dobel saat index sempat hilang)
+          const existing = await query(env,
+            `SELECT id FROM attendance WHERE employee_name = ? AND attendance_date = ? AND academic_year = ? AND presensi_type = ? LIMIT 1`,
+            [rec.employee_name, date, academicYear, pType]);
+          if (existing.length > 0) {
+            await execute(env,
+              `UPDATE attendance SET status = ?, notes = ?, recorded_by = ?, recorded_by_role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+              [rec.status, rec.notes || '', recordedBy, recordedByRole, existing[0].id]);
+          } else {
+            await execute(env,
+              `INSERT INTO attendance (employee_name, employee_position, employee_division, employee_status, academic_year, attendance_date, presensi_type, status, notes, recorded_by, recorded_by_role)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [rec.employee_name, rec.employee_position, rec.employee_division, rec.employee_status, academicYear, date, pType, rec.status, rec.notes || '', recordedBy, recordedByRole]);
+          }
           count++;
         }
         return json({ success: true, count }, 200, allowOrigin);
