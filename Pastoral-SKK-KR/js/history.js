@@ -512,7 +512,7 @@ function renderHistoryListView() {
       const badgeHtml = statusCfg
         ? `<span class="status-badge status-${r.status}">${statusLabels[r.status]}</span>`
         : `<span class="status-badge">${r.status}</span>`;
-      const col2 = isSiswa ? (r.employee_position || '—') : (r.employee_position || '');
+      const col2 = isSiswa ? (r.employee_status || '—') : (r.employee_position || '');
       const col3 = isSiswa ? (r.employee_division || '—') : (r.employee_division || '');
       const user = userMap[r.recorded_by];
       const recorderName = user ? user.full_name : (r.recorded_by || '—');
