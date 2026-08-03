@@ -761,26 +761,26 @@ export default {
         const { date, academicYear, recordedBy, recordedByRole, records, presensiType } = await request.json();
         if (!date || !academicYear || !records || !records.length) return json({ error: 'Data tidak lengkap' }, 400, allowOrigin);
         const pType = presensiType || 'renungan_harian';
-        let count = 0;
-        for (const rec of records) {
-          // Idempoten: update bila sudah ada, insert bila belum — tidak bergantung
-          // pada unique index DB (mencegah data dobel saat index sempat hilang)
-          const existing = await query(env,
-            `SELECT id FROM attendance WHERE employee_name = ? AND attendance_date = ? AND academic_year = ? AND presensi_type = ? LIMIT 1`,
-            [rec.employee_name, date, academicYear, pType]);
-          if (existing.length > 0) {
-            await execute(env,
-              `UPDATE attendance SET status = ?, notes = ?, recorded_by = ?, recorded_by_role = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-              [rec.status, rec.notes || '', recordedBy, recordedByRole, existing[0].id]);
-          } else {
-            await execute(env,
-              `INSERT INTO attendance (employee_name, employee_position, employee_division, employee_status, academic_year, attendance_date, presensi_type, status, notes, recorded_by, recorded_by_role)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-              [rec.employee_name, rec.employee_position, rec.employee_division, rec.employee_status, academicYear, date, pType, rec.status, rec.notes || '', recordedBy, recordedByRole]);
-          }
-          count++;
+        // Simpan dalam SATU statement multi-row per chunk (bukan per-record):
+        // Worker Cloudflare membatasi 50 subrequest per invokasi — kelas 30 murid
+        // dengan 2 query/record (60+) akan gagal "Too many subrequests".
+        // ON DUPLICATE KEY UPDATE tetap idempoten berkat unique key uq_attendance.
+        const CHUNK = 100;
+        for (let i = 0; i < records.length; i += CHUNK) {
+          const chunk = records.slice(i, i + CHUNK);
+          const placeholders = chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ');
+          const values = [];
+          chunk.forEach(rec => values.push(
+            rec.employee_name, rec.employee_position, rec.employee_division, rec.employee_status,
+            academicYear, date, pType, rec.status, rec.notes || '', recordedBy, recordedByRole
+          ));
+          await execute(env,
+            `INSERT INTO attendance (employee_name, employee_position, employee_division, employee_status, academic_year, attendance_date, presensi_type, status, notes, recorded_by, recorded_by_role)
+             VALUES ${placeholders}
+             ON DUPLICATE KEY UPDATE status = VALUES(status), notes = VALUES(notes), recorded_by = VALUES(recorded_by), recorded_by_role = VALUES(recorded_by_role), updated_at = CURRENT_TIMESTAMP`,
+            values);
         }
-        return json({ success: true, count }, 200, allowOrigin);
+        return json({ success: true, count: records.length }, 200, allowOrigin);
       }
 
       if (path === '/api/attendance' && request.method === 'DELETE') {
@@ -943,15 +943,20 @@ export default {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
         const { academicYearId, employees } = await request.json();
         if (!academicYearId || !employees || !employees.length) return json({ error: 'Data tidak lengkap' }, 400, allowOrigin);
+        // Batch multi-row agar tidak melebihi limit 50 subrequest per invokasi
+        const validEmps = employees.filter(e => e && e.name);
         let count = 0;
-        for (const emp of employees) {
-          if (!emp.name) continue;
+        const EMP_CHUNK = 50;
+        for (let i = 0; i < validEmps.length; i += EMP_CHUNK) {
+          const chunk = validEmps.slice(i, i + EMP_CHUNK);
+          const placeholders = chunk.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
+          const values = [];
+          chunk.forEach(emp => values.push(emp.name, emp.position || '', emp.division || '', emp.employmentStatus || '', academicYearId, true, true));
           await execute(env,
-            `INSERT INTO employees (name, position, division, employment_status, academic_year_id, is_active_rh, is_active_im) VALUES (?, ?, ?, ?, ?, ?, ?)
+            `INSERT INTO employees (name, position, division, employment_status, academic_year_id, is_active_rh, is_active_im) VALUES ${placeholders}
              ON DUPLICATE KEY UPDATE position = VALUES(position), division = VALUES(division), employment_status = VALUES(employment_status), is_active_rh = TRUE, is_active_im = TRUE`,
-            [emp.name, emp.position || '', emp.division || '', emp.employmentStatus || '', academicYearId, true, true]
-          );
-          count++;
+            values);
+          count += chunk.length;
         }
         return json({ success: true, count }, 200, allowOrigin);
       }
@@ -1132,14 +1137,20 @@ export default {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
         const { academicYearId, students } = await request.json();
         if (!academicYearId || !students || !students.length) return json({ error: 'Data tidak lengkap' }, 400, allowOrigin);
+        // Batch multi-row agar tidak melebihi limit 50 subrequest per invokasi
+        const validStudents = students.filter(s => s && s.name);
         let count = 0;
-        for (const s of students) {
-          if (!s.name) continue;
+        const STU_CHUNK = 50;
+        for (let i = 0; i < validStudents.length; i += STU_CHUNK) {
+          const chunk = validStudents.slice(i, i + STU_CHUNK);
+          const placeholders = chunk.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ');
+          const values = [];
+          chunk.forEach(s => values.push(s.nis || '', s.name, s.studentClass || '', s.gender || '', s.religion || '', academicYearId, true));
           await execute(env,
-            `INSERT INTO kanaan_fellowship_students (nis, name, class, gender, religion, academic_year_id, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)
+            `INSERT INTO kanaan_fellowship_students (nis, name, class, gender, religion, academic_year_id, is_active) VALUES ${placeholders}
              ON DUPLICATE KEY UPDATE nis = VALUES(nis), gender = VALUES(gender), religion = VALUES(religion), is_active = TRUE`,
-            [s.nis || '', s.name, s.studentClass || '', s.gender || '', s.religion || '', academicYearId, true]);
-          count++;
+            values);
+          count += chunk.length;
         }
         return json({ success: true, count }, 200, allowOrigin);
       }
