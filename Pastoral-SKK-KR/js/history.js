@@ -3,6 +3,7 @@ import { api } from './api.js';
 import { getAvailableYears, getCurrentAcademicYear, loadKaryawanData } from './data-loader.js';
 import { exportRecords } from './export.js';
 import { hasRole } from './auth.js';
+import { getNearestPreviousAllowedDay } from './attendance.js';
 
 let allRecords = [];
 let allEmployees = [];
@@ -12,6 +13,8 @@ let historyChart = null;
 let currentPage = 1;
 let perPage = 10;
 let historyViewMode = 'list'; // 'table' | 'list'
+let historyAllowedDays = {}; // populated from API (hari aktif per presensi type)
+let lastSnapInfo = '';       // info "tanggal otomatis mundur" — ditampilkan setelah load
 
 export async function initHistory() {
   const years = await getAvailableYears();
@@ -43,6 +46,8 @@ export async function initHistory() {
     } catch (e) {
       console.error('Failed to reload employees for type change:', e);
     }
+    // Arahkan tanggal ke hari aktif terdekat (mundur) — sama seperti menu presensi
+    snapHistoryDate(presensiType, false);
     updateHistoryFilterLabel();
     loadHistory();
   };
@@ -53,6 +58,11 @@ export async function initHistory() {
   document.getElementById('history-start').value = fmtD(firstDay);
   document.getElementById('history-end').value = fmtD(now);
   document.getElementById('history-single-date').value = fmtD(now);
+  // Jika pengguna memilih tanggal di luar hari aktif kategori, arahkan ke hari aktif terdekat
+  document.getElementById('history-single-date').onchange = () => {
+    const type = document.getElementById('history-type')?.value || 'renungan_harian';
+    snapHistoryDate(type, true);
+  };
 
   const modeRadios = document.querySelectorAll('input[name="history-mode"]');
   modeRadios.forEach(r => r.onchange = toggleMode);
@@ -103,8 +113,49 @@ export async function initHistory() {
     console.error('Failed to load users for history:', e);
   }
 
+  // Arahkan tanggal awal ke hari aktif terdekat kategori yang sedang dipilih
+  await loadHistoryDayConfig();
+  snapHistoryDate(document.getElementById('history-type')?.value || 'renungan_harian', false);
+
   updateHistoryFilterLabel();
   loadHistory();
+}
+
+/** Muat konfigurasi hari aktif per presensi type (dari API) — fallback ke default */
+async function loadHistoryDayConfig() {
+  try {
+    const config = await api.getPresensiConfig();
+    historyAllowedDays = {};
+    config.forEach(c => { historyAllowedDays[c.presensi_type] = (c.allowed_days || '').split(',').map(Number).filter(n => !isNaN(n)); });
+  } catch (e) {
+    historyAllowedDays = {};
+  }
+}
+
+function getHistoryAllowedDays(type) {
+  if (!historyAllowedDays[type]) {
+    return type === 'ibadah_mingguan' ? [5] : [1, 2, 3, 4, 5];
+  }
+  return historyAllowedDays[type];
+}
+
+/**
+ * Arahkan tanggal mode 1 Hari ke hari aktif terdekat yang sudah dilewati
+ * (mundur) — perilaku sama seperti menu presensi. fromPickedDate=true berarti
+ * referensinya tanggal yang baru dipilih pengguna; selain itu pakai hari ini.
+ */
+function snapHistoryDate(type, fromPickedDate) {
+  const dateInput = document.getElementById('history-single-date');
+  if (!dateInput || !dateInput.value) return;
+  const allowedDays = getHistoryAllowedDays(type);
+  const reference = fromPickedDate ? new Date(dateInput.value + 'T00:00:00') : new Date();
+  const nearest = getNearestPreviousAllowedDay(reference, allowedDays);
+  lastSnapInfo = '';
+  if (nearest !== dateInput.value) {
+    dateInput.value = nearest;
+    const d = new Date(nearest + 'T00:00:00');
+    lastSnapInfo = `📅 Tanggal otomatis mundur ke ${nearest} (${CONFIG.DAY_NAMES[d.getDay()]}) — hari aktif kategori ini.`;
+  }
 }
 
 function updateHistoryFilterLabel() {
@@ -201,7 +252,7 @@ async function loadHistory() {
   const count = allRecords.length;
   const isSiswa = CONFIG.isSiswaType(presensiType);
   const filterLabel = employee === 'all' ? (isSiswa ? 'semua kelas' : 'semua karyawan') : employee;
-  statusMsg.textContent = `${count} record ${typeLabel} ditemukan untuk ${filterLabel}.`;
+  statusMsg.textContent = `${count} record ${typeLabel} ditemukan untuk ${filterLabel}.` + (lastSnapInfo ? ' ' + lastSnapInfo : '');
   currentPage = 1;
 
   // List view only for single date — auto-switch to table if range

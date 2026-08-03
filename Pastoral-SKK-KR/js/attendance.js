@@ -211,7 +211,7 @@ function validateDayPopup() {
   }
 }
 
-function getNearestPreviousAllowedDay(d, allowedDays) {
+export function getNearestPreviousAllowedDay(d, allowedDays) {
   // Find closest allowed day going backward (mundur)
   for (let i = 0; i < 7; i++) {
     const check = new Date(d);
