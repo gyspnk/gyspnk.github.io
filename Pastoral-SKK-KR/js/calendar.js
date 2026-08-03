@@ -397,18 +397,19 @@ function renderCalendarGrid() {
 
 function renderDayCell(day, dateStr, cls, eventMap, todayStr) {
   const events = eventMap[dateStr] || [];
-  // Build small event label chips — deduplicate by sheetKey, show up to 3 labels
+  // Build small event label chips — one chip per event (petugas terpisah = chip terpisah)
   const MAX_LABELS = 6;  // 3 rows × 2 columns
-  // Show ALL events (not deduplicated by sheetKey) for better coverage
   const labels = [];
   for (const evt of events) {
     if (labels.length >= MAX_LABELS) break;
-    const labelText = (evt.shortLabel || evt.summary.split(' | ')[0]).replace(/^(📖|⛪|🙏|🤝)\s*/, '').substring(0, 18);
-    labels.push({ color: evt.color, label: labelText, key: evt.sheetKey });
+    // fullLabel untuk tooltip (title), labelText dibatasi untuk tampilan tablet
+    const fullLabel = (evt.shortLabel || evt.summary.split(' | ')[0]).replace(/^(📖|⛪|🙏|🤝)\s*/, '').trim();
+    const labelText = fullLabel.substring(0, 30);
+    labels.push({ color: evt.color, label: labelText, full: fullLabel, key: evt.sheetKey });
   }
 
   const labelsHtml = labels.map(l =>
-    `<span class="day-label" style="background:${l.color};color:#fff" title="${l.label}">${l.label}</span>`
+    `<span class="day-label" style="background:${l.color};color:#fff" title="${l.full}">${l.label}</span>`
   ).join('');
 
   const remaining = events.length - labels.length;
@@ -559,37 +560,73 @@ function parseWithColumnConfig(sheet, columns, rows) {
   const colConfig = sheet.columnConfig || [];
   if (!rows || rows.length === 0) return events;
 
+  const colValue = (row, c) => {
+    const raw = row[c.idx];
+    return (raw !== null && raw !== undefined) ? String(raw).trim() : '';
+  };
+  const isTextCol = c => (c.type === 'text' || c.type === 'link') && c.show_calendar !== false;
+  const isShared = c => !c.group || c.group === 0;
+
   // Check for group-based multi-date columns (e.g., ibadah_mingguan_siswa)
   const groups = new Set();
   colConfig.forEach(c => { if (c.group && c.group > 0) groups.add(c.group); });
 
   if (groups.size > 0) {
+    // Shared columns (group 0) — ikut ditampilkan di setiap sub-event grup
+    // (mis. Tema, Sub Tema, Cerita Alkitab — sesuai centang show_calendar di konfigurasi)
+    const sharedTexts = colConfig.filter(c => isShared(c) && isTextCol(c));
     // Multi-group: iterate each group as a sub-event
     rows.forEach(row => {
       if (!row || row.length === 0) return;
       groups.forEach(g => {
         const gCols = colConfig.filter(c => c.group === g);
         const gDate = gCols.find(c => c.type === 'date');
-        const gTexts = gCols.filter(c => (c.type === 'text' || c.type === 'link') && c.show_calendar !== false);
+        const gTexts = gCols.filter(isTextCol);
         if (!gDate) return;
-        const rawDate = row[gDate.idx] !== undefined ? String(row[gDate.idx]).trim() : '';
+        const rawDate = colValue(row, gDate);
         if (!rawDate) return;
         if (/^(No\.|Hari\/Tanggal|Tema|Lokasi|Pemimpin|Sumbangan|Jenjang|Petugas|Tagline|PAMS|Link|Tanggal|Jadwal|Keterangan)/i.test(rawDate)) return;
         if (/jadwal (ibadah|komsel)|setiap|ruang|character building|minggu ke|bahan pams/i.test(rawDate)) return;
         const parsed = parseDateFlexible(rawDate);
         if (!parsed || parsed.monthOnly) return;
         const dateStr = fmtDate(new Date(parsed.year || new Date().getFullYear(), parsed.month - 1, parsed.day));
-        let shortLabel = gTexts.length > 0 ? String(row[gTexts[0].idx] || '').trim().substring(0, 22) : gDate.label;
+        let shortLabel = gTexts.length > 0 ? colValue(row, gTexts[0]).substring(0, 22) : gDate.label;
         let summary = sheet.label;
         let detailHtml = '<div class="event-detail">';
         detailHtml += '<div class="event-source" style="color:' + sheet.color + '">' + sheet.label + '</div>';
         detailHtml += '<div class="event-field"><strong>' + (gDate.label || 'Kelas') + '</strong></div>';
         if (gDate.notes) detailHtml += '<div class="event-field event-notes-text">' + gDate.notes + '</div>';
-        gTexts.forEach(tc => {
-          const raw = row[tc.idx];
-          const val = (raw !== null && raw !== undefined) ? String(raw).trim() : '';
+        // Kolom shared (group 0) yang dicentang — tampil di setiap event grup
+        sharedTexts.forEach(tc => {
+          const val = colValue(row, tc);
           if (val) {
-            detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
+            if (tc.type === 'link') {
+              const isUrl = /^https?:\/\//i.test(val);
+              if (isUrl) {
+                detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> <a href="' + val + '" target="_blank" rel="noopener" style="color:var(--primary)">' + val + '</a></div>';
+              } else {
+                detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
+              }
+            } else {
+              detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
+            }
+            if (summary === sheet.label && tc.type === 'text') summary = sheet.label + ': ' + val;
+          }
+          if (tc.notes) detailHtml += '<div class="event-field event-notes-text">' + tc.notes + '</div>';
+        });
+        gTexts.forEach(tc => {
+          const val = colValue(row, tc);
+          if (val) {
+            if (tc.type === 'link') {
+              const isUrl = /^https?:\/\//i.test(val);
+              if (isUrl) {
+                detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> <a href="' + val + '" target="_blank" rel="noopener" style="color:var(--primary)">' + val + '</a></div>';
+              } else {
+                detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
+              }
+            } else {
+              detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
+            }
           }
           if (tc.notes) detailHtml += '<div class="event-field event-notes-text">' + tc.notes + '</div>';
         });
@@ -602,17 +639,42 @@ function parseWithColumnConfig(sheet, columns, rows) {
 
   // Single-date mode
   const dateCol = colConfig.find(c => c.type === 'date');
-  const shortCol = colConfig.find(c => c.short === true);
-  const textCols = colConfig.filter(c => (c.type === 'text' || c.type === 'link') && c.show_calendar !== false);
-
   if (!dateCol) return events;
 
-  const dateIdx = dateCol.idx;
-  const shortIdx = shortCol ? shortCol.idx : null;
+  const textCols = colConfig.filter(isTextCol);
+  const shortCols = textCols.filter(c => c.short === true);
+  const shortIdx = shortCols.length > 0 ? shortCols[0].idx : null;
 
   rows.forEach(row => {
     if (!row || row.length === 0) return;
-    const rawDate = row[dateIdx] !== undefined ? String(row[dateIdx]).trim() : '';
+
+    /** Detail HTML standar: source + notes kolom tanggal + semua kolom teks yang dicentang */
+    const buildDetail = () => {
+      let detailHtml = '<div class="event-detail">';
+      detailHtml += '<div class="event-source" style="color:' + sheet.color + '">' + sheet.label + '</div>';
+      // Tampilkan notes dari kolom date (per-column notes di pengaturan kolom)
+      if (dateCol.notes) detailHtml += '<div class="event-field event-notes-text">' + dateCol.notes + '</div>';
+      textCols.forEach(tc => {
+        const val = colValue(row, tc);
+        if (val) {
+          if (tc.type === 'link') {
+            const isUrl = /^https?:\/\//i.test(val);
+            if (isUrl) {
+              detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> <a href="' + val + '" target="_blank" rel="noopener" style="color:var(--primary)">' + val + '</a></div>';
+            } else {
+              detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
+            }
+          } else {
+            detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
+          }
+        }
+        if (tc.notes) detailHtml += '<div class="event-field event-notes-text">' + tc.notes + '</div>';
+      });
+      detailHtml += '</div>';
+      return detailHtml;
+    };
+
+    const rawDate = colValue(row, dateCol);
     if (!rawDate) return;
     if (/^(No\.|Hari\/Tanggal|Tema|Lokasi|Pemimpin|Sumbangan|Jenjang|Petugas|Tagline|PAMS|Link|Tanggal|Jadwal|Keterangan)/i.test(rawDate)) return;
     if (/jadwal (ibadah|komsel)|setiap|ruang|character building|minggu ke|bahan pams/i.test(rawDate)) return;
@@ -621,44 +683,48 @@ function parseWithColumnConfig(sheet, columns, rows) {
     const parsed = parseDateFlexible(rawDate);
     if (!parsed || parsed.monthOnly) return;
     const dateStr = fmtDate(new Date(parsed.year || new Date().getFullYear(), parsed.month - 1, parsed.day));
+
+    // Multi-petugas mode: 2+ kolom short yang terisi → satu sub-event per kolom,
+    // sehingga tablet kecil di kalender menampilkan semua petugas (mis. TK-SD + SMP).
+    if (shortCols.length >= 2) {
+      let pushed = 0;
+      shortCols.forEach(sc => {
+        const val = colValue(row, sc);
+        if (!val) return;
+        // Prefix tablet diambil dari label kolom (mis. "Petugas TK-SD" → "TK-SD")
+        const prefix = String(sc.label || '').replace(/^petugas\s+/i, '').trim();
+        const labelText = prefix ? prefix + ': ' + val : val;
+        events.push({
+          dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label,
+          summary: prefix ? sheet.label + ' — ' + labelText : sheet.label + ': ' + val,
+          shortLabel: labelText.substring(0, 40),
+          detailHtml: buildDetail()
+        });
+        pushed++;
+      });
+      if (pushed > 0) return;
+    }
+
     let shortLabel = '';
     if (shortIdx !== null && row[shortIdx] != null && String(row[shortIdx]).trim()) {
       shortLabel = String(row[shortIdx]).trim().substring(0, 22);
     } else {
       for (const tc of textCols) {
         if (tc.type === 'ignore') continue;
-        const raw = row[tc.idx];
-        const val = (raw !== null && raw !== undefined) ? String(raw).trim() : '';
+        const val = colValue(row, tc);
         if (val) { shortLabel = val.substring(0, 22); break; }
       }
     }
     if (!shortLabel) shortLabel = sheet.label.replace(/^[^\s]+\s/, '').substring(0, 18) || 'Ibadah';
     let summary = sheet.label;
-    let detailHtml = '<div class="event-detail">';
-    detailHtml += '<div class="event-source" style="color:' + sheet.color + '">' + sheet.label + '</div>';
-    // Tampilkan notes dari kolom date (per-column notes di pengaturan kolom)
-    if (dateCol.notes) detailHtml += '<div class="event-field event-notes-text">' + dateCol.notes + '</div>';
+    const detailHtml = buildDetail();
+    // Enrich summary dengan nilai kolom teks pertama (hanya jika tidak ada kolom short)
     textCols.forEach(tc => {
-      const raw = row[tc.idx];
-      const val = (raw !== null && raw !== undefined) ? String(raw).trim() : '';
-      if (val) {
-        if (tc.type === 'link') {
-          const isUrl = /^https?:\/\//i.test(val);
-          if (isUrl) {
-            detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> <a href="' + val + '" target="_blank" rel="noopener" style="color:var(--primary)">' + val + '</a></div>';
-          } else {
-            detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
-          }
-        } else {
-          detailHtml += '<div class="event-field"><strong>' + tc.label + ':</strong> ' + val + '</div>';
-        }
-        if (summary === sheet.label && tc.type === 'text' && !shortCol) {
-          summary = sheet.label + ': ' + val;
-        }
+      const val = colValue(row, tc);
+      if (summary === sheet.label && tc.type === 'text' && shortCols.length === 0 && val) {
+        summary = sheet.label + ': ' + val;
       }
-      if (tc.notes) detailHtml += '<div class="event-field event-notes-text">' + tc.notes + '</div>';
     });
-    detailHtml += '</div>';
     events.push({ dateStr, sheetKey: sheet.key, color: sheet.color, sourceLabel: sheet.label, summary, shortLabel, detailHtml });
   });
   return events;

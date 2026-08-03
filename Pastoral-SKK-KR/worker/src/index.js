@@ -429,6 +429,8 @@ export default {
             const groups = new Set();
             colCfg.forEach(c => { if (c.group && c.group > 0) groups.add(c.group); });
             if (groups.size > 0) {
+              // Kolom shared (group 0) yang dicentang (show_bot) — ikut dalam tiap sub-event grup
+              const sharedTexts = colCfg.filter(c => (!c.group || c.group === 0) && (c.type === 'text' || c.type === 'link') && c.show_bot !== false);
               for (const row of apiData.rows) {
                 if (!row || row.length < 2) continue;
                 groups.forEach(g => {
@@ -444,6 +446,10 @@ export default {
                   if (ds !== targetDate) return;
                   let m = gDate.label || ('Group ' + g);
                   if (gDate.notes) m += '\n  ' + gDate.notes;
+                  sharedTexts.forEach(tc => {
+                    const val = row[tc.idx] !== undefined && row[tc.idx] !== null ? String(row[tc.idx]).trim() : '';
+                    if (val) m += " - " + tc.label + ": " + val;
+                  });
                   gTexts.forEach(tc => {
                     const val = row[tc.idx] !== undefined && row[tc.idx] !== null ? String(row[tc.idx]).trim() : '';
                     if (val) { m += " - " + tc.label + ": " + val; if (tc.notes) m += " (" + tc.notes + ")"; }
