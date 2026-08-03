@@ -1213,7 +1213,17 @@ function showEventDetail(dateStr, events) {
   document.getElementById('cal-event-title').textContent = dateDisplay;
 
   const body = document.getElementById('cal-event-body');
-  body.innerHTML = events.map(evt => evt.detailHtml).join('<hr class="event-separator" />');
+  // Beberapa sub-event (mis. petugas TK-SD & SMP dari baris yang sama) berbagi
+  // detail yang identik — cukup tampilkan sekali agar rincian tidak dobel.
+  // Event dengan isi berbeda (mis. 2 kelas berbeda di hari yang sama) tetap tampil semua.
+  const seen = new Set();
+  const uniqueEvents = events.filter(evt => {
+    const key = evt.detailHtml || evt.summary || evt.shortLabel;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  body.innerHTML = uniqueEvents.map(evt => evt.detailHtml).join('<hr class="event-separator" />');
 
   document.getElementById('calendar-event-modal').classList.remove('hidden');
 }
