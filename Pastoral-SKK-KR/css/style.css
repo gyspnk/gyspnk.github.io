@@ -418,7 +418,19 @@ tbody tr:hover { background: #f8fafc; }
   box-shadow: var(--shadow);
 }
 .presensi-controls .form-group { flex: 0 1 auto; min-width: 110px; }
-.presensi-controls .btn { align-self: end; }
+/* Tombol aksi (Simpan + Hapus Presensi) selalu sebaris, tidak menyusut & teks tidak wrap */
+.presensi-controls .btn,
+.history-controls .btn,
+.export-form .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.presensi-actions {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+  flex-shrink: 0;
+}
 
 .presensi-toolbar {
   display: flex;
@@ -877,6 +889,14 @@ tbody tr:hover { background: #f8fafc; }
   .admin-toolbar .btn {
     width: 100%;
     justify-content: center;
+  }
+  /* Grup aksi (Simpan + Hapus Presensi) tetap sebaris berdampingan di mobile */
+  .presensi-actions {
+    width: 100%;
+  }
+  .presensi-actions .btn {
+    flex: 1;
+    width: auto;
   }
 
   /* Tables: allow horizontal scroll */

@@ -64,26 +64,38 @@ async function boot() {
 
 async function loadGlobalPresensiTypes() {
   if (isDemoMode()) return; // Demo uses hardcoded types
-  try {
-    const types = await api.getPresensiTypes();
-    if (types && types.length > 0) {
-      // Store ALL types (including inactive) for admin use
-      CONFIG._allPresensiTypes = types;
-      // CONFIG.PRESENSI_TYPES = active only (for dropdowns, forms)
-      const activeTypes = types.filter(pt => pt.is_active != false);
-      if (activeTypes.length > 0) {
-        CONFIG.PRESENSI_TYPES = activeTypes.map(pt => ({
-          value: pt.type_key, label: pt.type_label,
-          icon: pt.category === 'siswa' ? '🎓' : '👤',
-          group: pt.category === 'siswa' ? 'Siswa' : 'Guru',
-          category: pt.category
-        }));
-        CONFIG.PRESENSI_TYPE_LABELS = {};
-        activeTypes.forEach(pt => { CONFIG.PRESENSI_TYPE_LABELS[pt.type_key] = pt.type_label; });
+  // Retry beberapa kali: API bisa gagal saat cold start — jangan sampai dropdown
+  // memakai sisa kategori hardcoded dari config.js padahal DB punya daftar sendiri
+  const maxAttempts = 3;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const types = await api.getPresensiTypes();
+      if (types && types.length > 0) {
+        // Store ALL types (including inactive) for admin use
+        CONFIG._allPresensiTypes = types;
+        // CONFIG.PRESENSI_TYPES = active only (for dropdowns, forms)
+        const activeTypes = types.filter(pt => pt.is_active != false);
+        if (activeTypes.length > 0) {
+          CONFIG.PRESENSI_TYPES = activeTypes.map(pt => ({
+            value: pt.type_key, label: pt.type_label,
+            icon: pt.category === 'siswa' ? '🎓' : '👤',
+            group: pt.category === 'siswa' ? 'Siswa' : 'Guru',
+            category: pt.category
+          }));
+          CONFIG.PRESENSI_TYPE_LABELS = {};
+          activeTypes.forEach(pt => { CONFIG.PRESENSI_TYPE_LABELS[pt.type_key] = pt.type_label; });
+        }
+        // Muat ulang dropdown agar benar-benar mengikuti database (bukan hardcoded)
+        if (getCurrentUser() && typeof filterPresensiTypeSelectors === 'function') {
+          try { filterPresensiTypeSelectors(); } catch (_) {}
+        }
+        return;
       }
+      console.warn(`Presensi types kosong dari API (percobaan ${attempt}/${maxAttempts})`);
+    } catch (e) {
+      console.warn(`Gagal memuat presensi types (percobaan ${attempt}/${maxAttempts}):`, e.message);
     }
-  } catch(e) {
-    console.warn('Failed to load presensi types, using defaults:', e.message);
+    if (attempt < maxAttempts) await new Promise(r => setTimeout(r, 700 * attempt));
   }
 }
 
@@ -914,7 +926,7 @@ function renderAdminEmployees() {
 
   tbody.querySelectorAll('[data-del-emp]').forEach(btn => {
     btn.onclick = async () => {
-      if (!confirm('Hapus karyawan ini?')) return;
+      if (!confirm('Hapus karyawan ini? Seluruh data presensi yang sudah terisi atas namanya juga akan ikut terhapus.')) return;
       try {
         await api.deleteEmployee(parseInt(btn.dataset.delEmp, 10));
         await loadAdminEmployees();
@@ -1905,7 +1917,7 @@ function renderAdminKFStudents() {
 
   tbody.querySelectorAll('[data-kfs-del]').forEach(btn => {
     btn.onclick = async () => {
-      if (!confirm('Hapus siswa ini?')) return;
+      if (!confirm('Hapus siswa ini? Data presensi Sabat Ceria yang sudah terisi atas namanya juga akan ikut terhapus.')) return;
       try {
         await api.deleteKFStudent(parseInt(btn.dataset.kfsDel, 10));
         await loadAdminKFStudents();

@@ -925,6 +925,16 @@ export default {
       if (path.startsWith('/api/employees/') && request.method === 'DELETE') {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
         const id = parseInt(path.split('/').pop(), 10);
+        // Cascade: hapus juga data presensi orang ini yang sudah terisi
+        // (nama + tahun ajaran) agar tidak ada data tidak konsisten di Lihat Presensi
+        const emp = await query(env, 'SELECT name, academic_year_id FROM employees WHERE id = ?', [id]);
+        if (emp.length > 0) {
+          const ay = await query(env, 'SELECT year_label FROM academic_years WHERE id = ?', [emp[0].academic_year_id]);
+          if (ay.length > 0) {
+            await execute(env, 'DELETE FROM attendance WHERE employee_name = ? AND academic_year = ?',
+              [emp[0].name, ay[0].year_label]);
+          }
+        }
         await execute(env, 'DELETE FROM employees WHERE id = ?', [id]);
         return json({ success: true }, 200, allowOrigin);
       }
@@ -1105,6 +1115,15 @@ export default {
       if (path.startsWith('/api/kf-students/') && request.method === 'DELETE') {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
         const id = parseInt(path.split('/').pop(), 10);
+        // Cascade: hapus juga data presensi KF siswa yang sudah terisi agar konsisten
+        const stu = await query(env, 'SELECT name, academic_year_id FROM kanaan_fellowship_students WHERE id = ?', [id]);
+        if (stu.length > 0) {
+          const ay = await query(env, 'SELECT year_label FROM academic_years WHERE id = ?', [stu[0].academic_year_id]);
+          if (ay.length > 0) {
+            await execute(env, 'DELETE FROM attendance WHERE employee_name = ? AND academic_year = ? AND presensi_type = ?',
+              [stu[0].name, ay[0].year_label, 'kanaan_fellowship_siswa']);
+          }
+        }
         await execute(env, 'DELETE FROM kanaan_fellowship_students WHERE id = ?', [id]);
         return json({ success: true }, 200, allowOrigin);
       }

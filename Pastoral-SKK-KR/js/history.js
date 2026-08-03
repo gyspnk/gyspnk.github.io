@@ -578,7 +578,7 @@ function renderHistoryListView() {
         <td>${badgeHtml}</td>
         <td style="font-size:12px;color:var(--text-muted)">${r.notes || ''}</td>
         <td style="font-size:12px"><span style="color:var(--text-muted)">${recorderName}</span></td>
-        ${isAdmin ? `<td style="text-align:center">${delBtn}</td>` : ''}
+        ${isAdmin ? `<td style="text-align:center;white-space:nowrap">${delBtn}</td>` : ''}
       </tr>`;
     }).join('');
 
