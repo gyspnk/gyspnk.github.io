@@ -1003,15 +1003,10 @@ export default {
       // ===== Presensi Types =====
       if (path === '/api/presensi-types' && request.method === 'GET') {
         const rows = await query(env, 'SELECT * FROM presensi_types ORDER BY sort_order, id');
-        if (rows.length === 0) {
-          // Fallback to hardcoded types
-          return json([
-            { type_key: 'renungan_harian', type_label: 'Renungan Harian', category: 'guru' },
-            { type_key: 'ibadah_mingguan', type_label: 'Ibadah Mingguan (Tiap Jumat)', category: 'guru' },
-            { type_key: 'kanaan_fellowship_guru', type_label: 'Kanaan Fellowship (Sabat Ceria) - Guru', category: 'guru' },
-            { type_key: 'kanaan_fellowship_siswa', type_label: 'Kanaan Fellowship (Sabat Ceria) - Siswa', category: 'siswa' }
-          ], 200, allowOrigin);
-        }
+        // TIDAK ada fallback hardcoded di sini: tabel kosong = jawaban jujur.
+        // Frontend memakai list ini hanya jika benar-benar dari database; jika
+        // kosong, frontend tahu datanya belum siap dan akan memuat ulang saat
+        // login berikutnya (initSchema men-seed 4 tipe default saat inisialisasi).
         return json(rows, 200, allowOrigin);
       }
 

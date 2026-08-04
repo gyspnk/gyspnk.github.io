@@ -64,6 +64,8 @@ async function boot() {
 
 async function loadGlobalPresensiTypes() {
   if (isDemoMode()) return; // Demo uses hardcoded types
+  // Penanda: kategori BENAR-BENAR dari database (bukan fallback hardcoded)
+  CONFIG._presensiTypesLoaded = false;
   // Retry beberapa kali: API bisa gagal saat cold start — jangan sampai dropdown
   // memakai sisa kategori hardcoded dari config.js padahal DB punya daftar sendiri
   const maxAttempts = 3;
@@ -85,6 +87,7 @@ async function loadGlobalPresensiTypes() {
           CONFIG.PRESENSI_TYPE_LABELS = {};
           activeTypes.forEach(pt => { CONFIG.PRESENSI_TYPE_LABELS[pt.type_key] = pt.type_label; });
         }
+        CONFIG._presensiTypesLoaded = true;
         // Muat ulang dropdown agar benar-benar mengikuti database (bukan hardcoded)
         if (getCurrentUser() && typeof filterPresensiTypeSelectors === 'function') {
           try { filterPresensiTypeSelectors(); } catch (_) {}
@@ -97,6 +100,7 @@ async function loadGlobalPresensiTypes() {
     }
     if (attempt < maxAttempts) await new Promise(r => setTimeout(r, 700 * attempt));
   }
+  CONFIG._presensiTypesLoaded = false;
 }
 
 // Get all presensi types (including inactive) for admin/permission panels
@@ -216,6 +220,9 @@ async function handleLogin(e) {
 
   try {
     await login(username, password);
+    // Muat ulang kategori dari database SETIAP login — jangan sampai dropdown
+    // memakai sisa kategori hardcoded dari config.js (mis. saat boot gagal cold start)
+    await loadGlobalPresensiTypes();
     showMainApp();
   } catch (err) {
     errEl.textContent = err.message;
@@ -246,6 +253,9 @@ function handleLogout() {
   showLogin();
   document.getElementById('login-username').value = '';
   document.getElementById('login-password').value = '';
+  // Reset penanda kategori agar login berikutnya memuat ulang dari database
+  CONFIG._presensiTypesLoaded = false;
+  CONFIG._allPresensiTypes = null;
 }
 
 /* ===== Main App ===== */
@@ -272,6 +282,12 @@ function showMainApp() {
   });
 
   document.getElementById('logout-btn').onclick = handleLogout;
+
+  // Jaga-jaga: jika kategori belum termuat dari DB (mis. gagal saat boot/cold
+  // start), muat ulang di latar belakang — dropdown di-refresh saat sukses
+  if (!isDemoMode() && !CONFIG._presensiTypesLoaded) {
+    loadGlobalPresensiTypes().catch(() => {});
+  }
 
   updateSidebarPermissions();
 
