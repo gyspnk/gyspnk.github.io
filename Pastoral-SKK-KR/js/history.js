@@ -58,11 +58,17 @@ export async function initHistory() {
   document.getElementById('history-start').value = fmtD(firstDay);
   document.getElementById('history-end').value = fmtD(now);
   document.getElementById('history-single-date').value = fmtD(now);
-  // Jika pengguna memilih tanggal di luar hari aktif kategori, arahkan ke hari aktif terdekat
+  // Auto-load tanpa tombol Muat: setiap perubahan langsung memuat ulang.
+  // Jika pengguna memilih tanggal di luar hari aktif kategori, arahkan ke hari aktif terdekat.
   document.getElementById('history-single-date').onchange = () => {
     const type = document.getElementById('history-type')?.value || 'renungan_harian';
     snapHistoryDate(type, true);
+    loadHistory();
   };
+  document.getElementById('history-start').onchange = loadHistory;
+  document.getElementById('history-end').onchange = loadHistory;
+  document.getElementById('history-year').onchange = loadHistory;
+  document.getElementById('history-employee').onchange = loadHistory;
 
   const modeRadios = document.querySelectorAll('input[name="history-mode"]');
   modeRadios.forEach(r => r.onchange = toggleMode);
@@ -201,10 +207,8 @@ function toggleMode() {
   document.getElementById('history-single-date-group').classList.toggle('hidden', isRange);
   document.getElementById('history-range-group').classList.toggle('hidden', !isRange);
   document.getElementById('history-range-group-end').classList.toggle('hidden', !isRange);
-  // List view only works for single date — auto-switch to table when range is selected
-  if (isRange && historyViewMode === 'list') {
-    switchHistoryView('table');
-  }
+  // Auto-load saat mode berubah (list view otomatis jadi tabel untuk rentang)
+  loadHistory();
 }
 
 async function loadHistory() {
