@@ -306,56 +306,103 @@ function renderHistoryTable() {
   tbody.innerHTML = '';
   const allFiltered = getFilteredRecords();
 
+  const statusCfgList = CONFIG.ATTENDANCE_STATUSES;
   const statusLabels = {};
-  CONFIG.ATTENDANCE_STATUSES.forEach(s => statusLabels[s.value] = s.label);
+  statusCfgList.forEach(s => statusLabels[s.value] = s.label);
+  const presensiType = document.getElementById('history-type')?.value || 'renungan_harian';
+  const isSiswa = CONFIG.isSiswaType(presensiType);
 
-  allFiltered.sort((a, b) => (b.attendance_date || '').localeCompare(a.attendance_date || '') || (a.employee_name || '').localeCompare(b.employee_name || ''));
+  // ===== Kolom tanggal horizontal (hari aktif dalam rentang terpilih) =====
+  const mode = document.querySelector('input[name="history-mode"]:checked')?.value || 'single';
+  const allowedDays = getHistoryAllowedDays(presensiType);
+  const dayNames = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+  const colDates = [];
+  if (mode === 'single') {
+    const d = document.getElementById('history-single-date').value;
+    if (d) colDates.push(d);
+  } else {
+    const start = document.getElementById('history-start').value;
+    const end = document.getElementById('history-end').value;
+    if (start && end) {
+      for (let d = new Date(start + 'T00:00:00'); d <= new Date(end + 'T00:00:00'); d.setDate(d.getDate() + 1)) {
+        if (allowedDays.includes(d.getDay())) {
+          colDates.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+        }
+      }
+    }
+  }
 
-  const totalPages = Math.max(1, Math.ceil(allFiltered.length / perPage));
+  // ===== Pivot: 1 baris per nama, status per tanggal =====
+  const byName = new Map();
+  allFiltered.forEach(r => {
+    const key = r.employee_name || '(tanpa nama)';
+    if (!byName.has(key)) {
+      byName.set(key, {
+        name: key, nis: r.employee_status || '', jabatan: r.employee_position || '', kelas: r.employee_division || '',
+        perDate: {}
+      });
+    }
+    const emp = byName.get(key);
+    const dk = (r.attendance_date || '').split('T')[0];
+    if (!emp.perDate[dk]) emp.perDate[dk] = [];
+    emp.perDate[dk].push(r);
+  });
+  const names = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name, 'id'));
+
+  const totalPages = Math.max(1, Math.ceil(names.length / perPage));
   if (currentPage > totalPages) currentPage = totalPages;
   const startIdx = (currentPage - 1) * perPage;
-  const pageRecords = allFiltered.slice(startIdx, startIdx + perPage);
+  const pageNames = names.slice(startIdx, startIdx + perPage);
 
-  pageRecords.forEach((r, i) => {
+  // ===== Header dinamis =====
+  const identCols = isSiswa ? '<th>NIS</th><th>Kelas</th>' : '<th>Jabatan</th><th>Divisi</th>';
+  const dateThs = colDates.map(dk => {
+    const d = new Date(dk + 'T00:00:00');
+    return `<th class="hist-pivot-date"><span class="hist-pivot-dow">${dayNames[d.getDay()]}</span><span class="hist-pivot-dmy">${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}</span></th>`;
+  }).join('');
+  const thead = document.getElementById('history-table-header');
+  if (thead) {
+    thead.innerHTML = `<th>No</th><th>Nama</th>${identCols}${dateThs}<th class="hist-pivot-total-hdr">Total</th>`;
+  }
+
+  // ===== Baris pivot =====
+  const badgeFor = r => {
+    const s = statusCfgList.find(x => x.value === r.status);
+    if (!s) return `<span class="hist-pivot-badge" style="background:#64748b" title="${r.status}">?</span>`;
+    const title = `${s.label}${r.notes ? ' — ' + r.notes : ''}`;
+    return `<span class="hist-pivot-badge" style="background:${s.color}" title="${title}">${s.short}</span>`;
+  };
+
+  pageNames.forEach((emp, i) => {
     const tr = document.createElement('tr');
-    const statusCfg = CONFIG.ATTENDANCE_STATUSES.find(s => s.value === r.status);
-    const user = userMap[r.recorded_by];
-    const recorderName = user ? user.full_name : r.recorded_by || '—';
-    const recorderRole = r.recorded_by_role ? (CONFIG.ROLES[r.recorded_by_role] || r.recorded_by_role) : (user ? (CONFIG.ROLES[user.role] || user.role) : '');
-    const presensiTypeLabel = CONFIG.PRESENSI_TYPE_LABELS[r.presensi_type] || '';
-    const presensiTypeClassMap = {
-      renungan_harian: 'presensi-type-rh',
-      ibadah_mingguan: 'presensi-type-im',
-      kanaan_fellowship_guru: 'presensi-type-kf',
-      kanaan_fellowship_siswa: 'presensi-type-kf'
-    };
-    const presensiTypeClass = presensiTypeClassMap[r.presensi_type] || 'presensi-type-rh';
-    const isSiswa = CONFIG.isSiswaType(r.presensi_type);
+    const totals = {};
+    statusCfgList.forEach(s => totals[s.value] = 0);
+    const dateCells = colDates.map(dk => {
+      const recs = emp.perDate[dk] || [];
+      recs.forEach(r => { if (totals[r.status] !== undefined) totals[r.status]++; });
+      if (recs.length === 0) return '<td class="hist-pivot-cell"></td>';
+      return `<td class="hist-pivot-cell">${recs.map(badgeFor).join('')}</td>`;
+    }).join('');
+    const totalHtml = statusCfgList.map(s => totals[s.value] ? `<span style="color:${s.color};font-weight:600">${s.short}${totals[s.value]}</span>` : '').filter(Boolean).join(' · ') || '—';
     tr.innerHTML = `
-      <td>${startIdx + i + 1}</td>
-      <td>${r.attendance_date || ''}</td>
-      <td>${r.employee_name || ''}</td>
-      <td>${isSiswa ? (r.employee_status || '—') : (r.employee_position || '')}</td>
-      <td>${isSiswa ? (r.employee_division || '—') : (r.employee_division || '')}</td>
-      <td>${statusCfg ? `<span class="status-badge status-${r.status}">${statusLabels[r.status]}</span>` : r.status}</td>
-      <td>${r.notes || ''}</td>
-      <td><span class="presensi-type-badge ${presensiTypeClass}">${presensiTypeLabel}</span></td>
-      <td><div class="recorder-info"><span class="recorder-name">${recorderName}</span><span class="recorder-username">@${r.recorded_by || '—'}</span>${recorderRole ? `<span class="recorder-role">${recorderRole}</span>` : ''}</div></td>
+      <td style="color:var(--text-muted);font-size:12px">${startIdx + i + 1}</td>
+      <td style="font-weight:500;white-space:nowrap">${emp.name}</td>
+      <td>${isSiswa ? (emp.nis || '—') : (emp.jabatan || '—')}</td>
+      <td>${emp.kelas || '—'}</td>
+      ${dateCells}
+      <td class="hist-pivot-total">${totalHtml}</td>
     `;
     tbody.appendChild(tr);
   });
 
-  // Update table headers based on presensi type
-  updateHistoryTableHeaders();
-
-  if (tbody.children.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:20px">Tidak ada data presensi</td></tr>';
+  if (pageNames.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="${4 + colDates.length + 1}" style="text-align:center;color:var(--text-muted);padding:20px">Tidak ada data presensi</td></tr>`;
   }
 
   const statusEl = document.getElementById('history-status');
-  if (statusEl) statusEl.textContent = `${allFiltered.length} record — Halaman ${currentPage}/${totalPages}`;
+  if (statusEl) statusEl.textContent = `${allFiltered.length} record · ${names.length} nama — Halaman ${currentPage}/${totalPages}`;
 
-  renderPagination(totalPages, allFiltered.length);
+  renderPagination(totalPages, names.length);
 }
 
 function renderPagination(totalPages, totalItems) {
@@ -547,7 +594,18 @@ function renderHistoryListView() {
     const items = groups[key];
     items.sort((a, b) => (a.employee_name || '').localeCompare(b.employee_name || '', 'id'));
 
-    // Hitung status per section
+    // Ringkas: 1 baris per nama (record nama yang sama digabung)
+    const byName = new Map();
+    items.forEach(r => {
+      const nm = r.employee_name || '(tanpa nama)';
+      if (!byName.has(nm)) {
+        byName.set(nm, { name: nm, nis: r.employee_status || '', kelas: r.employee_division || '', jabatan: r.employee_position || '', records: [] });
+      }
+      byName.get(nm).records.push(r);
+    });
+    const nameRows = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name, 'id'));
+
+    // Hitung status per section (dari record)
     const counts = {};
     items.forEach(r => { counts[r.status] = (counts[r.status] || 0) + 1; });
     const countSummary = CONFIG.ATTENDANCE_STATUSES.map(s => {
@@ -562,26 +620,31 @@ function renderHistoryListView() {
       : ['No', 'Nama', 'Jabatan', 'Divisi', 'Status', 'Keterangan', 'Diisi Oleh'];
     if (isAdmin) colHeaders.push('Aksi');
 
-    const rowsHtml = items.map((r, i) => {
-      const statusCfg = CONFIG.ATTENDANCE_STATUSES.find(s => s.value === r.status);
-      const badgeHtml = statusCfg
-        ? `<span class="status-badge status-${r.status}">${statusLabels[r.status]}</span>`
-        : `<span class="status-badge">${r.status}</span>`;
-      const col2 = isSiswa ? (r.employee_status || '—') : (r.employee_position || '');
-      const col3 = isSiswa ? (r.employee_division || '—') : (r.employee_division || '');
-      const user = userMap[r.recorded_by];
-      const recorderName = user ? user.full_name : (r.recorded_by || '—');
+    const rowsHtml = nameRows.map((emp, i) => {
+      const badgesHtml = emp.records.map(r => {
+        const statusCfg = CONFIG.ATTENDANCE_STATUSES.find(s => s.value === r.status);
+        return statusCfg
+          ? `<span class="status-badge status-${r.status}">${statusLabels[r.status]}</span>`
+          : `<span class="status-badge">${r.status}</span>`;
+      }).join(' ');
+      const notesHtml = [...new Set(emp.records.map(r => (r.notes || '').trim()).filter(Boolean))].join('; ');
+      const recordersHtml = [...new Set(emp.records.map(r => {
+        const u = userMap[r.recorded_by];
+        return u ? u.full_name : (r.recorded_by || '—');
+      }))].join(', ');
+      const col2 = isSiswa ? (emp.nis || '—') : (emp.jabatan || '—');
+      const col3 = isSiswa ? (emp.kelas || '—') : (emp.kelas || '—');
       const delBtn = isAdmin
-        ? `<button class="btn btn-danger btn-sm hist-del-user" data-name="${r.employee_name}" data-date="${r.attendance_date}" title="Hapus presensi ${r.employee_name}" style="padding:2px 6px;font-size:14px">🗑</button>`
+        ? `<button class="btn btn-danger btn-sm hist-del-user" data-name="${emp.name}" data-date="${emp.records[0].attendance_date}" title="Hapus presensi ${emp.name} (${emp.records.length} record)" style="padding:2px 6px;font-size:14px">🗑</button>`
         : '';
       return `<tr>
         <td style="color:var(--text-muted);font-size:12px">${i + 1}</td>
-        <td style="font-weight:500">${r.employee_name || ''}</td>
+        <td style="font-weight:500">${emp.name}</td>
         <td>${col2}</td>
         <td>${col3}</td>
-        <td>${badgeHtml}</td>
-        <td style="font-size:12px;color:var(--text-muted)">${r.notes || ''}</td>
-        <td style="font-size:12px"><span style="color:var(--text-muted)">${recorderName}</span></td>
+        <td>${badgesHtml}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${notesHtml}</td>
+        <td style="font-size:12px"><span style="color:var(--text-muted)">${recordersHtml}</span></td>
         ${isAdmin ? `<td style="text-align:center;white-space:nowrap">${delBtn}</td>` : ''}
       </tr>`;
     }).join('');
@@ -589,7 +652,7 @@ function renderHistoryListView() {
     html += `<div class="history-list-section">
       <div class="history-list-header">
         <span class="history-list-header-title">${sectionLabel}: ${key}</span>
-        <span class="history-list-header-count">${items.length} orang · ${countSummary}</span>
+        <span class="history-list-header-count">${nameRows.length} orang · ${countSummary}</span>
       </div>
       <div class="table-wrapper" style="margin:0;border:none">
         <table>
