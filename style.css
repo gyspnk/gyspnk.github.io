@@ -866,3 +866,59 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
 @media (max-width: 640px) {
   .jadwal-grid { grid-template-columns: 1fr; }
 }
+
+
+/* ============ DASAR KEPERCAYAAN ============ */
+.kepercayaan-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.belief-card {
+  display: flex;
+  gap: 20px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 28px;
+  box-shadow: var(--shadow-card);
+  transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+}
+.belief-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+  border-color: rgba(141, 110, 63, 0.35);
+}
+
+.belief_num {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1;
+  color: var(--gold);
+  min-width: 46px;
+  padding-top: 2px;
+}
+
+.belief_title {
+  font-family: var(--font-display);
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: var(--navy);
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+
+.belief_text {
+  font-size: .92rem;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+@media (max-width: 900px) {
+  .kepercayaan-grid { grid-template-columns: 1fr; }
+}
