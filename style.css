@@ -131,7 +131,14 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   gap: 36px;
 }
 
-.header_brand { flex-shrink: 0; }
+.header_brand {
+  flex-shrink: 0;
+  transition: opacity .3s ease;
+}
+.site-header.drawer-open .header_brand {
+  opacity: 0;
+  pointer-events: none;
+}
 .header_logo { height: 46px; width: auto; }
 .header_logo--color { display: none; }
 
@@ -231,11 +238,25 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: flex-start;
   padding: 96px 32px 40px;
   transform: translateX(-100%);
   transition: transform .35s cubic-bezier(.4, 0, .2, 1);
 }
 .drawer.open { transform: translateX(0); }
+
+.drawer_brand { padding: 0 0 26px; }
+.drawer_logo {
+  height: 30px;
+  width: auto;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity .35s ease .12s, transform .35s ease .12s;
+}
+.drawer.open .drawer_logo {
+  opacity: 1;
+  transform: translateY(0);
+}
 
 .drawer_nav {
   display: flex;

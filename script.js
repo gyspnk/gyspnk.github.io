@@ -45,6 +45,7 @@
   function toggleDrawer(open) {
     if (!drawer || !hamburger) return;
     drawer.classList.toggle('open', open);
+    header.classList.toggle('drawer-open', open);
     hamburger.classList.toggle('open', open);
     hamburger.setAttribute('aria-expanded', String(open));
     drawer.setAttribute('aria-hidden', String(!open));
