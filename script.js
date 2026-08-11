@@ -37,9 +37,10 @@
     }
   }
 
-  /* ---------- Drawer mobile ---------- */
+  /* ---------- Drawer mobile (sidebar kiri) ---------- */
   var hamburger = document.getElementById('hamburger');
   var drawer = document.getElementById('drawer');
+  var drawerBackdrop = document.getElementById('drawerBackdrop');
 
   function toggleDrawer(open) {
     if (!drawer || !hamburger) return;
@@ -47,6 +48,7 @@
     hamburger.classList.toggle('open', open);
     hamburger.setAttribute('aria-expanded', String(open));
     drawer.setAttribute('aria-hidden', String(!open));
+    if (drawerBackdrop) drawerBackdrop.classList.toggle('show', open);
     document.body.style.overflow = open ? 'hidden' : '';
   }
 
@@ -54,6 +56,9 @@
     hamburger.addEventListener('click', function () {
       toggleDrawer(!drawer.classList.contains('open'));
     });
+  }
+  if (drawerBackdrop) {
+    drawerBackdrop.addEventListener('click', function () { toggleDrawer(false); });
   }
   if (drawer) {
     drawer.querySelectorAll('a').forEach(function (link) {
