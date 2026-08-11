@@ -292,7 +292,8 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
 }
 .hero_title em {
   font-style: italic;
-  color: var(--gold);
+  color: #F7C86E;
+  text-shadow: 0 2px 22px rgba(247, 200, 110, 0.5), 0 6px 40px rgba(0, 0, 0, 0.35);
 }
 
 .hero_sub {
@@ -616,6 +617,42 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   margin-top: 6px;
   font-size: .9rem;
   color: var(--muted);
+}
+
+.kontak_card_wa {
+  display: block;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  text-align: left;
+  transition: background .2s ease, border-color .2s ease, transform .2s ease;
+}
+.kontak_card_wa:hover {
+  background: var(--teal-soft);
+  border-color: var(--teal);
+  transform: translateY(-2px);
+}
+.kontak_card_wa strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: .98rem;
+  font-weight: 700;
+  color: var(--navy);
+}
+.kontak_card_wa span {
+  display: block;
+  margin-top: 2px;
+  font-size: .78rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.kontak_card_wa .kontak_card_wa_num {
+  font-size: .82rem;
+  font-weight: 500;
+  color: var(--teal-deep);
+  margin-top: 4px;
 }
 
 
