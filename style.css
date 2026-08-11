@@ -273,13 +273,6 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   padding-block: 130px 110px;
 }
 
-.hero_logo {
-  height: 64px;
-  width: auto;
-  margin-inline: auto;
-  margin-bottom: 26px;
-}
-
 .hero_kicker {
   font-size: .95rem;
   font-weight: 500;
@@ -746,7 +739,6 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   .app-card { flex-direction: column; gap: 16px; }
   .kontak_cards { grid-template-columns: 1fr; }
   .footer_top { grid-template-columns: 1fr; gap: 36px; }
-  .hero_logo { height: 48px; }
   .hero_content { padding-block: 120px 150px; }
   .hero_actions { flex-direction: column; align-items: stretch; }
 }
