@@ -279,8 +279,10 @@
         <p class="section_desc">Keyakinan iman Gereja Yesus Sejati Pontianak, bersumber dari kebenaran Alkitab.</p>
       </div>
 
-      <div class="kepercayaan-grid">
-        <article class="belief-card reveal">
+      <div class="belief-slider reveal">
+        <div class="belief-viewport" id="beliefViewport">
+          <div class="belief-track" id="beliefTrack">
+        <article class="belief-card">
           <span class="belief_num">01</span>
           <div class="belief_body">
             <h3 class="belief_title">Yesus Kristus</h3>
@@ -288,7 +290,7 @@
           </div>
         </article>
 
-        <article class="belief-card reveal">
+        <article class="belief-card">
           <span class="belief_num">02</span>
           <div class="belief_body">
             <h3 class="belief_title">Kitab Suci</h3>
@@ -296,7 +298,7 @@
           </div>
         </article>
 
-        <article class="belief-card reveal">
+        <article class="belief-card">
           <span class="belief_num">03</span>
           <div class="belief_body">
             <h3 class="belief_title">Gereja Yesus Sejati</h3>
@@ -304,7 +306,7 @@
           </div>
         </article>
 
-        <article class="belief-card reveal">
+        <article class="belief-card">
           <span class="belief_num">04</span>
           <div class="belief_body">
             <h3 class="belief_title">Baptisan Air</h3>
@@ -312,7 +314,7 @@
           </div>
         </article>
 
-        <article class="belief-card reveal">
+        <article class="belief-card">
           <span class="belief_num">05</span>
           <div class="belief_body">
             <h3 class="belief_title">Baptisan Roh Kudus</h3>
@@ -320,7 +322,7 @@
           </div>
         </article>
 
-        <article class="belief-card reveal">
+        <article class="belief-card">
           <span class="belief_num">06</span>
           <div class="belief_body">
             <h3 class="belief_title">Sakramen Pembasuhan Kaki</h3>
@@ -328,7 +330,7 @@
           </div>
         </article>
 
-        <article class="belief-card reveal">
+        <article class="belief-card">
           <span class="belief_num">07</span>
           <div class="belief_body">
             <h3 class="belief_title">Perjamuan Kudus</h3>
@@ -336,15 +338,15 @@
           </div>
         </article>
 
-        <article class="belief-card reveal">
+        <article class="belief-card">
           <span class="belief_num">08</span>
           <div class="belief_body">
             <h3 class="belief_title">Hari Sabat</h3>
-            <p class="belief_text">Percaya bahwa hari Sabat (hari Sabtu) adalah hari kudus yang diberkati Allah, yang dipegang di bawah anugerah untuk memperingati penciptaan dan penyelamatan Allah, dengan menaruh pengharapan akan Sabat kekal dalam hidup yang akan datang..</p>
+            <p class="belief_text">Percaya bahwa hari Sabat (hari Sabtu) adalah hari kudus yang diberkati Allah, yang dipegang di bawah anugerah untuk memperingati penciptaan dan penyelamatan Allah, dengan menaruh pengharapan akan Sabat kekal dalam hidup yang akan datang.</p>
           </div>
         </article>
 
-        <article class="belief-card reveal">
+        <article class="belief-card">
           <span class="belief_num">09</span>
           <div class="belief_body">
             <h3 class="belief_title">Keselamatan oleh Kasih Karunia dan Iman</h3>
@@ -352,13 +354,21 @@
           </div>
         </article>
 
-        <article class="belief-card reveal">
+        <article class="belief-card">
           <span class="belief_num">10</span>
           <div class="belief_body">
             <h3 class="belief_title">Kedatangan Kedua dan Penghakiman</h3>
             <p class="belief_text">Percaya bahwa Tuhan Yesus akan turun dari Surga pada akhir jaman untuk menghakimi umat manusia, orang benar akan memperoleh hidup kekal, orang jahat akan memperoleh hukuman abadi.</p>
           </div>
-        </article>
+          </article>
+          </div>
+        </div>
+
+        <div class="belief-controls">
+          <button class="belief-arrow" id="beliefPrev" type="button" aria-label="Kartu sebelumnya" disabled><span class="material-symbols-outlined">chevron_left</span></button>
+          <div class="belief-dots" id="beliefDots" role="tablist" aria-label="Indikator kartu"></div>
+          <button class="belief-arrow" id="beliefNext" type="button" aria-label="Kartu berikutnya"><span class="material-symbols-outlined">chevron_right</span></button>
+        </div>
       </div>
     </div>
   </section>

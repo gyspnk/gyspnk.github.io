@@ -868,14 +868,32 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
 }
 
 
-/* ============ DASAR KEPERCAYAAN ============ */
-.kepercayaan-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+/* ============ DASAR KEPERCAYAAN (SLIDER) ============ */
+.belief-slider { position: relative; }
+
+.belief-viewport {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  cursor: grab;
+  padding-bottom: 10px;
+}
+.belief-viewport::-webkit-scrollbar { display: none; }
+.belief-viewport.dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  user-select: none;
+}
+
+.belief-track {
+  display: flex;
   gap: 24px;
 }
 
 .belief-card {
+  flex: 0 0 340px;
+  scroll-snap-align: start;
   display: flex;
   gap: 20px;
   background: var(--white);
@@ -919,6 +937,61 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   line-height: 1.7;
 }
 
-@media (max-width: 900px) {
-  .kepercayaan-grid { grid-template-columns: 1fr; }
+/* Kontrol slider */
+.belief-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  margin-top: 36px;
+}
+
+.belief-arrow {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--white);
+  border: 1px solid var(--line);
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-card);
+  transition: background .25s ease, color .25s ease, transform .25s ease, opacity .25s ease;
+}
+.belief-arrow .material-symbols-outlined { font-size: 26px; }
+.belief-arrow:hover:not(:disabled) {
+  background: var(--navy);
+  color: var(--white);
+  transform: translateY(-2px);
+}
+.belief-arrow:active:not(:disabled) { transform: scale(.94); }
+.belief-arrow:disabled {
+  opacity: .32;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.belief-dots {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.belief-dot {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border-radius: var(--radius-pill);
+  background: #D8D2C6;
+  transition: width .3s ease, background .3s ease;
+}
+.belief-dot:hover { background: var(--gold); }
+.belief-dot.active {
+  width: 28px;
+  background: var(--gold);
+}
+
+@media (max-width: 640px) {
+  .belief-card { flex-basis: 280px; }
 }
