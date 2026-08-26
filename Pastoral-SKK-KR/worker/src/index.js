@@ -378,7 +378,8 @@ export default {
         if (!targetDate) return json({ error: 'date diperlukan' }, 400, allowOrigin);
         if (!env.GSA_JSON) return json({ error: 'GSA_JSON required' }, 400, allowOrigin);
 
-        const groups = await query(env, 'SELECT * FROM bot_groups WHERE is_enabled = TRUE');
+        const groups = (await query(env, 'SELECT * FROM bot_groups WHERE is_enabled = TRUE'))
+          .filter(g => /^-?\d+$/.test(String(g.chat_id).trim()));
         const configs = await query(env, 'SELECT * FROM calendar_sheet_configs WHERE is_active = TRUE');
         // Compute date header
         const d = new Date(targetDate + 'T00:00:00');
@@ -613,6 +614,42 @@ export default {
       // ===== Bot: sync sheet configs to Firestore =====
       if (path === '/api/bot/sync-config' && request.method === 'GET') {
         await pushSheetConfigsToFirestore(env);
+        return json({ success: true }, 200, allowOrigin);
+      }
+
+      // ===== Bot: report last-sent date (via X-Bot-Key) =====
+      if (path === '/api/bot/groups/report-sent' && request.method === 'POST') {
+        const { chat_id, date } = await request.json();
+        if (!chat_id || !date) return json({ error: 'chat_id dan date diperlukan' }, 400, allowOrigin);
+        await execute(env, 'UPDATE bot_groups SET last_sent_date = ? WHERE chat_id = ?', [String(date), String(chat_id)]);
+        if (env.GSA_JSON) {
+          try {
+            let sa;
+            try { sa = parseGSAJson(env.GSA_JSON); } catch (e) { throw e; }
+            const projectId = sa.project_id;
+            const now = Math.floor(Date.now() / 1000);
+            const jwt = await signJWT(
+              { alg: 'RS256', typ: 'JWT' },
+              { iss: sa.client_email, scope: 'https://www.googleapis.com/auth/datastore',
+                aud: 'https://oauth2.googleapis.com/token', exp: now + 3600, iat: now },
+              sa.private_key
+            );
+            const tRes = await fetch('https://oauth2.googleapis.com/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${encodeURIComponent(jwt)}`
+            });
+            if (tRes.ok) {
+              const tData = await tRes.json();
+              const fbUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/bot_groups/${encodeURIComponent(String(chat_id))}`;
+              await fetch(fbUrl, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${tData.access_token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fields: { last_sent_date: { stringValue: String(date) } } })
+              });
+            }
+          } catch (e) { console.error('report-sent firestore error:', e.message); }
+        }
         return json({ success: true }, 200, allowOrigin);
       }
 
@@ -1473,7 +1510,9 @@ export default {
             for (const doc of documents) {
               const fields = doc.fields || {};
               const docId = doc.name.split('/').pop();
+              if (docId === '_sheets') continue;  // doc penyimpanan konfigurasi sheet, bukan grup
               const chatId = fields.chat_id?.stringValue || docId;
+              if (!/^-?\d+$/.test(String(chatId).trim())) continue;  // hanya chat_id numerik Telegram
               const groupName = fields.title?.stringValue || '';
               const isEnabled = fields.enabled?.booleanValue !== false;
               const announceHour = parseInt(fields.announce_hour?.integerValue || '13', 10);
@@ -1488,6 +1527,8 @@ export default {
                 [chatId, groupName, isEnabled ? 1 : 0, announceHour, announceMinute, lastSentDate]);
               imported++;
             }
+            // Bersihkan baris lama yang salah (chat_id non-numerik, mis. hasil import '_sheets')
+            await execute(env, "DELETE FROM bot_groups WHERE chat_id NOT REGEXP '^-?[0-9]+$'");
           }
 
           return json({ success: true, imported, firestoreAvailable: fbRes.ok }, 200, allowOrigin);

@@ -2718,6 +2718,7 @@ function renderBotGroups() {
   if (!tbody) return;
   tbody.innerHTML = '';
   botGroupsData.forEach(g => {
+    if (String(g.chat_id) === '_sheets') return; // doc konfigurasi sheet, bukan grup
     const isEnabled = g.is_enabled == true;
     const timeStr = `${String(g.announce_hour || 13).padStart(2, '0')}:${String(g.announce_minute || 0).padStart(2, '0')} WIB`;
     let activeSched = [];
