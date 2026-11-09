@@ -1621,8 +1621,9 @@ export default {
                 [chatId, groupName, isEnabled ? 1 : 0, announceHour, announceMinute, lastSentDate]);
               imported++;
             }
-            // Bersihkan baris lama yang salah (chat_id non-numerik, mis. hasil import '_sheets')
-            await execute(env, "DELETE FROM bot_groups WHERE chat_id NOT REGEXP '^-?[0-9]+$'");
+            // Bersihkan baris lama yang salah (mis. hasil import '_sheets'),
+            // TANPA menghapus grup WhatsApp (@g.us) / DM (@c.us).
+            await execute(env, "DELETE FROM bot_groups WHERE chat_id NOT REGEXP '^-?[0-9]+$' AND chat_id NOT LIKE '%@%'");
           }
 
           return json({ success: true, imported, firestoreAvailable: fbRes.ok }, 200, allowOrigin);
