@@ -683,6 +683,7 @@ export default {
           qr: body.qr || null,
           number: body.number || null,
           message: body.message || null,
+          groups: Array.isArray(body.groups) ? body.groups.slice(0, 200) : [],
           updatedAt: body.updatedAt || new Date().toISOString()
         });
         await execute(env,
