@@ -625,6 +625,18 @@ const realApi = {
   async syncBotGroups() {
     return apiFetch('/api/bot/sync-groups', { method: 'POST' });
   },
+  async getBotAccess() {
+    return apiFetch('/api/bot/access');
+  },
+  async addBotAccess(data) {
+    return apiFetch('/api/bot/access', { method: 'POST', body: JSON.stringify(data) });
+  },
+  async updateBotAccess(id, data) {
+    return apiFetch(`/api/bot/access/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  async deleteBotAccess(id) {
+    return apiFetch(`/api/bot/access/${id}`, { method: 'DELETE' });
+  },
   async getWhatsappStatus() {
     return apiFetch('/api/bot/whatsapp/status');
   },

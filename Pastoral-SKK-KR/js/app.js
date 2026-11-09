@@ -2694,6 +2694,7 @@ let botGroupsData = [];
 let waSession = null;
 let waPollTimer = null;
 let _editingBotGroupId = null;
+let botAccessData = [];
 
 function initBotView() {
   document.getElementById('bot-groups-reload').onclick = loadBotGroups;
@@ -2707,12 +2708,14 @@ function initBotView() {
   };
   document.getElementById('bot-platform-filter').onchange = renderBotGroups;
   document.getElementById('wa-refresh').onclick = loadWaStatus;
+  document.getElementById('bot-access-add').onclick = handleBotAccessAdd;
   document.getElementById('bot-group-platform').onchange = applyBotPlatformUI;
   document.getElementById('bot-group-wa-select').onchange = (e) => {
     if (e.target.value) document.getElementById('bot-group-chatid').value = e.target.value;
   };
   loadBotGroups();
   loadWaStatus();
+  loadBotAccess();
 }
 
 async function loadWaStatus() {
@@ -2751,6 +2754,91 @@ async function loadWaStatus() {
   const visible = view && view.offsetParent !== null;
   if (visible && ['qr', 'starting', 'authenticated'].includes(s.status)) {
     waPollTimer = setTimeout(loadWaStatus, 5000);
+  }
+}
+
+async function loadBotAccess() {
+  try { botAccessData = await api.getBotAccess() || []; } catch (e) { botAccessData = []; }
+  renderBotAccess();
+}
+
+function botAccessNotice(text, isError) {
+  const el = document.getElementById('bot-access-msg');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.remove('hidden');
+  el.style.color = isError ? '#c0392b' : '#1e8449';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.add('hidden'), 4000);
+}
+
+function renderBotAccess() {
+  const tbody = document.getElementById('bot-access-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (!botAccessData.length) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 4;
+    td.className = 'muted';
+    td.style.textAlign = 'center';
+    td.style.padding = '12px';
+    td.textContent = 'Belum ada nomor terdaftar.';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+    return;
+  }
+  botAccessData.forEach(a => {
+    const phone = String(a.phone || '');
+    const enabled = a.is_enabled == 1 || a.is_enabled === true;
+    const tr = document.createElement('tr');
+
+    const tdPhone = document.createElement('td');
+    tdPhone.style.fontFamily = 'monospace';
+    tdPhone.textContent = '+' + phone;
+    const tdLabel = document.createElement('td');
+    tdLabel.textContent = a.label || '-';
+    const tdStatus = document.createElement('td');
+    tdStatus.textContent = enabled ? '✅ Aktif' : '⛔ Nonaktif';
+    const tdAksi = document.createElement('td');
+
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-sm btn-secondary';
+    btn.textContent = enabled ? 'Nonaktifkan' : 'Aktifkan';
+    btn.onclick = async () => {
+      try { await api.updateBotAccess(a.id, { isEnabled: !enabled }); loadBotAccess(); }
+      catch (e) { botAccessNotice(e.message || 'Gagal mengubah akses', true); }
+    };
+
+    const del = document.createElement('button');
+    del.className = 'btn btn-sm btn-secondary';
+    del.textContent = 'Hapus';
+    del.style.marginLeft = '4px';
+    del.onclick = async () => {
+      if (!confirm('Hapus akses untuk nomor +' + phone + '?')) return;
+      try { await api.deleteBotAccess(a.id); loadBotAccess(); }
+      catch (e) { botAccessNotice(e.message || 'Gagal menghapus akses', true); }
+    };
+
+    tdAksi.append(btn, del);
+    tr.append(tdPhone, tdLabel, tdStatus, tdAksi);
+    tbody.appendChild(tr);
+  });
+}
+
+async function handleBotAccessAdd() {
+  const phoneEl = document.getElementById('bot-access-phone');
+  const labelEl = document.getElementById('bot-access-label');
+  const phone = (phoneEl.value || '').trim();
+  const label = (labelEl.value || '').trim();
+  if (!phone) { botAccessNotice('Nomor wajib diisi.', true); return; }
+  try {
+    const r = await api.addBotAccess({ phone, label });
+    botAccessNotice('Nomor +' + (r.phone || phone) + ' ditambahkan.');
+    phoneEl.value = ''; labelEl.value = '';
+    loadBotAccess();
+  } catch (e) {
+    botAccessNotice(e.message || 'Gagal menambah akses', true);
   }
 }
 

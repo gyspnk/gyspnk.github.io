@@ -521,7 +521,10 @@ export default {
           "ALTER TABLE bot_groups ADD COLUMN notes TEXT DEFAULT NULL",
           "ALTER TABLE bot_groups ADD COLUMN active_schedules TEXT DEFAULT NULL",
           "ALTER TABLE calendar_sheet_configs ADD COLUMN notes TEXT DEFAULT NULL AFTER column_config",
-          "ALTER TABLE bot_groups ADD COLUMN platform VARCHAR(20) NOT NULL DEFAULT 'telegram'"
+          "ALTER TABLE bot_groups ADD COLUMN platform VARCHAR(20) NOT NULL DEFAULT 'telegram'",
+          "CREATE TABLE IF NOT EXISTS bot_command_access (id INT AUTO_INCREMENT PRIMARY KEY, phone VARCHAR(30) NOT NULL UNIQUE, label VARCHAR(100) DEFAULT NULL, is_enabled TINYINT(1) NOT NULL DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)",
+          "INSERT IGNORE INTO bot_command_access (phone, label) VALUES ('6285156181562', 'Nomor bot')",
+          "INSERT IGNORE INTO bot_command_access (phone, label) VALUES ('6289676328279', 'Nomor tes 0896')"
         ];
         if (idx < stmts.length) {
           try { await execute(env, stmts[idx]); return json({ ok: true, idx }); } catch (e) { return json({ error: e.message, idx }); }
@@ -1489,6 +1492,38 @@ export default {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
         const id = parseInt(path.split('/').pop(), 10);
         await execute(env, 'DELETE FROM bot_groups WHERE id = ?', [id]);
+        return json({ success: true }, 200, allowOrigin);
+      }
+
+      // ===== Bot: akses slash command =====
+      if (path === '/api/bot/access' && request.method === 'GET') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const rows = await query(env, 'SELECT * FROM bot_command_access ORDER BY id');
+        return json(rows, 200, allowOrigin);
+      }
+
+      if (path === '/api/bot/access' && request.method === 'POST') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const { phone, label } = await request.json();
+        let norm = String(phone || '').replace(/\D/g, '');
+        if (norm.startsWith('0')) norm = '62' + norm.slice(1);
+        if (norm.length < 10) return json({ error: 'Nomor tidak valid' }, 400, allowOrigin);
+        await execute(env,
+          'INSERT INTO bot_command_access (phone, label) VALUES (?, ?) ON DUPLICATE KEY UPDATE label = VALUES(label), is_enabled = 1',
+          [norm, label || '']);
+        return json({ success: true, phone: norm }, 200, allowOrigin);
+      }
+
+      if (path.startsWith('/api/bot/access/') && (request.method === 'PUT' || request.method === 'DELETE')) {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const id = parseInt(path.split('/').pop(), 10);
+        if (request.method === 'DELETE') {
+          await execute(env, 'DELETE FROM bot_command_access WHERE id = ?', [id]);
+          return json({ success: true }, 200, allowOrigin);
+        }
+        const body = await request.json();
+        if (body.isEnabled !== undefined) await execute(env, 'UPDATE bot_command_access SET is_enabled = ? WHERE id = ?', [body.isEnabled ? 1 : 0, id]);
+        if (body.label !== undefined) await execute(env, 'UPDATE bot_command_access SET label = ? WHERE id = ?', [body.label, id]);
         return json({ success: true }, 200, allowOrigin);
       }
 

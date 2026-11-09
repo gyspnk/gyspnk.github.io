@@ -582,6 +582,23 @@
               </div>
             </div>
 
+            <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:16px">
+              <h4 style="font-size:14px;margin:0 0 8px">🔐 Akses Slash Command</h4>
+              <p class="muted" style="font-size:12px;margin:0 0 8px">Hanya nomor yang terdaftar di sini yang bisa memakai perintah bot di WhatsApp.</p>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+                <input type="text" id="bot-access-phone" placeholder="62812xxxxxxx / 0812xxxxxxx" style="flex:1;min-width:180px;padding:6px;border:1px solid var(--border);border-radius:6px" />
+                <input type="text" id="bot-access-label" placeholder="Nama (opsional)" style="flex:1;min-width:140px;padding:6px;border:1px solid var(--border);border-radius:6px" />
+                <button id="bot-access-add" class="btn btn-sm btn-primary">+ Tambah</button>
+              </div>
+              <div class="table-wrapper" style="max-height:220px;overflow-y:auto">
+                <table>
+                  <thead><tr><th>Nomor</th><th>Nama</th><th>Status</th><th>Aksi</th></tr></thead>
+                  <tbody id="bot-access-tbody"></tbody>
+                </table>
+              </div>
+              <div id="bot-access-msg" class="info-msg hidden" style="margin-top:8px"></div>
+            </div>
+
             <h4 style="font-size:14px;margin-bottom:8px">Grup Terdaftar</h4>
             <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
               <button id="bot-groups-reload" class="btn btn-sm btn-secondary">🔄 Muat Ulang</button>

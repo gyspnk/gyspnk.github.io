@@ -225,6 +225,14 @@ export async function initSchema(env) {
     // Active schedules per group (JSON array of sheet_key + 'custom_event')
     `ALTER TABLE bot_groups ADD COLUMN IF NOT EXISTS active_schedules TEXT DEFAULT NULL`,
     `ALTER TABLE bot_groups ADD COLUMN IF NOT EXISTS notes TEXT DEFAULT NULL`,
+    `CREATE TABLE IF NOT EXISTS bot_command_access (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      phone VARCHAR(30) NOT NULL UNIQUE,
+      label VARCHAR(100) DEFAULT NULL,
+      is_enabled TINYINT(1) NOT NULL DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    `INSERT IGNORE INTO bot_command_access (phone, label) VALUES ('6285156181562', 'Nomor bot'), ('6289676328279', 'Nomor tes 0896')`,
   ];
   for (const sql of statements) {
     try {
