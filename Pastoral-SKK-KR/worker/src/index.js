@@ -379,6 +379,8 @@ export default {
         if (!env.GSA_JSON) return json({ error: 'GSA_JSON required' }, 400, allowOrigin);
 
         const platformFilter = (url.searchParams.get('platform') || '').trim().toLowerCase();
+        const forceChat = (url.searchParams.get('chat') || '').trim();
+        const forceSend = url.searchParams.get('force') === '1';
         const groups = (await query(env, 'SELECT * FROM bot_groups WHERE is_enabled = TRUE'))
           .filter(g => {
             const p = (g.platform || 'telegram').toLowerCase();
@@ -387,6 +389,14 @@ export default {
             if (p === 'whatsapp') return String(g.chat_id).includes('@');
             return /^-?\d+$/.test(String(g.chat_id).trim());
           });
+        // /sendnow harus tetap bisa mengirim ke chat/grup yang belum terdaftar.
+        if (forceSend && forceChat && !groups.some(g => String(g.chat_id) === forceChat)) {
+          groups.push({
+            chat_id: forceChat, group_name: '', platform: 'whatsapp',
+            announce_hour: 13, announce_minute: 0, last_sent_date: '',
+            active_schedules: null, notes: null
+          });
+        }
         const configs = await query(env, 'SELECT * FROM calendar_sheet_configs WHERE is_active = TRUE');
         // Compute date header
         const d = new Date(targetDate + 'T00:00:00');
