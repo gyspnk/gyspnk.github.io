@@ -407,13 +407,35 @@ export default {
         const messages = [];
 
         for (const g of groups) {
-          let activeSched = ['renungan_harian_siswa', 'ibadah_mingguan_karyawan', 'komsel_karyawan'];
+          // Semua perimeter yang tampil tercentang di pengaturan = semua sheet aktif + event khusus.
+          // NULL berarti "semua", bukan subset default lama.
+          let activeSched = configs.map(c => c.sheet_key).concat('custom_event');
           if (g.active_schedules) {
             try { const p = JSON.parse(g.active_schedules); if (Array.isArray(p) && p.length > 0) activeSched = p; } catch (_) {}
           }
           const parts = [];
           const gNotes = g.notes ? g.notes.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ') : '';
           for (const sk of activeSched) {
+            if (sk === 'custom_event') {
+              const events = await query(env,
+                'SELECT * FROM calendar_custom_events WHERE start_date <= ? AND end_date >= ? ORDER BY start_date',
+                [targetDate, targetDate]);
+              const shown = events.filter(e => {
+                if (e.is_repeating != true || !e.repeat_days) return true;
+                let days = [];
+                try { days = JSON.parse(e.repeat_days); } catch (_) {}
+                return days.includes(new Date(targetDate + 'T00:00:00').getDay());
+              });
+              if (shown.length) {
+                let m = '⭐ Event Khusus:';
+                for (const e of shown) {
+                  m += '\n  * ' + (e.title || '');
+                  if (e.description) m += '\n    ' + String(e.description).replace(/<[^>]*>/g, '').slice(0, 100);
+                }
+                parts.push(m);
+              }
+              continue;
+            }
             const cfg = configs.find(c => c.sheet_key === sk);
             if (!cfg) continue;
 
