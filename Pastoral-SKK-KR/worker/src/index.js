@@ -45,6 +45,25 @@ function parseGSAJson(raw) {
   return JSON.parse(str);
 }
 
+// HTML (dari editor web) -> teks dengan baris terpisah.
+function htmlToLines(raw) {
+  return String(raw || '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(div|p|li|h[1-6]|tr)>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '- ')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\r/g, '')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 // ===== Google Service Account OAuth2 (Web Crypto JWT) =====
 // Used for non-public Google Sheets. Credentials stored as Cloudflare Worker secret `GSA_JSON`.
 // No credentials are ever exposed to client — token exchange happens entirely server-side.
@@ -414,7 +433,7 @@ export default {
             try { const p = JSON.parse(g.active_schedules); if (Array.isArray(p) && p.length > 0) activeSched = p; } catch (_) {}
           }
           const parts = [];
-          const gNotes = g.notes ? g.notes.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ') : '';
+          const gNotes = htmlToLines(g.notes);
           for (const sk of activeSched) {
             if (sk === 'custom_event') {
               const events = await query(env,
@@ -430,7 +449,12 @@ export default {
                 let m = '⭐ Event Khusus:';
                 for (const e of shown) {
                   m += '\n  * ' + (e.title || '');
-                  if (e.description) m += '\n    ' + String(e.description).replace(/<[^>]*>/g, '').slice(0, 100);
+                  const desc = htmlToLines(e.description).slice(0, 600);
+                  if (desc) {
+                    for (const line of desc.split('\n')) {
+                      if (line.trim()) m += '\n    ' + line.trim();
+                    }
+                  }
                 }
                 parts.push(m);
               }
@@ -515,7 +539,7 @@ export default {
 
             // Format using column_config text fields (like calendar detail view)
             let msg = label + ':';
-            const sheetNotes = cfg.notes ? cfg.notes.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ') : '';
+            const sheetNotes = htmlToLines(cfg.notes);
             if (textCols.length > 0) {
               for (const tc of textCols) {
                 const val = matchedRow[tc.idx] !== undefined && matchedRow[tc.idx] !== null ? String(matchedRow[tc.idx]).trim() : '';
