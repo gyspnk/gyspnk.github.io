@@ -2692,6 +2692,7 @@ async function saveColumnEditor() {
 /* ===== Telegram + WhatsApp Bot Management ===== */
 let botGroupsData = [];
 let waSession = null;
+let waPollTimer = null;
 let _editingBotGroupId = null;
 
 function initBotView() {
@@ -2743,6 +2744,13 @@ async function loadWaStatus() {
     wrap.classList.remove('hidden');
   } else {
     wrap.classList.add('hidden');
+  }
+  // Selama belum terhubung, QR di panel ikut berganti otomatis.
+  clearTimeout(waPollTimer);
+  const view = document.getElementById('view-telegram-bot');
+  const visible = view && view.offsetParent !== null;
+  if (visible && ['qr', 'starting', 'authenticated'].includes(s.status)) {
+    waPollTimer = setTimeout(loadWaStatus, 5000);
   }
 }
 
