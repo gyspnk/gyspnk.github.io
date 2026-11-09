@@ -3,10 +3,10 @@ import { api, isDemoMode } from './api.js';
 import { login, logout, getCurrentUser, checkHasUsers, setupAdmin, hasRole, getUserPermissions, hasAccess } from './auth.js';
 import { initDashboard } from './dashboard.js';
 import { initPresensi, loadPresensiData } from './attendance.js';
-import { initHistory, loadHistory } from './history.js';
-import { initExport } from './export.js';
+import { initHistory, loadHistory } from './history.js?v=20261109a';
+import { initExport } from './export.js?v=20261109a';
 import { getAvailableYears, getCurrentAcademicYear, loadKaryawanData } from './data-loader.js';
-import { initCalendar, reloadCalendarConfig } from './calendar.js';
+import { initCalendar, reloadCalendarConfig } from './calendar.js?v=20261109a';
 
 let currentView = null;
 let viewsInitialized = { dashboard: false, presensi: false, history: false, export: false, admin: false, calendar: false, bot: false };

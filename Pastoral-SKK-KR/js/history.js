@@ -4,6 +4,7 @@ import { getAvailableYears, getCurrentAcademicYear, loadKaryawanData } from './d
 import { exportRecords } from './export.js';
 import { hasRole } from './auth.js';
 import { getNearestPreviousAllowedDay } from './attendance.js';
+import { buildClassGroups, buildEmployeeGroups, createMultiSelect } from './multiselect.js?v=20261109a';
 
 let allRecords = [];
 let allEmployees = [];
@@ -15,6 +16,7 @@ let perPage = 10;
 let historyViewMode = 'list'; // 'table' | 'list'
 let historyAllowedDays = {}; // populated from API (hari aktif per presensi type)
 let lastSnapInfo = '';       // info "tanggal otomatis mundur" — ditampilkan setelah load
+let employeePicker = null;
 
 export async function initHistory() {
   const years = await getAvailableYears();
@@ -48,7 +50,7 @@ export async function initHistory() {
     }
     // Arahkan tanggal ke hari aktif terdekat (mundur) — sama seperti menu presensi
     snapHistoryDate(presensiType, false);
-    updateHistoryFilterLabel();
+    rebuildEmployeePicker();
     loadHistory();
   };
 
@@ -68,7 +70,6 @@ export async function initHistory() {
   document.getElementById('history-start').onchange = loadHistory;
   document.getElementById('history-end').onchange = loadHistory;
   document.getElementById('history-year').onchange = loadHistory;
-  document.getElementById('history-employee').onchange = loadHistory;
 
   const modeRadios = document.querySelectorAll('input[name="history-mode"]');
   modeRadios.forEach(r => r.onchange = toggleMode);
@@ -123,7 +124,7 @@ export async function initHistory() {
   await loadHistoryDayConfig();
   snapHistoryDate(document.getElementById('history-type')?.value || 'renungan_harian', false);
 
-  updateHistoryFilterLabel();
+  rebuildEmployeePicker();
   loadHistory();
 }
 
@@ -164,31 +165,28 @@ function snapHistoryDate(type, fromPickedDate) {
   }
 }
 
-function updateHistoryFilterLabel() {
+function rebuildEmployeePicker() {
+  const mount = document.getElementById('history-employee-ms');
+  if (!mount) return;
   const type = document.getElementById('history-type')?.value || 'renungan_harian';
+  const isSiswa = CONFIG.isSiswaType(type);
   const label = document.getElementById('history-employee-label');
-  const select = document.getElementById('history-employee');
+  if (label) label.textContent = isSiswa ? 'Kelas' : 'Karyawan';
 
-  if (CONFIG.isSiswaType(type)) {
-    if (label) label.textContent = 'Kelas';
-    select.innerHTML = '<option value="all">Semua Kelas</option>';
-    const classes = [...new Set(allStudents.map(s => s.class).filter(Boolean))].sort((a,b) => a.localeCompare(b,'id',{numeric:true}));
-    classes.forEach(cls => {
-      const opt = document.createElement('option');
-      opt.value = cls;
-      opt.textContent = cls;
-      select.appendChild(opt);
-    });
-  } else {
-    if (label) label.textContent = 'Karyawan';
-    select.innerHTML = '<option value="all">Semua</option>';
-    allEmployees.forEach(emp => {
-      const opt = document.createElement('option');
-      opt.value = emp.name;
-      opt.textContent = `${emp.name} (${emp.division})`;
-      select.appendChild(opt);
+  const allLabel = isSiswa ? 'Semua Kelas' : 'Semua Karyawan';
+  const groups = isSiswa
+    ? buildClassGroups(allStudents.map(s => s.class).filter(Boolean))
+    : buildEmployeeGroups(allEmployees);
+
+  if (!employeePicker) {
+    employeePicker = createMultiSelect(mount, {
+      allLabel,
+      labelledBy: 'history-employee-label',
+      onChange: () => loadHistory(),
     });
   }
+  employeePicker.setGroups(groups, { allLabel });
+  employeePicker.setSelected([]);
 }
 
 function updateHistoryTableHeaders() {
@@ -215,7 +213,6 @@ async function loadHistory() {
   window.showLoading();
   const yearLabel = document.getElementById('history-year').value;
   const mode = document.querySelector('input[name="history-mode"]:checked').value;
-  const employee = document.getElementById('history-employee').value;
   const presensiType = document.getElementById('history-type').value;
   const statusEl = document.getElementById('history-status');
   const statusMsg = document.getElementById('history-status-msg');
@@ -253,9 +250,8 @@ async function loadHistory() {
   }
 
   const typeLabel = CONFIG.PRESENSI_TYPE_LABELS[presensiType] || '';
-  const count = allRecords.length;
-  const isSiswa = CONFIG.isSiswaType(presensiType);
-  const filterLabel = employee === 'all' ? (isSiswa ? 'semua kelas' : 'semua karyawan') : employee;
+  const count = getFilteredRecords().length;
+  const filterLabel = employeePicker ? employeePicker.getSummary() : '';
   statusMsg.textContent = `${count} record ${typeLabel} ditemukan untuk ${filterLabel}.` + (lastSnapInfo ? ' ' + lastSnapInfo : '');
   currentPage = 1;
 
@@ -277,16 +273,16 @@ async function loadHistory() {
 }
 
 function getFilteredRecords() {
-  const employee = document.getElementById('history-employee').value;
+  const selected = employeePicker ? employeePicker.getSelected() : [];
   const searchTerm = (document.getElementById('history-search').value || '').toLowerCase();
   const presensiType = document.getElementById('history-type')?.value || 'renungan_harian';
+  const isSiswa = CONFIG.isSiswaType(presensiType);
 
   return allRecords.filter(r => {
-    // For KF-Siswa, filter by class; for others, filter by employee name
-    if (CONFIG.isSiswaType(presensiType)) {
-      if (employee !== 'all' && r.employee_division !== employee) return false;
-    } else {
-      if (employee !== 'all' && r.employee_name !== employee) return false;
+    // Pilihan kosong = semua. Bandingkan kelas (siswa) atau nama (karyawan).
+    if (selected.length) {
+      const key = isSiswa ? (r.employee_division || '') : (r.employee_name || '');
+      if (!selected.includes(key)) return false;
     }
     if (searchTerm) {
       const user = userMap[r.recorded_by];
@@ -537,7 +533,7 @@ function renderHistoryListView() {
 
   const isSiswa = CONFIG.isSiswaType(document.getElementById('history-type')?.value || '');
   const searchTerm = (document.getElementById('history-search')?.value || '').toLowerCase();
-  const employee = document.getElementById('history-employee')?.value || 'all';
+  const selected = employeePicker ? employeePicker.getSelected() : [];
   const statusLabels = {};
   CONFIG.ATTENDANCE_STATUSES.forEach(s => statusLabels[s.value] = s.label);
 
@@ -546,10 +542,9 @@ function renderHistoryListView() {
     // Skip auto-generated "belum diisi"
     if (r.notes && r.notes.includes('Otomatis')) return false;
     // Apply employee/division filter (sama seperti di menu isi presensi)
-    if (isSiswa) {
-      if (employee !== 'all' && r.employee_division !== employee) return false;
-    } else {
-      if (employee !== 'all' && r.employee_name !== employee) return false;
+    if (selected.length) {
+      const key = isSiswa ? (r.employee_division || '') : (r.employee_name || '');
+      if (!selected.includes(key)) return false;
     }
     // Apply search
     if (searchTerm) {
@@ -694,7 +689,8 @@ function renderHistoryListView() {
 async function exportHistory() {
   let records = getFilteredRecords();
   const btn = document.getElementById('history-export');
-  const employee = document.getElementById('history-employee').value;
+  const selected = employeePicker ? employeePicker.getSelected() : [];
+  const summary = employeePicker ? employeePicker.getSummary() : '';
 
   if (records.length === 0) {
     alert('Tidak ada data untuk diexport.');
@@ -738,7 +734,6 @@ async function exportHistory() {
       kanaan_fellowship_siswa: 'Kanaan_Fellowship_Siswa'
     };
     const typeSlug = typeSlugMap[presensiType] || 'Presensi';
-    const isSiswa = CONFIG.isSiswaType(presensiType);
     // Load presensi config for day filtering
     let allowedDays;
     try {
@@ -750,14 +745,16 @@ async function exportHistory() {
       startDate,
       endDate,
       academicYear: document.getElementById('history-year').value,
-      employee: employee === 'all' ? (isSiswa ? 'Semua Kelas' : 'Semua Karyawan') : employee,
+      employee: summary,
       presensiType,
       allowedDays,
       userMap
     };
-    const fileName = employee === 'all'
-      ? `Laporan_${typeSlug}_${startDate}_${endDate}.xlsx`
-      : `Laporan_${typeSlug}_${employee.replace(/\s+/g, '_')}_${startDate}_${endDate}.xlsx`;
+    const filterPart = selected.length
+      ? (summary && summary.length <= 40 ? summary : `${selected.length} pilihan`)
+        .replace(/[^\w]+/g, '_').replace(/^_+|_+$/g, '')
+      : '';
+    const fileName = `Laporan_${typeSlug}${filterPart ? '_' + filterPart : ''}_${startDate}_${endDate}.xlsx`;
     await exportRecords(records, meta, fileName);
   } catch (e) {
     alert('Gagal export: ' + e.message);

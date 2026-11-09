@@ -249,8 +249,8 @@
               <select id="history-year"></select>
             </div>
             <div class="form-group">
-              <label for="history-employee" id="history-employee-label">Karyawan</label>
-              <select id="history-employee"><option value="all">Semua</option></select>
+              <label id="history-employee-label">Karyawan</label>
+              <div id="history-employee-ms"></div>
             </div>
             <button id="history-load" class="btn btn-secondary hidden" title="Data dimuat otomatis">Muat</button>
             <button id="history-export" class="btn btn-primary">Export</button>
@@ -322,10 +322,8 @@
                 <select id="export-year"></select>
               </div>
               <div class="form-group" id="export-class-group">
-                <label for="export-class" id="export-class-label">Jenjang</label>
-                <select id="export-class">
-                  <option value="all">Semua</option>
-                </select>
+                <label id="export-class-label">Jenjang</label>
+                <div id="export-class-ms"></div>
               </div>
               <div class="form-group">
                 <label for="export-format">Format</label>
@@ -347,36 +345,34 @@
 
         <!-- Calendar View -->
         <section id="view-calendar" class="view hidden">
-          <div class="page-header" style="align-items:center">
-            <div style="display:flex;align-items:center;gap:8px">
-              <h2 style="margin:0">📅 Kalender Pastoral</h2>
-              <span class="cal-view-toggle">
-                <button id="cal-view-grid" class="btn btn-sm btn-primary cal-view-btn">📅 Grid</button>
-                <button id="cal-view-list" class="btn btn-sm btn-secondary cal-view-btn">📋 List</button>
+          <div class="page-header calendar-page-header">
+            <div class="calendar-title-row">
+              <h2>📅 Kalender Pastoral</h2>
+              <span class="cal-view-toggle" role="group" aria-label="Tampilan kalender">
+                <button id="cal-view-grid" class="btn btn-sm btn-primary cal-view-btn" aria-pressed="true">Grid</button>
+                <button id="cal-view-list" class="btn btn-sm btn-secondary cal-view-btn" aria-pressed="false">List</button>
               </span>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div class="calendar-actions">
               <button id="cal-manage-events-btn" class="btn btn-sm btn-secondary" title="Kelola Event Khusus">⭐ Kelola Event</button>
               <button id="cal-add-event-btn" class="btn btn-sm btn-primary" title="Tambah Event Khusus">+ Event</button>
-              <button id="cal-sheets-btn" class="btn btn-sm btn-secondary" title="Lihat Google Sheets">📊 Lihat Sheets</button>
-              <button id="cal-settings-btn" class="btn btn-sm btn-secondary" title="Pengaturan Kalender">⚙️</button>
-              <div class="form-group" style="margin:0;min-width:100px">
-                <select id="cal-academic-year" style="font-size:12px;padding:3px 6px"></select>
-              </div>
+              <button id="cal-sheets-btn" class="btn btn-sm btn-secondary" title="Lihat Google Sheets">📊 Sheets</button>
+              <button id="cal-settings-btn" class="btn btn-sm btn-secondary" title="Pengaturan Kalender" aria-label="Pengaturan Kalender">⚙️</button>
+              <select id="cal-academic-year" class="calendar-year-select" aria-label="Tahun ajaran"></select>
             </div>
           </div>
 
-          <!-- Search bar -->
-          <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-            <input type="text" id="cal-search" placeholder="🔍 Cari nama petugas..." style="width:220px;padding:5px 10px;border:1px solid var(--border);border-radius:16px;font-size:12px" />
-          </div>
-
-          <!-- Month Navigation -->
-          <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px">
-            <button id="cal-prev-month" class="btn btn-sm btn-secondary" title="Bulan sebelumnya">◀</button>
-            <span id="cal-month-year" style="font-weight:700;font-size:16px;min-width:160px;text-align:center;color:var(--text)"></span>
-            <button id="cal-next-month" class="btn btn-sm btn-secondary" title="Bulan berikutnya">▶</button>
-            <button id="cal-today" class="btn btn-sm btn-secondary">Hari Ini</button>
+          <div class="calendar-toolbar">
+            <div class="calendar-month-nav">
+              <button id="cal-prev-month" class="calendar-nav-btn" title="Bulan sebelumnya" aria-label="Bulan sebelumnya">‹</button>
+              <span id="cal-month-year" class="cal-month-label" aria-live="polite"></span>
+              <button id="cal-next-month" class="calendar-nav-btn" title="Bulan berikutnya" aria-label="Bulan berikutnya">›</button>
+              <button id="cal-today" class="calendar-today-btn">Hari Ini</button>
+            </div>
+            <div class="calendar-toolbar-right">
+              <span id="cal-month-summary" class="calendar-summary"></span>
+              <input type="search" id="cal-search" class="calendar-search" placeholder="🔍 Cari nama petugas..." aria-label="Cari nama petugas" />
+            </div>
           </div>
 
           <!-- Filter / Show-Hide Toggles -->
@@ -390,11 +386,13 @@
 
           <!-- Calendar Grid -->
           <div class="calendar-wrapper">
-            <div class="calendar-legend" id="calendar-legend"></div>
-            <div class="calendar-grid-header">
-              <div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div><div>Sab</div><div>Min</div>
+            <div class="calendar-scroll" id="calendar-scroll">
+              <div class="calendar-grid-header" role="row">
+                <div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div><div>Sab</div><div>Min</div>
+              </div>
+              <div class="calendar-grid" id="calendar-grid"></div>
             </div>
-            <div class="calendar-grid" id="calendar-grid"></div>
+            <div class="calendar-scroll-hint">Geser ke samping untuk melihat seluruh minggu →</div>
           </div>
 
           <div class="calendar-list-view hidden" id="calendar-list-view"></div>
@@ -1005,7 +1003,7 @@
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
-  <script type="module" src="./js/app.js?v=20260721b"></script>
+  <script type="module" src="./js/app.js?v=20261109a"></script>
 </body>
 </html>
 

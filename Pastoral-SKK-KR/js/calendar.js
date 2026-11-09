@@ -8,6 +8,12 @@ function safeParseJSON(str) {
 }
 
 /** Parse repeat_days from DB — bisa string JSON atau array langsung */
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
 function parseRepeatDays(val) {
   if (!val) return [];
   if (Array.isArray(val)) return val;
@@ -146,9 +152,10 @@ export async function initCalendar() {
     }
   });
 
+  if (window.matchMedia('(max-width: 820px)').matches) switchViewMode('list');
+  await loadCustomEvents();
+  await fetchAllSchedules();
   renderCalendar();
-  fetchAllSchedules();
-  loadCustomEvents();
 }
 
 /** Re-fetch calendar config from API and re-render — called after column editor saves config/notes */
@@ -159,9 +166,9 @@ export async function reloadCalendarConfig() {
     if (!(sheet.key in visibility)) visibility[sheet.key] = true;
   });
   renderFilters();
+  await loadCustomEvents();
+  await fetchAllSchedules();
   renderCalendar();
-  fetchAllSchedules();
-  loadCustomEvents();
 }
 
 async function loadCalendarConfig() {
@@ -216,11 +223,16 @@ function switchViewMode(mode) {
   if (mode === 'grid') {
     gridBtn.classList.add('btn-primary'); gridBtn.classList.remove('btn-secondary');
     listBtn.classList.add('btn-secondary'); listBtn.classList.remove('btn-primary');
+    gridBtn.setAttribute('aria-pressed', 'true');
+    listBtn.setAttribute('aria-pressed', 'false');
     if (gridWrapper) gridWrapper.style.display = '';
     if (listEl) listEl.classList.add('hidden');
+    renderCalendarGrid();
   } else {
     listBtn.classList.add('btn-primary'); listBtn.classList.remove('btn-secondary');
     gridBtn.classList.add('btn-secondary'); gridBtn.classList.remove('btn-primary');
+    listBtn.setAttribute('aria-pressed', 'true');
+    gridBtn.setAttribute('aria-pressed', 'false');
     if (gridWrapper) gridWrapper.style.display = 'none';
     if (listEl) { listEl.classList.remove('hidden'); renderListView(); }
   }
@@ -385,40 +397,63 @@ function renderCalendarGrid() {
 
   grid.innerHTML = html;
 
-  // Wire up day cell clicks
-  grid.querySelectorAll('.calendar-day:not(.empty)').forEach(cell => {
-    cell.onclick = () => {
+  // Month summary
+  let monthEvents = 0;
+  const activeDays = new Set();
+  Object.entries(eventMap).forEach(([dateStr, events]) => {
+    const d = new Date(dateStr + 'T00:00:00');
+    if (d.getMonth() === currentMonth && d.getFullYear() === currentYear && events.length > 0) {
+      monthEvents += events.length;
+      activeDays.add(dateStr);
+    }
+  });
+  const summaryEl = document.getElementById('cal-month-summary');
+  if (summaryEl) {
+    summaryEl.textContent = monthEvents > 0
+      ? `${monthEvents} jadwal · ${activeDays.size} hari terisi`
+      : 'Belum ada jadwal bulan ini';
+  }
+
+  // Wire up day cell clicks and keyboard access
+  grid.querySelectorAll('.calendar-day[data-date]').forEach(cell => {
+    const open = () => {
       const dateStr = cell.dataset.date;
       const events = eventMap[dateStr] || [];
       if (events.length > 0) showEventDetail(dateStr, events);
+    };
+    cell.onclick = open;
+    cell.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
     };
   });
 }
 
 function renderDayCell(day, dateStr, cls, eventMap, todayStr) {
   const events = eventMap[dateStr] || [];
-  // Build small event label chips — one chip per event (petugas terpisah = chip terpisah)
-  const MAX_LABELS = 6;  // 3 rows × 2 columns
+  const MAX_LABELS = window.matchMedia('(max-width: 1200px)').matches ? 2 : 3;
   const labels = [];
   for (const evt of events) {
     if (labels.length >= MAX_LABELS) break;
-    // fullLabel untuk tooltip (title), labelText dibatasi untuk tampilan tablet
-    const fullLabel = (evt.shortLabel || evt.summary.split(' | ')[0]).replace(/^(📖|⛪|🙏|🤝)\s*/, '').trim();
-    const labelText = fullLabel.substring(0, 30);
-    labels.push({ color: evt.color, label: labelText, full: fullLabel, key: evt.sheetKey });
+    const fullLabel = (evt.shortLabel || evt.summary.split(' | ')[0]).replace(/^[^\p{L}\p{N}]+/u, '').trim();
+    const labelText = fullLabel.length > 28 ? fullLabel.substring(0, 27).trimEnd() + '…' : fullLabel;
+    labels.push({ color: evt.color || '#3b82f6', label: labelText, full: fullLabel });
   }
 
   const labelsHtml = labels.map(l =>
-    `<span class="day-label" style="background:${l.color};color:#fff" title="${l.full}">${l.label}</span>`
+    `<span class="day-label" style="--evt-color:${l.color}" title="${escapeHtml(l.full)}"><span class="day-label-dot"></span><span class="day-label-text">${escapeHtml(l.label)}</span></span>`
   ).join('');
 
   const remaining = events.length - labels.length;
   const moreBadge = remaining > 0
-    ? `<span class="day-more">+${remaining}</span>` : '';
+    ? `<span class="day-more">+${remaining} lainnya</span>` : '';
 
-  return `<div class="calendar-day ${cls}" data-date="${dateStr}">
+  const isOther = cls.includes('other-month');
+  const a11y = events.length
+    ? ` role="button" tabindex="0" aria-label="${escapeHtml(day + ' ' + MONTH_NAMES[currentMonth] + ', ' + events.length + ' jadwal')}"`
+    : '';
+  return `<div class="calendar-day ${cls}" data-date="${dateStr}"${a11y}>
     <span class="day-num">${day}</span>
-    <span class="day-labels">${labelsHtml}${moreBadge}</span>
+    <span class="day-labels">${isOther ? '' : labelsHtml + moreBadge}</span>
   </div>`;
 }
 
@@ -460,15 +495,22 @@ function renderListView() {
         <span class="list-expand-icon">${(isPast && !isToday) ? '▶' : '▼'}</span>
         <span class="list-date">${dateLabel}</span>
         <span class="list-dayname">${dayName}</span>
+        <span class="list-count">${group.events.length} jadwal</span>
         ${isToday ? '<span class="list-today-badge">Hari Ini</span>' : ''}
         ${isPast && !isToday ? '<span class="list-past-badge">Lewat</span>' : ''}
       </div>
       <div class="list-events" id="${sectionId}">`;
 
     group.events.forEach(evt => {
-      html += `<div class="list-event" style="border-left:3px solid ${evt.color};cursor:pointer" data-date="${evt.dateStr}">
-        <span class="list-event-source" style="color:${evt.color}">${evt.shortLabel || evt.summary.split(' | ')[0]}</span>
-        <span class="list-event-desc">${evt.summary.split(' | ').slice(1).join(' | ').substring(0, 60)}</span>
+      const source = evt.shortLabel || evt.summary.split(' | ')[0];
+      const detail = evt.summary.split(' | ').slice(1).join(' | ');
+      html += `<div class="list-event" style="--evt-color:${evt.color || '#3b82f6'}" data-date="${evt.dateStr}">
+        <span class="list-event-dot"></span>
+        <span class="list-event-body">
+          <span class="list-event-source">${escapeHtml(source)}</span>
+          <span class="list-event-desc">${escapeHtml(detail || evt.summary)}</span>
+        </span>
+        <span class="list-event-arrow" aria-hidden="true">›</span>
       </div>`;
     });
 
@@ -528,6 +570,10 @@ function buildEventMap() {
 
   // Add custom events
   customEvents.forEach(cev => {
+    if (searchQuery) {
+      const haystack = `${cev.title || ''} ${cev.description || ''}`.toLowerCase();
+      if (!haystack.includes(searchQuery)) return;
+    }
     const start = new Date(cev.start_date + 'T00:00:00');
     const end = new Date(cev.end_date + 'T00:00:00');
     const isRepeating = cev.is_repeating == true;

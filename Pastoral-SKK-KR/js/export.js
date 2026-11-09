@@ -1,6 +1,7 @@
 import { CONFIG } from './config.js';
 import { api } from './api.js';
 import { getAvailableYears, getCurrentAcademicYear, loadKaryawanData } from './data-loader.js';
+import { buildClassGroups, createMultiSelect, jenjangOfClass } from './multiselect.js?v=20261109a';
 
 /* ===== Trend toggle state for export ===== */
 const EXPORT_TREND_SERIES = [
@@ -13,6 +14,8 @@ const EXPORT_TREND_SERIES = [
 ];
 let exportTrendState = Object.fromEntries(EXPORT_TREND_SERIES.map(s => [s.key, true]));
 let exportPresensiConfig = {};
+let classPicker = null;
+let exportFilterReq = 0;
 
 export async function initExport() {
   const years = await getAvailableYears();
@@ -69,46 +72,43 @@ function renderExportTrendToggles() {
 }
 
 async function updateExportClassFilter() {
-  const group = document.getElementById('export-class-group');
-  const select = document.getElementById('export-class');
+  const mount = document.getElementById('export-class-ms');
   const label = document.getElementById('export-class-label');
-  if (!group || !select) return;
+  if (!mount) return;
+  const req = ++exportFilterReq;
   const type = document.getElementById('export-type').value;
   const isSiswa = CONFIG.isSiswaType(type);
   const yearLabel = document.getElementById('export-year').value;
-  const prevVal = select.value || 'all';
 
-  // Update label
   if (label) label.textContent = isSiswa ? 'Kelas' : 'Divisi';
-  select.innerHTML = `<option value="all">${isSiswa ? 'Semua Kelas' : 'Semua Divisi'}</option>`;
+  const allLabel = isSiswa ? 'Semua Kelas' : 'Semua Divisi';
 
+  let groups = [];
   try {
     if (isSiswa) {
       const students = await api.getKFStudents({ academicYear: yearLabel, active: 'true' });
-      const items = [...new Set(students.map(s => s.class).filter(Boolean))].sort((a,b) => a.localeCompare(b,'id',{numeric:true}));
-      items.forEach(item => {
-        const opt = document.createElement('option');
-        opt.value = item;
-        opt.textContent = item;
-        select.appendChild(opt);
-      });
+      groups = buildClassGroups(students.map(s => s.class).filter(Boolean));
     } else {
-      // For guru types, load active employees and extract their divisions
+      // Untuk tipe guru, kelompokkan pilihan per divisi karyawan aktif
       const years = await getAvailableYears();
       const yearObj = years.find(y => y.label === yearLabel);
       if (yearObj) {
         const emps = await loadKaryawanData(yearObj, type);
-        const items = [...new Set(emps.map(e => e.division).filter(Boolean))].sort((a,b) => a.localeCompare(b,'id',{numeric:true}));
-        items.forEach(item => {
-          const opt = document.createElement('option');
-          opt.value = item;
-          opt.textContent = item;
-          select.appendChild(opt);
-        });
+        const divisions = [...new Set(emps.map(e => e.division).filter(Boolean))]
+          .sort((a, b) => a.localeCompare(b, 'id', { numeric: true }))
+          .map(v => ({ value: v, label: v }));
+        groups = divisions.length ? [{ label: '', items: divisions }] : [];
       }
     }
-    if (prevVal && [...select.options].some(o => o.value === prevVal)) select.value = prevVal;
-  } catch(e) { console.error('Gagal memuat data filter jenjang:', e); }
+  } catch (e) {
+    console.error('Gagal memuat data filter jenjang:', e);
+  }
+  if (req !== exportFilterReq) return;
+
+  if (!classPicker) {
+    classPicker = createMultiSelect(mount, { allLabel, labelledBy: 'export-class-label' });
+  }
+  classPicker.setGroups(groups, { allLabel });
 }
 
 function getExportPresensiType() {
@@ -159,10 +159,10 @@ async function doExport() {
     console.error('Failed to filter inactive employees:', e);
   }
 
-  // Filter by class/jenjang if selected
-  const classFilter = document.getElementById('export-class')?.value;
-  if (classFilter && classFilter !== 'all') {
-    records = records.filter(r => r.employee_division === classFilter);
+  // Filter by class/jenjang yang dipilih (kosong = semua)
+  const selectedClasses = classPicker ? classPicker.getSelected() : [];
+  if (selectedClasses.length) {
+    records = records.filter(r => selectedClasses.includes(r.employee_division));
   }
 
   if (records.length === 0) {
@@ -187,7 +187,7 @@ async function doExport() {
   preview.innerHTML = '<p>Membuat file Excel...</p>';
 
   try {
-    const blob = await createExcelFile(records, chartImages, { startDate, endDate, academicYear, presensiType, allowedDays });
+    const blob = await createExcelFile(records, chartImages, { startDate, endDate, academicYear, presensiType, allowedDays, employee: selectedClasses.length && classPicker ? classPicker.getSummary() : '' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -198,12 +198,19 @@ async function doExport() {
       kanaan_fellowship_siswa: 'Kanaan_Fellowship_Siswa'
     };
     const typeSlug = typeSlugMap[presensiType] || 'Presensi';
-    a.download = `Laporan_${typeSlug}_${startDate}_${endDate}.xlsx`;
+    const filterLabel = selectedClasses.length && classPicker ? classPicker.getSummary() : '';
+    const slugSource = filterLabel
+      ? (filterLabel.length <= 40 ? filterLabel : `${selectedClasses.length} pilihan`)
+      : '';
+    const filterSlug = slugSource
+      ? '_' + slugSource.replace(/[^\w]+/g, '_').replace(/^_+|_+$/g, '')
+      : '';
+    a.download = `Laporan_${typeSlug}${filterSlug}_${startDate}_${endDate}.xlsx`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    preview.innerHTML = `<p style="color:var(--green);font-weight:600">File Excel berhasil dibuat dengan ${records.length} record dan grafik.</p>`;
+    preview.innerHTML = `<p style="color:var(--green);font-weight:600">File Excel berhasil dibuat dengan ${records.length} record${filterLabel ? ` (${filterLabel})` : ''} dan grafik.</p>`;
   } catch (e) {
     preview.innerHTML = `<p style="color:var(--red)">Gagal membuat Excel: ${e.message}</p>`;
   }
@@ -342,28 +349,39 @@ export async function createExcelFile(records, chartImages, meta) {
   }
 
   // Build lookup: empName_dateStr → status
+  const isSiswa = CONFIG.isSiswaType(meta.presensiType);
+  const identityLabel = isSiswa ? 'NIS' : 'Jabatan';
+  const groupLabel = isSiswa ? 'Kelas' : 'Divisi';
   const lookup = {};
   const empMap = new Map();
   records.forEach(r => {
     const dateKey = (r.attendance_date || '').split('T')[0];
-    lookup[`${r.employee_name}_${dateKey}`] = r.status;
-    if (!empMap.has(r.employee_name)) {
-      empMap.set(r.employee_name, { position: r.employee_position || '', division: r.employee_division || '' });
+    const division = r.employee_division || '';
+    const empKey = `${r.employee_name}||${division}`;
+    lookup[`${empKey}||${dateKey}`] = r.status;
+    if (!empMap.has(empKey)) {
+      empMap.set(empKey, {
+        name: r.employee_name,
+        position: r.employee_position || '',
+        division,
+        status: r.employee_status || '',
+      });
     }
   });
 
   // Unique employees sorted by name
-  const employees = [...empMap.entries()].map(([name, info]) => ({ name, ...info })).sort((a, b) => a.name.localeCompare(b.name));
+  const employees = [...empMap.values()].sort((a, b) => a.name.localeCompare(b.name, 'id'));
+  const statusOf = (emp, d) => lookup[`${emp.name}||${emp.division}||${fmtKey(d)}`] || '';
 
   // ===== Sheet 1: Rekap Presensi (pivot table) =====
-  const ws1 = wb.addWorksheet('Rekap Presensi', { views: [{ state: 'frozen', xSplit: 4 }] });
+  const ws1 = wb.addWorksheet('Rekap Presensi', { views: [{ state: 'frozen', xSplit: 4, ySplit: 1 }] });
 
   // Build columns
   const fixedCols = [
     { header: 'No', key: 'no', width: 5 },
     { header: 'Nama', key: 'name', width: 28 },
-    { header: 'Jabatan', key: 'position', width: 20 },
-    { header: 'Divisi', key: 'division', width: 12 },
+    { header: identityLabel, key: 'identity', width: 16 },
+    { header: groupLabel, key: 'group', width: 14 },
   ];
   const dateCols = dates.map((d, i) => {
     const dayName = dayNames[d.getDay()];
@@ -405,12 +423,16 @@ export async function createExcelFile(records, chartImages, meta) {
 
   // Data rows
   employees.forEach((emp, i) => {
-    const rowData = { no: i + 1, name: emp.name, position: emp.position, division: emp.division };
+    const rowData = {
+      no: i + 1,
+      name: emp.name,
+      identity: (isSiswa ? emp.status : emp.position) || '—',
+      group: emp.division,
+    };
     let tH = 0, tT = 0, tI = 0, tS = 0, tTH = 0;
 
     dates.forEach((d, j) => {
-      const dateKey = fmtKey(d);
-      const status = lookup[`${emp.name}_${dateKey}`] || '';
+      const status = statusOf(emp, d);
       rowData[`d${j}`] = statusShort[status] || '';
       if (status === 'hadir') tH++;
       else if (status === 'terlambat') tT++;
@@ -430,8 +452,7 @@ export async function createExcelFile(records, chartImages, meta) {
 
     // Style data cells
     dates.forEach((d, j) => {
-      const dateKey = fmtKey(d);
-      const status = lookup[`${emp.name}_${dateKey}`] || '';
+      const status = statusOf(emp, d);
       const cell = row.getCell(5 + j);
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
       if (status && statusColorHex[status]) {
@@ -460,6 +481,8 @@ export async function createExcelFile(records, chartImages, meta) {
     }
   });
 
+  ws1.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+
   // ===== Sheet 2: Ringkasan + Charts =====
   const ws2 = wb.addWorksheet('Ringkasan');
   ws2.getColumn(1).width = 30;
@@ -472,7 +495,10 @@ export async function createExcelFile(records, chartImages, meta) {
   ws2.getCell('A1').alignment = { horizontal: 'center' };
 
   ws2.mergeCells('A2:C2');
-  const typeLabelExcel = CONFIG.PRESENSI_TYPE_LABELS[meta.presensiType]?.replace(/\s*\(.*?\)\s*/g, '').trim() || 'Presensi';
+  const typeLabelExcel = (CONFIG.PRESENSI_TYPE_LABELS[meta.presensiType] || 'Presensi')
+    .replace(/\s*\(.*?\)\s*/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   ws2.getCell('A2').value = `Sekolah Kristen Kanaan Kubu Raya — ${typeLabelExcel}`;
   ws2.getCell('A2').font = { size: 11, italic: true };
   ws2.getCell('A2').alignment = { horizontal: 'center' };
@@ -486,7 +512,9 @@ export async function createExcelFile(records, chartImages, meta) {
   ws2.getCell('B6').value = meta.academicYear;
   ws2.getCell('A7').value = 'Total Record:';
   ws2.getCell('B7').value = records.length;
-  for (const r of ['A4','A5','A6','A7']) ws2.getCell(r).font = { bold: true };
+  ws2.getCell('A8').value = 'Filter:';
+  ws2.getCell('B8').value = meta.employee || 'Semua';
+  for (const r of ['A4','A5','A6','A7','A8']) ws2.getCell(r).font = { bold: true };
 
   const counts = { hadir: 0, terlambat: 0, izin: 0, sakit: 0, tidak_hadir_tk: 0 };
   records.forEach(r => { if (counts[r.status] !== undefined) counts[r.status]++; });
@@ -516,6 +544,207 @@ export async function createExcelFile(records, chartImages, meta) {
     const imgId3 = wb.addImage({ base64: chartImages.division, extension: 'png' });
     ws2.addImage(imgId3, { tl: { col: 0, row: 34 }, ext: { width: 600, height: 260 } });
   }
+
+  // ===== Rekap per kelas/divisi + sheet detail per kelas =====
+  const groupMap = new Map();
+  employees.forEach(emp => {
+    const key = emp.division || (isSiswa ? 'Tanpa Kelas' : 'Tanpa Divisi');
+    if (!groupMap.has(key)) groupMap.set(key, []);
+    groupMap.get(key).push(emp);
+  });
+  const jenjangRank = { TK: 0, SD: 1, SMP: 2, Lainnya: 3 };
+  const groupKeys = [...groupMap.keys()].sort((a, b) =>
+    (jenjangRank[jenjangOfClass(a)] - jenjangRank[jenjangOfClass(b)])
+    || a.localeCompare(b, 'id', { numeric: true })
+  );
+
+  const sumStatuses = list => {
+    const t = { hadir: 0, terlambat: 0, izin: 0, sakit: 0, tidak_hadir_tk: 0, total: 0 };
+    list.forEach(emp => {
+      dates.forEach(d => {
+        const st = statusOf(emp, d);
+        if (st && t[st] !== undefined) { t[st]++; t.total++; }
+      });
+    });
+    return t;
+  };
+  const rateOf = s => s.total ? (((s.hadir + s.terlambat) / s.total) * 100).toFixed(1) + '%' : '0%';
+
+  const recapName = isSiswa ? 'Rekap per Kelas' : 'Rekap per Divisi';
+  const wsRekap = wb.addWorksheet(recapName, { views: [{ state: 'frozen', ySplit: 1 }] });
+  wsRekap.columns = [
+    { header: 'No', key: 'no', width: 6 },
+    { header: groupLabel, key: 'group', width: 24 },
+    { header: isSiswa ? 'Jumlah Siswa' : 'Jumlah Karyawan', key: 'jumlah', width: 16 },
+    { header: 'Hadir', key: 'hadir', width: 9 },
+    { header: 'Terlambat', key: 'terlambat', width: 11 },
+    { header: 'Izin', key: 'izin', width: 8 },
+    { header: 'Sakit', key: 'sakit', width: 8 },
+    { header: 'Tidak Hadir', key: 'tidak_hadir_tk', width: 12 },
+    { header: 'Total Record', key: 'total', width: 13 },
+    { header: '% Kehadiran', key: 'rate', width: 12 },
+  ];
+  const recapHeader = wsRekap.getRow(1);
+  recapHeader.height = 30;
+  recapHeader.eachCell(cell => {
+    cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+  });
+
+  const recapTotal = { hadir: 0, terlambat: 0, izin: 0, sakit: 0, tidak_hadir_tk: 0, total: 0 };
+  groupKeys.forEach((key, i) => {
+    const list = groupMap.get(key);
+    const s = sumStatuses(list);
+    Object.keys(recapTotal).forEach(k => { recapTotal[k] += s[k]; });
+    const row = wsRekap.addRow([
+      i + 1, key, list.length, s.hadir, s.terlambat, s.izin, s.sakit, s.tidak_hadir_tk, s.total, rateOf(s),
+    ]);
+    row.height = 18;
+    row.eachCell((cell, col) => {
+      cell.alignment = { horizontal: col === 2 ? 'left' : 'center', vertical: 'middle' };
+    });
+    if (i % 2 === 1) {
+      row.eachCell(cell => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+      });
+    }
+  });
+  const recapFooter = wsRekap.addRow([
+    '', 'TOTAL', employees.length, recapTotal.hadir, recapTotal.terlambat, recapTotal.izin,
+    recapTotal.sakit, recapTotal.tidak_hadir_tk, recapTotal.total, rateOf(recapTotal),
+  ]);
+  recapFooter.font = { bold: true };
+  recapFooter.eachCell((cell, col) => {
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } };
+    cell.alignment = { horizontal: col === 2 ? 'left' : 'center', vertical: 'middle' };
+  });
+  if (groupKeys.length) {
+    wsRekap.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1 + groupKeys.length, column: 10 } };
+  }
+  wsRekap.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+
+  const usedSheetNames = new Set(['rekap presensi', 'ringkasan', recapName.toLowerCase()]);
+  const uniqueSheetName = raw => {
+    let base = String(raw || 'Lainnya').replace(/[\\/*?:\[\]]/g, '-').replace(/^'+|'+$/g, '').trim() || 'Lainnya';
+    base = base.slice(0, 31);
+    let name = base;
+    let n = 2;
+    while (usedSheetNames.has(name.toLowerCase())) {
+      const suffix = ` (${n++})`;
+      name = base.slice(0, 31 - suffix.length) + suffix;
+    }
+    usedSheetNames.add(name.toLowerCase());
+    return name;
+  };
+
+  const dateLabels = dates.map(d => `${dayNames[d.getDay()]}\n${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`);
+
+  groupKeys.forEach(groupKey => {
+    const list = groupMap.get(groupKey).sort((a, b) => a.name.localeCompare(b.name, 'id'));
+    const ws = wb.addWorksheet(uniqueSheetName(groupKey), { views: [{ state: 'frozen', xSplit: 4, ySplit: 5 }] });
+    const heads = ['No', 'Nama', identityLabel, groupLabel, ...dateLabels, 'H', 'T', 'I', 'S', 'TH', '% Hadir'];
+    const colCount = heads.length;
+    const widths = [5, 28, 16, 14, ...dates.map(() => 6.5), 5, 5, 5, 5, 5, 9];
+    widths.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
+
+    ws.addRow([`LAPORAN PRESENSI — ${groupLabel.toUpperCase()} ${groupKey}`]);
+    ws.mergeCells(1, 1, 1, colCount);
+    ws.getCell(1, 1).font = { bold: true, size: 14, color: { argb: 'FF1E40AF' } };
+    ws.getCell(1, 1).alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(1).height = 26;
+
+    ws.addRow([`Sekolah Kristen Kanaan Kubu Raya — ${typeLabelExcel}`]);
+    ws.mergeCells(2, 1, 2, colCount);
+    ws.getCell(2, 1).font = { size: 11, italic: true };
+    ws.getCell(2, 1).alignment = { horizontal: 'center' };
+
+    ws.addRow([`Periode: ${meta.startDate} s/d ${meta.endDate} · Tahun Ajaran: ${meta.academicYear} · Hari Aktif: ${dates.length}`]);
+    ws.mergeCells(3, 1, 3, colCount);
+    ws.getCell(3, 1).alignment = { horizontal: 'center' };
+
+    ws.addRow([]);
+
+    const headerRow = ws.addRow(heads);
+    headerRow.height = 32;
+    headerRow.eachCell(cell => {
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 9 };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      cell.border = { bottom: { style: 'thin', color: { argb: 'FF000000' } } };
+    });
+    dates.forEach((d, i) => {
+      headerRow.getCell(5 + i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
+    });
+    summaryColors.forEach((color, i) => {
+      headerRow.getCell(5 + dates.length + i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
+    });
+
+    const groupTotals = { hadir: 0, terlambat: 0, izin: 0, sakit: 0, tidak_hadir_tk: 0 };
+    list.forEach((emp, i) => {
+      let h = 0, t = 0, iz = 0, s = 0, th = 0;
+      const statuses = dates.map(d => statusOf(emp, d));
+      statuses.forEach(st => {
+        if (st === 'hadir') h++;
+        else if (st === 'terlambat') t++;
+        else if (st === 'izin') iz++;
+        else if (st === 'sakit') s++;
+        else if (st === 'tidak_hadir_tk') th++;
+      });
+      groupTotals.hadir += h;
+      groupTotals.terlambat += t;
+      groupTotals.izin += iz;
+      groupTotals.sakit += s;
+      groupTotals.tidak_hadir_tk += th;
+      const totalRec = h + t + iz + s + th;
+      const rate = totalRec ? (((h + t) / totalRec) * 100).toFixed(1) + '%' : '0%';
+      const row = ws.addRow([
+        i + 1,
+        emp.name,
+        (isSiswa ? emp.status : emp.position) || '—',
+        emp.division,
+        ...statuses.map(st => statusShort[st] || ''),
+        h, t, iz, s, th, rate,
+      ]);
+      row.height = 18;
+      row.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+      dates.forEach((d, j) => {
+        const st = statuses[j];
+        const cell = row.getCell(5 + j);
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        if (st && statusColorHex[st]) {
+          cell.font = { bold: true, color: { argb: 'FF' + statusColorHex[st] }, size: 10 };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: '1A' + statusColorHex[st] } };
+        }
+      });
+      for (let j = 0; j < 5; j++) {
+        row.getCell(5 + dates.length + j).alignment = { horizontal: 'center', vertical: 'middle' };
+      }
+      row.getCell(colCount).alignment = { horizontal: 'center', vertical: 'middle' };
+      if (i % 2 === 1) {
+        row.eachCell((cell, colNum) => {
+          if (colNum <= 4) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        });
+      }
+    });
+
+    const grandTotal = groupTotals.hadir + groupTotals.terlambat + groupTotals.izin + groupTotals.sakit + groupTotals.tidak_hadir_tk;
+    const footer = ws.addRow([
+      '', 'TOTAL', '', '', ...dates.map(() => ''),
+      groupTotals.hadir, groupTotals.terlambat, groupTotals.izin, groupTotals.sakit, groupTotals.tidak_hadir_tk,
+      grandTotal ? (((groupTotals.hadir + groupTotals.terlambat) / grandTotal) * 100).toFixed(1) + '%' : '0%',
+    ]);
+    footer.font = { bold: true };
+    footer.eachCell((cell, colNum) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E7FF' } };
+      if (colNum >= 5) cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    if (list.length) {
+      ws.autoFilter = { from: { row: 5, column: 1 }, to: { row: 5 + list.length, column: colCount } };
+    }
+    ws.pageSetup = { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+  });
 
   const buffer = await wb.xlsx.writeBuffer();
   return new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
