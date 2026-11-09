@@ -625,6 +625,9 @@ const realApi = {
   async syncBotGroups() {
     return apiFetch('/api/bot/sync-groups', { method: 'POST' });
   },
+  async getWhatsappStatus() {
+    return apiFetch('/api/bot/whatsapp/status');
+  },
   async getBotConfig() {
     return apiFetch('/api/bot/config');
   },

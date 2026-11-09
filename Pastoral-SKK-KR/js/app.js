@@ -2689,8 +2689,9 @@ async function saveColumnEditor() {
   }
 }
 
-/* ===== Telegram Bot Management ===== */
+/* ===== Telegram + WhatsApp Bot Management ===== */
 let botGroupsData = [];
+let waSession = null;
 let _editingBotGroupId = null;
 
 function initBotView() {
@@ -2703,7 +2704,63 @@ function initBotView() {
   document.getElementById('bot-group-modal').onclick = (e) => {
     if (e.target === document.getElementById('bot-group-modal')) closeBotGroupModal();
   };
+  document.getElementById('bot-platform-filter').onchange = renderBotGroups;
+  document.getElementById('wa-refresh').onclick = loadWaStatus;
+  document.getElementById('bot-group-platform').onchange = applyBotPlatformUI;
+  document.getElementById('bot-group-wa-select').onchange = (e) => {
+    if (e.target.value) document.getElementById('bot-group-chatid').value = e.target.value;
+  };
   loadBotGroups();
+  loadWaStatus();
+}
+
+async function loadWaStatus() {
+  const line = document.getElementById('wa-status-line');
+  const wrap = document.getElementById('wa-qr-wrap');
+  const img = document.getElementById('wa-qr-img');
+  try {
+    waSession = await api.getWhatsappStatus();
+  } catch (e) {
+    waSession = null;
+  }
+  if (!line) return;
+  const s = waSession || {};
+  const map = {
+    ready: '✅ Terhubung' + (s.number ? ' sebagai +' + s.number : ''),
+    qr: '📷 Menunggu scan QR',
+    starting: '⏳ Menyiapkan WhatsApp...',
+    authenticated: '⏳ Sesi tersimpan, memuat...',
+    disconnected: '⚠️ Terputus',
+    auth_failure: '❌ Login gagal',
+    error: '❌ Error',
+    not_configured: 'ℹ️ Bridge WhatsApp belum berjalan'
+  };
+  line.textContent = map[s.status] || ('Status: ' + (s.status || 'tidak diketahui'));
+  if (s.message) line.textContent += ' — ' + s.message;
+  if (s.updatedAt) line.textContent += ' (update ' + new Date(s.updatedAt).toLocaleString('id-ID') + ')';
+  if (s.status === 'qr' && s.qr) {
+    img.src = s.qr;
+    wrap.classList.remove('hidden');
+  } else {
+    wrap.classList.add('hidden');
+  }
+}
+
+function applyBotPlatformUI() {
+  const platform = document.getElementById('bot-group-platform').value;
+  const waWrap = document.getElementById('bot-wa-group-wrap');
+  const chatIdInput = document.getElementById('bot-group-chatid');
+  if (platform === 'whatsapp') {
+    chatIdInput.placeholder = '1203630...@g.us';
+    waWrap.style.display = '';
+    const sel = document.getElementById('bot-group-wa-select');
+    const groups = (waSession && waSession.groups) || [];
+    sel.innerHTML = '<option value="">— pilih grup —</option>' +
+      groups.map(g => `<option value="${g.id}">${(g.name || '(tanpa nama)')} — ${g.id}</option>`).join('');
+  } else {
+    chatIdInput.placeholder = '-1001234567890';
+    waWrap.style.display = 'none';
+  }
 }
 
 async function loadBotGroups() {
@@ -2717,8 +2774,12 @@ function renderBotGroups() {
   const tbody = document.getElementById('bot-groups-tbody');
   if (!tbody) return;
   tbody.innerHTML = '';
+  const platformFilter = document.getElementById('bot-platform-filter')?.value || '';
   botGroupsData.forEach(g => {
     if (String(g.chat_id) === '_sheets') return; // doc konfigurasi sheet, bukan grup
+    const plat = (g.platform || 'telegram').toLowerCase();
+    if (platformFilter && plat !== platformFilter) return;
+    const platLabel = plat === 'whatsapp' ? '📱 WhatsApp' : '✈️ Telegram';
     const isEnabled = g.is_enabled == true;
     const timeStr = `${String(g.announce_hour || 13).padStart(2, '0')}:${String(g.announce_minute || 0).padStart(2, '0')} WIB`;
     let activeSched = [];
@@ -2728,6 +2789,7 @@ function renderBotGroups() {
     const schedLabel = activeSched.length ? activeSched.map(s => s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).substring(0, 12)).join(', ') : 'Semua';
     const tr = document.createElement('tr');
     tr.innerHTML = `
+      <td style="font-size:12px;white-space:nowrap">${platLabel}</td>
       <td><code style="font-size:11px">${g.chat_id}</code></td>
       <td>${g.group_name || '—'}</td>
       <td><span class="toggle-switch ${isEnabled ? 'toggle-active' : 'toggle-inactive'}">${isEnabled ? 'Aktif' : 'Nonaktif'}</span></td>
@@ -2769,7 +2831,7 @@ function renderBotGroups() {
     };
   });
   if (tbody.children.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px">Belum ada grup. Tambah grup Telegram atau ketik /start di bot di grup.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px">Belum ada grup. Tambah grup Telegram atau WhatsApp.</td></tr>';
   }
 }
 
@@ -2806,7 +2868,9 @@ async function handleBotSync() {
 
 function openBotGroupModal(group) {
   _editingBotGroupId = group ? group.id : null;
-  document.getElementById('bot-group-modal-title').textContent = group ? '✏️ Edit Grup Telegram' : 'Tambah Grup Telegram';
+  const platform = (group && group.platform) || 'telegram';
+  document.getElementById('bot-group-platform').value = platform;
+  document.getElementById('bot-group-modal-title').textContent = group ? '✏️ Edit Grup' : 'Tambah Grup';
   document.getElementById('bot-group-chatid').value = group ? group.chat_id : '';
   document.getElementById('bot-group-chatid').readOnly = !!group;
   document.getElementById('bot-group-name').value = group ? (group.group_name || '') : '';
@@ -2831,6 +2895,7 @@ function openBotGroupModal(group) {
   }
 
   document.getElementById('bot-group-modal').classList.remove('hidden');
+  applyBotPlatformUI();
 }
 
 function closeBotGroupModal() {
@@ -2840,7 +2905,9 @@ function closeBotGroupModal() {
 
 async function handleBotGroupSave() {
   const msgEl = document.getElementById('bot-group-modal-msg');
-  const chatId = document.getElementById('bot-group-chatid').value.trim();
+  const platform = document.getElementById('bot-group-platform').value === 'whatsapp' ? 'whatsapp' : 'telegram';
+  const waPick = document.getElementById('bot-group-wa-select').value;
+  const chatId = (document.getElementById('bot-group-chatid').value.trim() || (platform === 'whatsapp' ? waPick : ''));
   const groupName = document.getElementById('bot-group-name').value.trim();
   const announceHour = parseInt(document.getElementById('bot-group-hour').value, 10) || 13;
   const announceMinute = parseInt(document.getElementById('bot-group-minute').value, 10) || 0;
@@ -2860,9 +2927,9 @@ async function handleBotGroupSave() {
 
   try {
     if (_editingBotGroupId) {
-      await api.updateBotGroup(_editingBotGroupId, { groupName, announceHour, announceMinute, isEnabled, activeSchedules, notes });
+      await api.updateBotGroup(_editingBotGroupId, { groupName, announceHour, announceMinute, isEnabled, activeSchedules, notes, platform });
     } else {
-      await api.saveBotGroup({ chatId, groupName, announceHour, announceMinute, isEnabled, activeSchedules, notes });
+      await api.saveBotGroup({ chatId, groupName, announceHour, announceMinute, isEnabled, activeSchedules, notes, platform });
     }
     msgEl.textContent = '✅ Grup berhasil disimpan.';
     msgEl.style.background = '#dcfce7'; msgEl.style.color = '#166534';

@@ -565,20 +565,37 @@
         <!-- Telegram Bot View -->
         <section id="view-telegram-bot" class="view hidden">
           <div class="page-header" style="align-items:center">
-            <h2 style="margin:0">🤖 Manajemen Telegram Bot</h2>
+            <h2 style="margin:0">🤖 Manajemen Bot Pengumuman</h2>
           </div>
           <div style="max-width:800px">
-            <p class="muted" style="margin-bottom:12px">Atur grup Telegram dan konfigurasi bot pengumuman renungan harian.</p>
+            <p class="muted" style="margin-bottom:12px">Atur grup Telegram dan WhatsApp serta jadwal pengumuman renungan harian.</p>
+
+            <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:16px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                <h4 style="font-size:14px;margin:0">📱 WhatsApp (whatsapp-web.js)</h4>
+                <button id="wa-refresh" class="btn btn-sm btn-secondary">🔄 Cek Status</button>
+              </div>
+              <p id="wa-status-line" class="muted" style="margin:6px 0 8px;font-size:13px">Memuat status...</p>
+              <div id="wa-qr-wrap" class="hidden" style="text-align:center">
+                <img id="wa-qr-img" alt="QR WhatsApp" style="width:260px;height:260px;background:#fff;padding:8px;border-radius:8px" />
+                <p class="muted" style="font-size:12px;margin-top:6px">Buka WhatsApp → Perangkat Tertaut → Tautkan perangkat, lalu scan QR ini.</p>
+              </div>
+            </div>
 
             <h4 style="font-size:14px;margin-bottom:8px">Grup Terdaftar</h4>
-            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
               <button id="bot-groups-reload" class="btn btn-sm btn-secondary">🔄 Muat Ulang</button>
               <button id="bot-groups-sync" class="btn btn-sm btn-secondary" title="Sync groups dari Firestore (Google Cloud)">☁️ Sync dari Bot</button>
               <button id="bot-group-add-btn" class="btn btn-sm btn-primary">+ Tambah Grup</button>
+              <select id="bot-platform-filter" class="btn btn-sm btn-secondary" style="padding:4px 8px;margin-left:auto">
+                <option value="">Semua Platform</option>
+                <option value="telegram">Telegram</option>
+                <option value="whatsapp">WhatsApp</option>
+              </select>
             </div>
             <div class="table-wrapper" style="max-height:400px;overflow-y:auto">
               <table>
-                <thead><tr><th>Chat ID</th><th>Nama Grup</th><th>Status</th><th>Jam Kirim</th><th>Jadwal</th><th>Terakhir Kirim</th><th>Aksi</th></tr></thead>
+                <thead><tr><th>Platform</th><th>Chat ID</th><th>Nama Grup</th><th>Status</th><th>Jam Kirim</th><th>Jadwal</th><th>Terakhir Kirim</th><th>Aksi</th></tr></thead>
                 <tbody id="bot-groups-tbody"></tbody>
               </table>
             </div>
@@ -593,7 +610,18 @@
                 <button id="bot-group-modal-close" class="btn btn-sm btn-text">✕</button>
               </div>
               <div class="modal-body">
-                <div class="form-group"><label>Chat ID</label><input type="text" id="bot-group-chatid" placeholder="-1001234567890" style="font-family:monospace" /></div>
+                <div class="form-group"><label>Platform</label>
+                  <select id="bot-group-platform">
+                    <option value="telegram">Telegram</option>
+                    <option value="whatsapp">WhatsApp</option>
+                  </select>
+                </div>
+                <div class="form-group" id="bot-wa-group-wrap" style="display:none">
+                  <label>Grup WhatsApp terdeteksi</label>
+                  <select id="bot-group-wa-select"><option value="">— pilih grup —</option></select>
+                  <p class="muted" style="font-size:11px;margin-top:4px">Daftar muncul setelah WhatsApp terhubung (scan QR di panel atas).</p>
+                </div>
+                <div class="form-group"><label>Chat ID / ID Grup</label><input type="text" id="bot-group-chatid" placeholder="-1001234567890" style="font-family:monospace" /></div>
                 <div class="form-group"><label>Nama Grup</label><input type="text" id="bot-group-name" placeholder="Nama grup Telegram" /></div>
                 <div style="display:flex;gap:8px">
                   <div class="form-group" style="flex:1"><label>Jam</label><input type="number" id="bot-group-hour" min="0" max="23" value="13" style="font-family:monospace" /></div>

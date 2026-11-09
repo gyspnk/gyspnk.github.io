@@ -378,8 +378,15 @@ export default {
         if (!targetDate) return json({ error: 'date diperlukan' }, 400, allowOrigin);
         if (!env.GSA_JSON) return json({ error: 'GSA_JSON required' }, 400, allowOrigin);
 
+        const platformFilter = (url.searchParams.get('platform') || '').trim().toLowerCase();
         const groups = (await query(env, 'SELECT * FROM bot_groups WHERE is_enabled = TRUE'))
-          .filter(g => /^-?\d+$/.test(String(g.chat_id).trim()));
+          .filter(g => {
+            const p = (g.platform || 'telegram').toLowerCase();
+            if (platformFilter && p !== platformFilter) return false;
+            // Telegram chat id numerik; WhatsApp pakai id grup @g.us
+            if (p === 'whatsapp') return String(g.chat_id).includes('@');
+            return /^-?\d+$/.test(String(g.chat_id).trim());
+          });
         const configs = await query(env, 'SELECT * FROM calendar_sheet_configs WHERE is_active = TRUE');
         // Compute date header
         const d = new Date(targetDate + 'T00:00:00');
@@ -494,7 +501,15 @@ export default {
           if (parts.length > 0) {
             let text = dateHeader + '\n\n' + parts.join('\n\n');
             if (gNotes) text += '\n\n' + gNotes;
-            messages.push({ chat_id: g.chat_id, text });
+            messages.push({
+              chat_id: g.chat_id,
+              group_name: g.group_name || '',
+              platform: (g.platform || 'telegram').toLowerCase(),
+              announce_hour: g.announce_hour,
+              announce_minute: g.announce_minute,
+              last_sent_date: g.last_sent_date || '',
+              text
+            });
           }
         }
         return json({ date: targetDate, count: messages.length, messages }, 200, allowOrigin);
@@ -505,7 +520,8 @@ export default {
         const stmts = [
           "ALTER TABLE bot_groups ADD COLUMN notes TEXT DEFAULT NULL",
           "ALTER TABLE bot_groups ADD COLUMN active_schedules TEXT DEFAULT NULL",
-          "ALTER TABLE calendar_sheet_configs ADD COLUMN notes TEXT DEFAULT NULL AFTER column_config"
+          "ALTER TABLE calendar_sheet_configs ADD COLUMN notes TEXT DEFAULT NULL AFTER column_config",
+          "ALTER TABLE bot_groups ADD COLUMN platform VARCHAR(20) NOT NULL DEFAULT 'telegram'"
         ];
         if (idx < stmts.length) {
           try { await execute(env, stmts[idx]); return json({ ok: true, idx }); } catch (e) { return json({ error: e.message, idx }); }
@@ -650,6 +666,25 @@ export default {
             }
           } catch (e) { console.error('report-sent firestore error:', e.message); }
         }
+        return json({ success: true }, 200, allowOrigin);
+      }
+
+      // ===== Bot: WhatsApp bridge status (QR / koneksi) via X-Bot-Key =====
+      if (path === '/api/bot/whatsapp/status' && request.method === 'POST') {
+        if ((request.headers.get('X-Bot-Key') || '') !== 'pastoral-bot-2026') {
+          return json({ error: 'Tidak terautentikasi' }, 401, allowOrigin);
+        }
+        const body = await request.json().catch(() => ({}));
+        const val = JSON.stringify({
+          status: body.status || 'unknown',
+          qr: body.qr || null,
+          number: body.number || null,
+          message: body.message || null,
+          updatedAt: body.updatedAt || new Date().toISOString()
+        });
+        await execute(env,
+          `INSERT INTO bot_config (config_key, config_value) VALUES ('whatsapp_session', ?)
+           ON DUPLICATE KEY UPDATE config_value = ?`, [val, val]);
         return json({ success: true }, 200, allowOrigin);
       }
 
@@ -1405,18 +1440,21 @@ export default {
 
       if (path === '/api/bot/groups' && request.method === 'POST') {
         if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
-        const { chatId, groupName, isEnabled, announceHour, announceMinute, activeSchedules, notes } = await request.json();
+        const { chatId, groupName, isEnabled, announceHour, announceMinute, activeSchedules, notes, platform } = await request.json();
         if (!chatId) return json({ error: 'chatId diperlukan' }, 400, allowOrigin);
+        const plat = platform === 'whatsapp' ? 'whatsapp' : 'telegram';
         await execute(env,
-          `INSERT INTO bot_groups (chat_id, group_name, is_enabled, announce_hour, announce_minute, active_schedules, notes)
-           VALUES (?, ?, ?, ?, ?, ?, ?)
+          `INSERT INTO bot_groups (chat_id, group_name, is_enabled, announce_hour, announce_minute, active_schedules, notes, platform)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE group_name=VALUES(group_name), is_enabled=VALUES(is_enabled),
              announce_hour=VALUES(announce_hour), announce_minute=VALUES(announce_minute),
-             active_schedules=VALUES(active_schedules), notes=VALUES(notes)`,
+             active_schedules=VALUES(active_schedules), notes=VALUES(notes), platform=VALUES(platform)`,
           [String(chatId), groupName || '', isEnabled !== false, announceHour || 13, announceMinute || 0,
-           activeSchedules ? JSON.stringify(activeSchedules) : null, notes || null]);
-        // Push to Firestore for bot
-        pushGroupToFirestore(env, String(chatId), groupName || '', isEnabled !== false, announceHour || 13, announceMinute || 0, null).catch(() => {});
+           activeSchedules ? JSON.stringify(activeSchedules) : null, notes || null, plat]);
+        // Push to Firestore for bot (hanya grup Telegram; WhatsApp tidak lewat Firestore)
+        if (plat === 'telegram') {
+          pushGroupToFirestore(env, String(chatId), groupName || '', isEnabled !== false, announceHour || 13, announceMinute || 0, null).catch(() => {});
+        }
         return json({ success: true }, 200, allowOrigin);
       }
 
@@ -1431,6 +1469,7 @@ export default {
         if (body.announceMinute !== undefined) { updates.push('announce_minute = ?'); params.push(body.announceMinute); }
         if (body.activeSchedules !== undefined) { updates.push('active_schedules = ?'); params.push(JSON.stringify(body.activeSchedules)); }
         if (body.notes !== undefined) { updates.push('notes = ?'); params.push(body.notes); }
+        if (body.platform !== undefined) { updates.push('platform = ?'); params.push(body.platform === 'whatsapp' ? 'whatsapp' : 'telegram'); }
         if (updates.length > 0) {
           params.push(id);
           await execute(env, `UPDATE bot_groups SET ${updates.join(', ')} WHERE id = ?`, params);
@@ -1451,6 +1490,15 @@ export default {
         const id = parseInt(path.split('/').pop(), 10);
         await execute(env, 'DELETE FROM bot_groups WHERE id = ?', [id]);
         return json({ success: true }, 200, allowOrigin);
+      }
+
+      // ===== WhatsApp bridge status (admin) =====
+      if (path === '/api/bot/whatsapp/status' && request.method === 'GET') {
+        if (payload.role !== 'admin') return json({ error: 'Akses ditolak' }, 403, allowOrigin);
+        const rows = await query(env, "SELECT config_value FROM bot_config WHERE config_key = 'whatsapp_session'");
+        if (rows.length === 0) return json({ status: 'not_configured', qr: null, number: null, updatedAt: null }, 200, allowOrigin);
+        try { return json(JSON.parse(rows[0].config_value), 200, allowOrigin); }
+        catch (_) { return json({ status: 'unknown', qr: null, number: null, updatedAt: null }, 200, allowOrigin); }
       }
 
       if (path === '/api/bot/config' && request.method === 'GET') {
