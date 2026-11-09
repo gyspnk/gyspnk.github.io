@@ -1,6 +1,6 @@
 export const CONFIG = {
   API_BASE_URL: 'https://pas-presensi-api.pas-presensi.workers.dev',
-  REPO_OWNER: 'ThenGB',
+  REPO_OWNER: 'gyspnk',
   REPO_NAME: 'Pastoral-SKK-KR',
   REPO_KARYAWAN_PATH: 'PAS-Presensi/Karyawan',
   KARYAWAN_DIR: './Karyawan',
