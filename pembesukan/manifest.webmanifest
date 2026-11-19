@@ -1,0 +1,25 @@
+{
+  "name": "SAPA — Sistem Administrasi Pembesukan",
+  "short_name": "SAPA GYS",
+  "description": "Sistem Administrasi Pembesukan Gereja Yesus Sejati Pontianak",
+  "start_url": "/pembesukan/",
+  "scope": "/pembesukan/",
+  "display": "standalone",
+  "background_color": "#FAFAF8",
+  "theme_color": "#23356F",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/pembesukan/branding/tjc_logo_indonesian_color_150dpi.png",
+      "sizes": "1132x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pembesukan/branding/tjc_logo_indonesian_color.png",
+      "sizes": "2263x288",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
